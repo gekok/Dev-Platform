@@ -1,23 +1,22 @@
 package dev.platform.user.infrastructure.security;
 
 import dev.platform.user.application.port.out.PasswordEncoderPort;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Objects;
-
-// Mã hoá mật khẩu (stub: trả raw, kỳ 1 thay bằng BCryptPasswordEncoder).
+// Mã hoá mật khẩu tại biên hạ tầng, không để domain phụ thuộc Spring Security.
 @Component
 public class BcryptPasswordAdapter implements PasswordEncoderPort {
 
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
     @Override
     public String encode(String raw) {
-        // TODO kỳ 1: dùng BCryptPasswordEncoder thay vì trả raw.
-        return raw;
+        return encoder.encode(raw);
     }
 
     @Override
     public boolean matches(String raw, String hash) {
-        // TODO kỳ 1: so bằng BCryptPasswordEncoder.matches.
-        return Objects.equals(raw, hash);
+        return encoder.matches(raw, hash);
     }
 }
