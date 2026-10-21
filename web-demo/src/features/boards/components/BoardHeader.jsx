@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import BoardSelector from './BoardSelector.jsx';
 
-export default function BoardHeader({ board, project, isDefault = false }) {
+export default function BoardHeader({ board, project, isDefault = false, selectorProps }) {
   return (
     <header className="board-page-header">
       <Link className="board-back-link" to="/projects">
@@ -9,7 +10,7 @@ export default function BoardHeader({ board, project, isDefault = false }) {
       <div className="board-title-row">
         <div>
           <span className="eyebrow">KANBAN BOARD</span>
-          <h1 id="board-title">{board.name}</h1>
+          <BoardSelector {...selectorProps} currentBoard={board} />
         </div>
         <div className="board-header-badges">
           {isDefault && <span className="board-default-badge">Default</span>}

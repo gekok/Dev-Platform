@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import { useProject, useProjectMembers } from '../../projects/hooks/useProjects.js';
 import { useCards, useCreateCard, useMoveCard } from '../../cards/hooks/useCards.js';
 import CardDetailPanel from '../../cards/components/CardDetailPanel.jsx';
 import {
   useAddColumn,
   useBoard,
+  useCreateProjectBoard,
+  useProjectBoards,
   useReorderColumns,
 } from '../hooks/useBoards.js';
 import BoardHeader from '../components/BoardHeader.jsx';
+import BoardCreateDialog from '../components/BoardCreateDialog.jsx';
 import ColumnCreateForm from '../components/ColumnCreateForm.jsx';
 import KanbanColumns from '../components/KanbanColumns.jsx';
+import {
+  useClearDefaultBoard,
+  useDefaultBoards,
+  useSetDefaultBoard,
+} from '../../preferences/hooks/useDefaultBoards.js';
 import '../../cards/cards.css';
 import '../boards.css';
 
@@ -40,20 +49,58 @@ function getErrorMessage(error) {
   }
 }
 
+function getPreferenceErrorMessage(
+  error,
+  fallback = 'The saved Board preference could not be updated.',
+) {
+  return error.response?.data?.message ?? fallback;
+}
+
 export default function BoardPage() {
   const { projectId, boardId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [showColumnForm, setShowColumnForm] = useState(false);
+  const [showBoardCreateDialog, setShowBoardCreateDialog] = useState(false);
   const [selectedCardContext, setSelectedCardContext] = useState(null);
+  const userQuery = useCurrentUser();
+  const userId = userQuery.data?.id;
   const projectQuery = useProject(projectId);
+  const projectBoardsQuery = useProjectBoards(projectId);
   const boardQuery = useBoard(boardId);
   const cardsQuery = useCards(boardId);
   const membersQuery = useProjectMembers(projectId);
+  const defaultBoardsQuery = useDefaultBoards(userId);
+  const setDefaultMutation = useSetDefaultBoard(userId);
+  const clearDefaultMutation = useClearDefaultBoard(userId);
   const addColumnMutation = useAddColumn(projectId, boardId);
   const reorderMutation = useReorderColumns(projectId, boardId);
+  const createBoardMutation = useCreateProjectBoard(projectId);
   const createCardMutation = useCreateCard(boardId);
   const moveCardMutation = useMoveCard(boardId);
   const isOwner = projectQuery.data?.role === 'OWNER';
+  const defaultBoard = defaultBoardsQuery.data?.defaultBoards.find(
+    (preference) => Number(preference.projectId) === Number(projectId),
+  );
+  const defaultBoardId = defaultBoard?.boardId ?? null;
+  const isPreferencePending = setDefaultMutation.isPending || clearDefaultMutation.isPending;
+  const hasActiveSetDefaultError = setDefaultMutation.isError &&
+    Number(setDefaultMutation.variables?.projectId) === Number(projectId);
+  const hasActiveClearDefaultError = clearDefaultMutation.isError &&
+    Number(clearDefaultMutation.variables) === Number(projectId);
+  const preferenceMutationError = hasActiveSetDefaultError
+    ? setDefaultMutation.error
+    : hasActiveClearDefaultError
+      ? clearDefaultMutation.error
+      : null;
+  const preferenceError = preferenceMutationError
+    ? getPreferenceErrorMessage(preferenceMutationError)
+    : defaultBoardsQuery.isError
+      ? getPreferenceErrorMessage(
+          defaultBoardsQuery.error,
+          'The saved Board preference could not be loaded.',
+        )
+      : null;
   const selectedCardId =
     selectedCardContext?.projectId === projectId && selectedCardContext?.boardId === boardId
       ? selectedCardContext.cardId
@@ -63,6 +110,14 @@ export default function BoardPage() {
     setSelectedCardContext(null);
     setShowColumnForm(false);
   }, [projectId, boardId]);
+
+  const resetSetDefaultMutation = setDefaultMutation.reset;
+  const resetClearDefaultMutation = clearDefaultMutation.reset;
+
+  useEffect(() => {
+    resetSetDefaultMutation();
+    resetClearDefaultMutation();
+  }, [projectId, resetClearDefaultMutation, resetSetDefaultMutation]);
 
   const closeCardDetails = useCallback(() => setSelectedCardContext(null), []);
 
@@ -122,6 +177,57 @@ export default function BoardPage() {
     setSelectedCardContext({ projectId, boardId, cardId });
   }
 
+  function clearStalePreferenceError() {
+    if (location.state?.defaultPreferenceError) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }
+
+  async function handleSetDefault(boardToSetId) {
+    clearDefaultMutation.reset();
+    try {
+      await setDefaultMutation.mutateAsync({
+        projectId: Number(projectId),
+        boardId: Number(boardToSetId),
+      });
+      clearStalePreferenceError();
+    } catch {
+      // The selector renders the mutation error and keeps the previous default.
+    }
+  }
+
+  async function handleClearDefault() {
+    setDefaultMutation.reset();
+    try {
+      await clearDefaultMutation.mutateAsync(Number(projectId));
+      clearStalePreferenceError();
+    } catch {
+      // The selector renders the mutation error and keeps the previous default.
+    }
+  }
+
+  function handleRetryPreferences() {
+    if (
+      hasActiveSetDefaultError &&
+      setDefaultMutation.variables?.boardId != null
+    ) {
+      return handleSetDefault(setDefaultMutation.variables.boardId);
+    }
+    if (hasActiveClearDefaultError) return handleClearDefault();
+    return defaultBoardsQuery.refetch();
+  }
+
+  async function handleCreateBoard(payload) {
+    const createdBoard = await createBoardMutation.mutateAsync(payload);
+    setShowBoardCreateDialog(false);
+    navigate(`/projects/${projectId}/boards/${createdBoard.id}`);
+  }
+
+  function closeBoardCreateDialog() {
+    setShowBoardCreateDialog(false);
+    createBoardMutation.reset();
+  }
+
   if (
     projectQuery.isPending ||
     boardQuery.isPending ||
@@ -156,7 +262,7 @@ export default function BoardPage() {
 
   const project = projectQuery.data;
   const board = boardQuery.data;
-  const isDefault = Number(location.state?.defaultBoardId) === Number(boardId);
+  const isDefault = defaultBoardId != null && Number(defaultBoardId) === Number(boardId);
   const defaultPreferenceError = location.state?.defaultPreferenceError;
   if (board.projectId !== Number(projectId)) {
     return (
@@ -171,7 +277,41 @@ export default function BoardPage() {
   return (
     <>
     <section className="board-page" aria-labelledby="board-title">
-      <BoardHeader board={board} isDefault={isDefault} project={project} />
+      <BoardHeader
+        board={board}
+        isDefault={isDefault}
+        project={project}
+        selectorProps={{
+          boards: projectBoardsQuery.data ?? [],
+          currentBoardId: board.id,
+          defaultBoardId,
+          canCreate: isOwner,
+          isPreferenceLoading: userQuery.isPending ||
+            (Boolean(userId) && defaultBoardsQuery.isPending),
+          isPreferencePending,
+          preferenceError,
+          onRetryPreferences: handleRetryPreferences,
+          isBoardListLoading: projectBoardsQuery.isPending,
+          boardListError: projectBoardsQuery.isError
+            ? getErrorMessage(projectBoardsQuery.error)
+            : null,
+          onRetryBoardList: () => projectBoardsQuery.refetch(),
+          onSelectBoard: (nextBoardId) => {
+            if (Number(nextBoardId) === Number(boardId)) return;
+            navigate(`/projects/${projectId}/boards/${nextBoardId}`, {
+              state: location.state?.defaultPreferenceError
+                ? { defaultPreferenceError: location.state.defaultPreferenceError }
+                : null,
+            });
+          },
+          onSetDefault: handleSetDefault,
+          onClearDefault: handleClearDefault,
+          onCreateBoard: () => {
+            createBoardMutation.reset();
+            setShowBoardCreateDialog(true);
+          },
+        }}
+      />
 
       {defaultPreferenceError && (
         <p className="form-inline-error board-preference-error" role="alert">
@@ -251,6 +391,15 @@ export default function BoardPage() {
           onClose={closeCardDetails}
         />
       )}
+      <BoardCreateDialog
+        error={createBoardMutation.isError
+          ? getErrorMessage(createBoardMutation.error)
+          : null}
+        isCreating={createBoardMutation.isPending}
+        onClose={closeBoardCreateDialog}
+        onCreate={handleCreateBoard}
+        open={showBoardCreateDialog}
+      />
     </>
   );
 }

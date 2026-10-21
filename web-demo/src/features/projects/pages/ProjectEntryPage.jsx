@@ -139,12 +139,9 @@ export default function ProjectEntryPage() {
 
     navigate(`/projects/${projectIdNumber}/boards/${decision.board.id}`, {
       replace: true,
-      state: {
-        defaultBoardId: decision.isDefault ? decision.board.id : null,
-        defaultPreferenceError: decision.cleanupError
-          ? getPreferenceErrorMessage(decision.cleanupError)
-          : null,
-      },
+      state: decision.cleanupError
+        ? { defaultPreferenceError: getPreferenceErrorMessage(decision.cleanupError) }
+        : null,
     });
   }, [
     decision.board,
@@ -159,9 +156,7 @@ export default function ProjectEntryPage() {
   async function handleCreateBoard(payload) {
     const board = await createBoardMutation.mutateAsync(payload);
     setShowCreateDialog(false);
-    navigate(`/projects/${projectId}/boards/${board.id}`, {
-      state: { defaultBoardId: null },
-    });
+    navigate(`/projects/${projectId}/boards/${board.id}`);
   }
 
   function closeCreateDialog() {
