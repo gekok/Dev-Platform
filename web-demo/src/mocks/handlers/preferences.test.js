@@ -222,3 +222,40 @@ test('clears an existing preference and returns 204 when no preference exists', 
     assert.deepEqual(repository.read().defaultBoardPreferences, []);
   });
 });
+
+test('conditional stale cleanup preserves a newer default saved by another tab', async () => {
+  await withMockServer(async ({ repository }) => {
+    const { projects, boards } = repository.read();
+    const project = projects[0];
+    const [staleBoard, newerBoard] = boards;
+
+    const staleSave = await setDefaultBoard(project.id, staleBoard.id);
+    const newerSave = await setDefaultBoard(project.id, newerBoard.id);
+    assert.equal(staleSave.status, 200);
+    assert.equal(newerSave.status, 200);
+
+    const staleCleanup = await requestJson(
+      `/users/me/preferences/default-boards/${project.id}?expectedBoardId=${staleBoard.id}`,
+      'DELETE',
+      OWNER_TOKEN,
+    );
+
+    assert.equal(staleCleanup.status, 204);
+    assert.deepEqual(repository.read().defaultBoardPreferences, [
+      {
+        userId: project.ownerId,
+        projectId: project.id,
+        boardId: newerBoard.id,
+      },
+    ]);
+
+    const currentCleanup = await requestJson(
+      `/users/me/preferences/default-boards/${project.id}?expectedBoardId=${newerBoard.id}`,
+      'DELETE',
+      OWNER_TOKEN,
+    );
+
+    assert.equal(currentCleanup.status, 204);
+    assert.deepEqual(repository.read().defaultBoardPreferences, []);
+  });
+});

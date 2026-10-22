@@ -11,7 +11,12 @@ import {
   useDefaultBoards,
 } from '../../preferences/hooks/useDefaultBoards.js';
 import '../../boards/boards.css';
-import { resolveProjectEntry } from '../projectEntry.js';
+import {
+  getCleanupAttemptForRoute,
+  isCurrentCleanupAttempt,
+  releaseCleanupAttempt,
+  resolveProjectEntry,
+} from '../projectEntry.js';
 import { useProject } from '../hooks/useProjects.js';
 
 function getErrorTitle(error) {
@@ -66,9 +71,15 @@ export default function ProjectEntryPage() {
   const projectPreference = defaultBoards.find(
     (preference) => Number(preference.projectId) === projectIdNumber,
   );
+  const cleanupExpectedBoardId = projectPreference
+    ? Number(projectPreference.boardId)
+    : null;
   const cleanupKey = projectPreference
     ? `${location.key}:${userId}:${projectIdNumber}:${projectPreference.boardId}`
     : null;
+  const cleanupKeyRef = useRef(cleanupKey);
+  cleanupKeyRef.current = cleanupKey;
+  const isMountedRef = useRef(false);
   const activeCleanupAttempt = cleanupAttempt?.key === cleanupKey
     ? cleanupAttempt
     : null;
@@ -103,31 +114,70 @@ export default function ProjectEntryPage() {
   );
 
   useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!decision.needsCleanup || !cleanupKey) return;
-    if (cleanupAttemptRef.current?.key === cleanupKey) return;
+
+    function releaseAttemptOnRouteChange(requestAttempt) {
+      cleanupAttemptRef.current = releaseCleanupAttempt({
+        currentKey: cleanupKeyRef.current,
+        currentAttempt: cleanupAttemptRef.current,
+        requestKey: cleanupKey,
+        requestAttempt,
+      });
+    }
+
+    const existingAttempt = getCleanupAttemptForRoute(
+      cleanupAttemptRef.current,
+      cleanupKey,
+    );
+    if (existingAttempt) {
+      return () => releaseAttemptOnRouteChange(existingAttempt);
+    }
 
     const attempt = { key: cleanupKey, status: 'pending' };
     cleanupAttemptRef.current = attempt;
     setCleanupAttempt(attempt);
 
-    clearPreference(projectIdNumber).then(
-      () => {
-        const completedAttempt = { key: cleanupKey, status: 'cleared' };
-        cleanupAttemptRef.current = completedAttempt;
-        setCleanupAttempt(completedAttempt);
-      },
-      (mutationError) => {
-        const failedAttempt = {
-          key: cleanupKey,
-          status: 'error',
-          error: mutationError,
-        };
-        cleanupAttemptRef.current = failedAttempt;
-        setCleanupAttempt(failedAttempt);
-      },
+    function updateCleanupAttempt(status, error = null) {
+      if (!isCurrentCleanupAttempt({
+        isMounted: isMountedRef.current,
+        currentKey: cleanupKeyRef.current,
+        currentAttempt: cleanupAttemptRef.current,
+        requestKey: cleanupKey,
+        requestAttempt: attempt,
+      })) {
+        return;
+      }
+
+      const result = {
+        key: cleanupKey,
+        status,
+        ...(status === 'error' ? { error } : {}),
+      };
+      cleanupAttemptRef.current = result;
+      setCleanupAttempt(result);
+    }
+
+    clearPreference({
+      projectId: projectIdNumber,
+      expectedBoardId: cleanupExpectedBoardId,
+    }).then(
+      () => updateCleanupAttempt('cleared'),
+      (mutationError) => updateCleanupAttempt('error', mutationError),
     );
+
+    return () => {
+      releaseAttemptOnRouteChange(attempt);
+    };
   }, [
     cleanupKey,
+    cleanupExpectedBoardId,
     clearPreference,
     decision.needsCleanup,
     projectIdNumber,
@@ -212,9 +262,14 @@ export default function ProjectEntryPage() {
               : 'The Project Owner has not created a Board yet.'}
           </span>
           {decision.cleanupError && (
-            <p className="form-inline-error" role="alert">
-              The saved default could not be cleared. {getPreferenceErrorMessage(decision.cleanupError)}
-            </p>
+            <>
+              <p className="form-inline-error" role="alert">
+                The saved default could not be cleared. {getPreferenceErrorMessage(decision.cleanupError)}
+              </p>
+              <button className="secondary-button" onClick={retryQueries} type="button">
+                Try again
+              </button>
+            </>
           )}
           {isOwner && (
             <button

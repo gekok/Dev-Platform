@@ -32,7 +32,8 @@ export function useClearDefaultBoard(userId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (projectId) => clearDefaultBoard(projectId),
+    mutationFn: ({ projectId, expectedBoardId }) =>
+      clearDefaultBoard(projectId, expectedBoardId),
     onSuccess: () =>
       userId
         ? queryClient.invalidateQueries({

@@ -118,11 +118,25 @@ export function createPreferenceHandlers(repository, resolveUserFromToken) {
       );
       if (authorization.response) return authorization.response;
 
+      const expectedBoardParam = new URL(request.url).searchParams.get('expectedBoardId');
+      const expectedBoardId = expectedBoardParam !== null
+        ? parsePositiveId(expectedBoardParam)
+        : null;
+      if (expectedBoardParam !== null && !expectedBoardId) {
+        return errorResponse(
+          request,
+          400,
+          'BAD_REQUEST',
+          'A valid expectedBoardId query parameter is required',
+        );
+      }
+
       repository.transact((draft) => {
         draft.defaultBoardPreferences = draft.defaultBoardPreferences.filter(
           (preference) =>
             preference.userId !== authorization.user.id ||
-            preference.projectId !== projectId,
+            preference.projectId !== projectId ||
+            (expectedBoardId != null && preference.boardId !== expectedBoardId),
         );
       });
 

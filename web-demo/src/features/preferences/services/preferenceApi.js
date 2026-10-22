@@ -13,9 +13,10 @@ export async function setDefaultBoard(projectId, boardId) {
   return response.data;
 }
 
-export async function clearDefaultBoard(projectId) {
+export async function clearDefaultBoard(projectId, expectedBoardId) {
   const response = await api.delete(
     `/users/me/preferences/default-boards/${projectId}`,
+    expectedBoardId == null ? {} : { params: { expectedBoardId } },
   );
   return response.data;
 }

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { resolveProjectEntry } from './projectEntry.js';
+import * as projectEntry from './projectEntry.js';
+
+const { resolveProjectEntry } = projectEntry;
 
 const projectBoards = [
   { id: 11, projectId: 1, name: 'Platform Roadmap' },
@@ -104,4 +106,73 @@ test('keeps the no-Board result and cleanup error when stale cleanup fails', () 
     needsCleanup: true,
     cleanupError,
   });
+});
+
+test('applies a cleanup result only for the current mounted route attempt', () => {
+  assert.equal(typeof projectEntry.isCurrentCleanupAttempt, 'function');
+  const isCurrentCleanupAttempt = projectEntry.isCurrentCleanupAttempt;
+  const currentAttempt = { key: 'project-b', status: 'pending' };
+
+  assert.equal(isCurrentCleanupAttempt({
+    isMounted: true,
+    currentKey: 'project-b',
+    currentAttempt,
+    requestKey: 'project-b',
+    requestAttempt: currentAttempt,
+  }), true);
+  assert.equal(isCurrentCleanupAttempt({
+    isMounted: true,
+    currentKey: 'project-b',
+    currentAttempt,
+    requestKey: 'project-a',
+    requestAttempt: { key: 'project-a', status: 'pending' },
+  }), false);
+  assert.equal(isCurrentCleanupAttempt({
+    isMounted: false,
+    currentKey: 'project-b',
+    currentAttempt,
+    requestKey: 'project-b',
+    requestAttempt: currentAttempt,
+  }), false);
+});
+
+test('releases only the cleanup attempt owned by the leaving route effect', () => {
+  assert.equal(typeof projectEntry.releaseCleanupAttempt, 'function');
+  const releaseCleanupAttempt = projectEntry.releaseCleanupAttempt;
+  const leavingAttempt = { key: 'project-a', status: 'pending' };
+  const newerAttempt = { key: 'project-a', status: 'pending' };
+
+  const routeChange = { currentKey: 'project-b', requestKey: 'project-a' };
+  const sameRoute = { currentKey: 'project-a', requestKey: 'project-a' };
+
+  assert.equal(releaseCleanupAttempt({
+    ...routeChange,
+    currentAttempt: leavingAttempt,
+    requestAttempt: leavingAttempt,
+  }), null);
+  assert.equal(releaseCleanupAttempt({
+    ...sameRoute,
+    currentAttempt: leavingAttempt,
+    requestAttempt: leavingAttempt,
+  }), leavingAttempt);
+  assert.equal(releaseCleanupAttempt({
+    ...routeChange,
+    currentAttempt: newerAttempt,
+    requestAttempt: leavingAttempt,
+  }), newerAttempt);
+  assert.equal(releaseCleanupAttempt({
+    ...routeChange,
+    currentAttempt: { key: 'project-a', status: 'error' },
+    requestAttempt: leavingAttempt,
+  }).status, 'error');
+});
+
+test('reuses a matching pending cleanup attempt when the route effect is replayed', () => {
+  assert.equal(typeof projectEntry.getCleanupAttemptForRoute, 'function');
+  const getCleanupAttemptForRoute = projectEntry.getCleanupAttemptForRoute;
+  const pendingAttempt = { key: 'project-a', status: 'pending' };
+
+  assert.equal(getCleanupAttemptForRoute(pendingAttempt, 'project-a'), pendingAttempt);
+  assert.equal(getCleanupAttemptForRoute(pendingAttempt, 'project-b'), null);
+  assert.equal(getCleanupAttemptForRoute(null, 'project-a'), null);
 });

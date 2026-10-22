@@ -17,7 +17,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const routeParams = getActiveRouteParams(useMatches());
-  const { projectId } = routeParams;
+  const { projectId, boardId } = routeParams;
   const { data: user } = useCurrentUser();
   const projectsQuery = useProjects();
   const projectQuery = useProject(projectId);
@@ -55,8 +55,8 @@ export default function AppLayout() {
   );
 
   return (
-    <div className="app-shell">
-      <div className="workspace">
+    <div className={boardId ? 'app-shell app-shell-board' : 'app-shell'}>
+      <div className={boardId ? 'workspace workspace-board' : 'workspace'}>
         <header className="global-nav" aria-label="Account and workspace navigation">
           <div className="global-nav-main">
             <NavLink className="brand" to="/projects" aria-label="Dev Platform home">
@@ -113,13 +113,15 @@ export default function AppLayout() {
               </span>
               <span className="project-nav-name">
                 <strong>{project.name}</strong>
-                {project.role && <small>{project.role === 'OWNER' ? 'Owner' : 'Member'}</small>}
+                {project.role && !boardId && (
+                  <small>{project.role === 'OWNER' ? 'Owner' : 'Member'}</small>
+                )}
               </span>
             </div>
           </div>
         )}
 
-        <main className="page-content">
+        <main className={boardId ? 'page-content page-content-board' : 'page-content'}>
           {resetError && <p className="form-inline-error" role="alert">{resetError}</p>}
           <Outlet />
         </main>

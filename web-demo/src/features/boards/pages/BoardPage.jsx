@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import { useProject, useProjectMembers } from '../../projects/hooks/useProjects.js';
@@ -20,6 +20,7 @@ import {
   useDefaultBoards,
   useSetDefaultBoard,
 } from '../../preferences/hooks/useDefaultBoards.js';
+import { getPreferenceErrorClearPath } from '../preferenceNavigation.js';
 import '../../cards/cards.css';
 import '../boards.css';
 
@@ -59,6 +60,9 @@ function getPreferenceErrorMessage(
 export default function BoardPage() {
   const { projectId, boardId } = useParams();
   const location = useLocation();
+  const locationRef = useRef(location);
+  locationRef.current = location;
+  const isMountedRef = useRef(false);
   const navigate = useNavigate();
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [showBoardCreateDialog, setShowBoardCreateDialog] = useState(false);
@@ -87,7 +91,7 @@ export default function BoardPage() {
   const hasActiveSetDefaultError = setDefaultMutation.isError &&
     Number(setDefaultMutation.variables?.projectId) === Number(projectId);
   const hasActiveClearDefaultError = clearDefaultMutation.isError &&
-    Number(clearDefaultMutation.variables) === Number(projectId);
+    Number(clearDefaultMutation.variables?.projectId) === Number(projectId);
   const preferenceMutationError = hasActiveSetDefaultError
     ? setDefaultMutation.error
     : hasActiveClearDefaultError
@@ -110,6 +114,13 @@ export default function BoardPage() {
     setSelectedCardContext(null);
     setShowColumnForm(false);
   }, [projectId, boardId]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const resetSetDefaultMutation = setDefaultMutation.reset;
   const resetClearDefaultMutation = clearDefaultMutation.reset;
@@ -178,8 +189,11 @@ export default function BoardPage() {
   }
 
   function clearStalePreferenceError() {
-    if (location.state?.defaultPreferenceError) {
-      navigate(location.pathname, { replace: true, state: null });
+    const path = isMountedRef.current
+      ? getPreferenceErrorClearPath(locationRef.current, projectId)
+      : null;
+    if (path) {
+      navigate(path, { replace: true, state: null });
     }
   }
 
@@ -199,7 +213,7 @@ export default function BoardPage() {
   async function handleClearDefault() {
     setDefaultMutation.reset();
     try {
-      await clearDefaultMutation.mutateAsync(Number(projectId));
+      await clearDefaultMutation.mutateAsync({ projectId: Number(projectId) });
       clearStalePreferenceError();
     } catch {
       // The selector renders the mutation error and keeps the previous default.
@@ -274,45 +288,48 @@ export default function BoardPage() {
     );
   }
 
+  const boardHeader = (
+    <BoardHeader
+      board={board}
+      isDefault={isDefault}
+      project={project}
+      selectorProps={{
+        boards: projectBoardsQuery.data ?? [],
+        currentBoardId: board.id,
+        defaultBoardId,
+        canCreate: isOwner,
+        isPreferenceLoading: userQuery.isPending ||
+          (Boolean(userId) && defaultBoardsQuery.isPending),
+        isPreferenceReady: Boolean(userId) && defaultBoardsQuery.isSuccess,
+        isPreferencePending,
+        preferenceError,
+        onRetryPreferences: handleRetryPreferences,
+        isBoardListLoading: projectBoardsQuery.isPending,
+        boardListError: projectBoardsQuery.isError
+          ? getErrorMessage(projectBoardsQuery.error)
+          : null,
+        onRetryBoardList: () => projectBoardsQuery.refetch(),
+        onSelectBoard: (nextBoardId) => {
+          if (Number(nextBoardId) === Number(boardId)) return;
+          navigate(`/projects/${projectId}/boards/${nextBoardId}`, {
+            state: location.state?.defaultPreferenceError
+              ? { defaultPreferenceError: location.state.defaultPreferenceError }
+              : null,
+          });
+        },
+        onSetDefault: handleSetDefault,
+        onClearDefault: handleClearDefault,
+        onCreateBoard: () => {
+          createBoardMutation.reset();
+          setShowBoardCreateDialog(true);
+        },
+      }}
+    />
+  );
+
   return (
     <>
     <section className="board-page" aria-labelledby="board-title">
-      <BoardHeader
-        board={board}
-        isDefault={isDefault}
-        project={project}
-        selectorProps={{
-          boards: projectBoardsQuery.data ?? [],
-          currentBoardId: board.id,
-          defaultBoardId,
-          canCreate: isOwner,
-          isPreferenceLoading: userQuery.isPending ||
-            (Boolean(userId) && defaultBoardsQuery.isPending),
-          isPreferencePending,
-          preferenceError,
-          onRetryPreferences: handleRetryPreferences,
-          isBoardListLoading: projectBoardsQuery.isPending,
-          boardListError: projectBoardsQuery.isError
-            ? getErrorMessage(projectBoardsQuery.error)
-            : null,
-          onRetryBoardList: () => projectBoardsQuery.refetch(),
-          onSelectBoard: (nextBoardId) => {
-            if (Number(nextBoardId) === Number(boardId)) return;
-            navigate(`/projects/${projectId}/boards/${nextBoardId}`, {
-              state: location.state?.defaultPreferenceError
-                ? { defaultPreferenceError: location.state.defaultPreferenceError }
-                : null,
-            });
-          },
-          onSetDefault: handleSetDefault,
-          onClearDefault: handleClearDefault,
-          onCreateBoard: () => {
-            createBoardMutation.reset();
-            setShowBoardCreateDialog(true);
-          },
-        }}
-      />
-
       {defaultPreferenceError && (
         <p className="form-inline-error board-preference-error" role="alert">
           {defaultPreferenceError}
@@ -320,9 +337,11 @@ export default function BoardPage() {
       )}
 
       <div className="board-toolbar">
-        <div>
-          <h2>Board Columns</h2>
-          <span>{board.columns.length} stages for this team’s work</span>
+        <div className="board-toolbar-copy">
+          {boardHeader}
+          <span className="board-stage-description">
+            {board.columns.length} stages for this team’s work
+          </span>
         </div>
         {isOwner && (
           <button

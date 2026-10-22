@@ -1,0 +1,457 @@
+.column-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.column-add-card {
+  min-height: 27px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.column-add-card:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: #f4f5ff;
+}
+
+.column-add-card:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.card-create-form {
+  display: grid;
+  gap: 10px;
+  margin: 10px 10px 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgb(41 50 78 / 4%);
+}
+
+.card-create-form label,
+.card-detail-section > label,
+.card-comment-form > label {
+  display: block;
+  margin-bottom: 5px;
+  color: #4f5870;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.card-create-form input,
+.card-create-form textarea,
+.card-create-form select,
+.card-detail-section select,
+.card-comment-form textarea,
+.card-move-control select {
+  width: 100%;
+  min-width: 0;
+  min-height: 35px;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  color: #30394e;
+  font: inherit;
+  font-size: 10px;
+}
+
+.card-create-form textarea,
+.card-comment-form textarea {
+  resize: vertical;
+}
+
+.card-create-form input:focus,
+.card-create-form textarea:focus,
+.card-create-form select:focus,
+.card-detail-section select:focus,
+.card-comment-form textarea:focus,
+.card-move-control select:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.card-create-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+}
+
+.card-create-form .form-actions {
+  gap: 6px;
+}
+
+.card-create-form .form-actions button {
+  min-height: 33px;
+  padding: 0 10px;
+  font-size: 10px;
+}
+
+.kanban-column-body {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.kanban-card {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgb(38 49 78 / 4%);
+  cursor: grab;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.kanban-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 18px rgb(38 49 78 / 7%);
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.kanban-card-title {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #30394e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.kanban-card-title:hover {
+  color: var(--color-accent-hover);
+}
+
+.kanban-card-title:focus-visible,
+.column-add-card:focus-visible,
+.card-detail-close:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.kanban-card-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  color: #81899b;
+  font-size: 8px;
+}
+
+.card-assignee {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.card-assignee > span:last-child {
+  overflow: hidden;
+  max-width: 100px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-assignee-avatar {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9ebff;
+  color: var(--color-accent-hover);
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.card-unassigned {
+  background: #f0f2f6;
+  color: #9299a8;
+}
+
+.card-move-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border-soft);
+  color: #8a92a4;
+  font-size: 8px;
+}
+
+.card-move-control select {
+  min-height: 27px;
+  padding: 3px 6px;
+  font-size: 8px;
+}
+
+.card-move-control select:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.card-detail-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  border: 0;
+  background: rgb(19 27 45 / 34%);
+  cursor: default;
+}
+
+.card-detail-panel {
+  position: fixed;
+  z-index: 31;
+  top: 0;
+  right: 0;
+  display: flex;
+  width: min(460px, calc(100vw - 64px));
+  height: 100vh;
+  height: 100dvh;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: -15px 0 50px rgb(19 27 45 / 12%);
+}
+
+.card-detail-header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: #fff;
+}
+
+.card-detail-header h2 {
+  margin: 6px 0 0;
+  color: #283147;
+  font-size: 18px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.card-detail-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  color: #68728a;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.card-detail-content {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  padding: 21px 22px 30px;
+}
+
+.card-detail-section {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.card-detail-section h3,
+.card-comments-heading h3 {
+  margin: 0;
+  color: #343d52;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.card-detail-description {
+  margin: 0;
+  color: #707a90;
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.card-detail-due-date {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-soft);
+  color: #81899b;
+  font-size: 10px;
+}
+
+.card-detail-due-date strong {
+  color: #48526a;
+}
+
+.card-comments-section {
+  padding-top: 17px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.card-comments-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-comments-heading > span {
+  display: inline-grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.card-comments-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #858da0;
+  font-size: 10px;
+}
+
+.card-comment-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card-comment {
+  padding: 11px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 9px;
+  background: #fbfcfe;
+}
+
+.card-comment-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card-comment-meta strong {
+  color: #4b556c;
+  font-size: 9px;
+}
+
+.card-comment-meta time {
+  color: #9aa1b0;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.card-comment > p {
+  margin: 7px 0 0;
+  color: #6f7990;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.card-comment-form {
+  display: grid;
+  gap: 9px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.card-mention-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+}
+
+.card-mention-options legend {
+  float: none;
+  width: auto;
+  margin: 0;
+  padding: 0 4px;
+  color: #838b9e;
+  font-size: 8px;
+}
+
+.card-mention-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: #566176;
+  font-size: 9px;
+  font-weight: 550;
+}
+
+.card-mention-options input {
+  accent-color: var(--color-accent);
+}
+
+.card-comment-form > .primary-button {
+  justify-self: end;
+  min-height: 35px;
+  font-size: 10px;
+}
+
+.card-detail-panel .empty-state,
+.card-detail-panel .page-state {
+  margin: 20px;
+}
+
+@media (max-width: 760px) {
+  .card-detail-panel {
+    width: calc(100vw - 64px);
+  }
+
+  .card-detail-header,
+  .card-detail-content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}

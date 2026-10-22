@@ -8,6 +8,7 @@ export default function BoardSelector({
   defaultBoardId,
   canCreate,
   isPreferenceLoading,
+  isPreferenceReady,
   isPreferencePending,
   preferenceError,
   onRetryPreferences,
@@ -168,18 +169,22 @@ export default function BoardSelector({
                         ? `Clear ${board.name} as the default Board`
                         : `Set ${board.name} as the default Board`}
                       className="board-selector-default-action"
-                      disabled={isPreferencePending}
+                      disabled={!isPreferenceReady || isPreferencePending}
                       onClick={() => {
                         if (isDefault) onClearDefault();
                         else onSetDefault(board.id);
                       }}
                       type="button"
                     >
-                      {isPreferencePending
-                        ? 'Saving…'
-                        : isDefault
-                          ? 'Clear default'
-                          : 'Set default'}
+                      {isPreferenceLoading
+                        ? 'Loading…'
+                        : !isPreferenceReady
+                          ? 'Unavailable'
+                          : isPreferencePending
+                            ? 'Saving…'
+                            : isDefault
+                              ? 'Clear default'
+                              : 'Set default'}
                     </button>
                   </li>
                 );
