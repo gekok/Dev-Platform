@@ -9,6 +9,7 @@ import dev.platform.user.application.command.RegisterCommand;
 import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.application.port.in.LoginUserPort;
 import dev.platform.user.application.port.in.RegisterUserPort;
+import dev.platform.user.application.port.out.TokenReaderPort;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,8 +21,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 // Biên REST Auth/User: nhận DTO, gọi port in, không nhận userId trong body.
 @RestController
 @RequestMapping("/api/v1")
@@ -31,6 +30,7 @@ public class UserController {
     private final RegisterUserPort registerPort;
     private final LoginUserPort loginPort;
     private final GetCurrentUserPort mePort;
+    private final TokenReaderPort tokenReader;
 
     @PostMapping("/auth/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req) {
@@ -47,13 +47,8 @@ public class UserController {
 
     @GetMapping("/users/me")
     public ResponseEntity<UserResponse> me(
-            @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "X-User-Id", required = false) String xUserId) {
-        // TODO kỳ 1: parse JWT sub từ Authorization; hiện lấy X-User-Id để test.
-        if (xUserId == null || xUserId.isBlank()) {
-            throw new IllegalArgumentException("Thieu X-User-Id (stub cho JWT sub)");
-        }
-        UserResponse body = UserResponse.from(mePort.me(UUID.fromString(xUserId)));
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        UserResponse body = UserResponse.from(mePort.me(tokenReader.currentUserId(authorization)));
         return ResponseEntity.ok(body);
     }
 }
