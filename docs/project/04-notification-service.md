@@ -17,7 +17,8 @@
 - [ ] Chốt phương thức giao tiếp producer→notification-service; internal REST chưa đưa vào integration path khi chưa có bảo mật service-to-service.
 - [ ] Nối các loại event/tạo Notification theo event contract đã duyệt; bỏ mô tả PR_REVIEWED như một tính năng Kỳ 2 đã chốt.
 - [ ] Chốt phạm vi cascade Notification: các notification có Board/Project reference và dữ liệu không gắn Board/Project.
-- [ ] Implement Inbox + deletion job + batch worker + completion Outbox; redelivery không tạo side effect lặp.
+- [ ] Chốt và lưu deletion fence/tombstone cho Board/Project để event Notification khác ID đến muộn không tạo lại dữ liệu sau cascade.
+- [ ] Implement Inbox + deletion job + batch worker + completion Outbox; redelivery không tạo side effect lặp. Mọi notification-create handler phải kiểm tra fence trước insert.
 - [ ] Xác định retention/audit khi notification bị xóa cùng Project/Account theo policy đã duyệt.
 - [ ] Đồng bộ API/database docs riêng sau khi event và cleanup contract chốt.
 
@@ -26,3 +27,4 @@
 - Client chỉ đọc/đánh dấu Notification của chính mình.
 - Internal route không được xem là an toàn trước khi có xác thực service-to-service.
 - Operation Project chỉ nhận completion sau khi notification cleanup trong phạm vi đã chốt hoàn tất.
+- Consumer không insert Notification mới cho Board đã bị fence bởi Project cascade, kể cả khi event create chưa từng được xử lý trước đó.

@@ -14,10 +14,10 @@
 ## Việc cần làm
 
 - [ ] Cập nhật route và authorization theo Project-first contract; Board thuộc Project, mọi thao tác yêu cầu identity từ Gateway đã xác thực.
-- [ ] Hoàn thiện list Card cursor: mặc định 5, tối đa 20, sort **position DESC, id DESC**; query parameter, response envelope và cursor validation cần chốt trong API schema.
-- [ ] Chặn gán Account không thuộc cùng Project theo contract; bỏ assignment khi Member rời/bị gỡ hoặc Account bị xóa.
+- [ ] Hoàn thiện list Card cursor: mặc định 5, tối đa 20, sort **position DESC, id DESC**; wire proposal cho UI infinite-scroll theo từng Column yêu cầu `columnId` và cursor gắn với `boardId` + `columnId` + sort. Query/envelope/invalid-cursor behavior cần duyệt trước OpenAPI.
+- [ ] Chặn gán Account không thuộc cùng Project theo contract; khi nhận cleanup event sau khi board-service đã thu hồi Membership, unassign Cards ở nền và giữ Comment/history.
 - [ ] Giữ Comment/content/attribution khi Account bị xóa hoặc rời Project; UI phân biệt “đã bị xóa” và “không còn trong Project”.
-- [ ] Implement Project cascade và assignment cleanup consumer: Inbox + durable job trước ACK, idempotent batch xóa/unassign, checkpoint và completion Outbox.
+- [ ] Implement Project cascade và assignment cleanup consumer: Inbox + durable job trước ACK, idempotent batch xóa/unassign, checkpoint và completion Outbox. Cleanup cũ chỉ được clear assignment thuộc membership generation bị revoke; hoặc board-service phải ngăn rejoin/assign đến khi job hoàn thành.
 - [ ] Nối **TaskWriteGuard** vào mọi Card mutation. Chốt write-barrier giữa board-service và task-service để không có ghi mới lọt trong lúc cascade.
 - [ ] Dùng eventId/Inbox để chống redelivery; aggregateVersion chỉ giúp nhận biết phiên bản event cũ/mới hoặc dấu hiệu thiếu phiên bản. Quy tắc xử lý stale/gap còn chờ chốt tại architecture decisions; version không thay Inbox.
 - [ ] Hoàn thiện realtime/reload behavior; khi pagination phát hiện dữ liệu bất nhất, client hiện banner đầu trang yêu cầu reload theo quyết định đã thống nhất.
@@ -28,4 +28,5 @@
 - Owner và Member được thao tác Card/Comment trong Project; tài khoản không có Membership bị từ chối.
 - List Card có cursor ổn định theo sort đã thống nhất; client dedupe theo cardId và hiển thị reload banner khi cần.
 - Retry cùng deletion request không xóa nhầm dữ liệu khác hoặc chạy side effect lặp; ACK chỉ sau transaction ghi Inbox/job thành công.
+- Member mất quyền trước khi API xác nhận membership removal; Task assignment cleanup hoàn tất độc lập ở nền và không được trì hoãn việc thu hồi quyền.
 - Project cascade không bắt đầu xóa batch trước khi write barrier được xác nhận.

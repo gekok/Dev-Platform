@@ -30,17 +30,22 @@ sequenceDiagram
     participant Notify as notification-service
     Admin->>User: yêu cầu xóa Account
     User->>User: DELETING + operation + Outbox trong một transaction
+    User->>User: chặn hiệu lực xác thực Account trước khi trả 202
     User-->>Board: ACCOUNT_DELETION_REQUESTED
+    Board->>Board: hủy Invitation PENDING và gỡ Membership ở Project còn lại
+    Board->>Board: ghi cleanup operation + Outbox cùng transaction
+    Board-->>Task: MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED (Project còn lại)
     Board->>Board: tạo operation cho Project sở hữu và khóa ghi
     Board-->>Task: PROJECT_DELETION_REQUESTED (Project owned)
-    Board-->>Task: MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED (Project còn lại)
     Board-->>Notify: PROJECT_DELETION_REQUESTED
-    Task-->>Board: task-data / unassign completion
+    Task-->>Board: assignment cleanup / task-data completion
     Notify-->>Board: notification cleanup completion
     Board->>Board: xóa Project, Board, Column, Membership
     Board-->>User: ACCOUNT_PROJECT_CLEANUP_COMPLETED
     User->>User: tombstone + xóa PII + COMPLETED
 ```
+
+Khi xóa Account, `DELETING` phải chặn Account-wide authentication trước khi API khởi tạo trả `202`. Khi xóa Membership ở Project còn tồn tại, quyền Project bị thu hồi hiệu lực trước response xác nhận việc gỡ Member; flow không đợi Task unassign. Task-service xử lý assignment cleanup nền, retry được và giữ Comment/history. Vì request authorization có thể dựa trên Redis snapshot, snapshot cũ không được cấp quyền sau revoke; chỉ phát event qua RabbitMQ bất đồng bộ chưa tự bảo đảm điều đó. Cơ chế invalidation/fencing cụ thể và cách xử lý khi không xác nhận được revoke vẫn cần chốt, fail closed.
 
 `operationId` theo dõi yêu cầu xóa Account; mỗi Project sở hữu có `projectDeletionId`; từng message có `eventId` ổn định qua lần gửi lại. Inbox chống lặp theo cặp `consumerName + eventId`. Unique key của deletion job còn phải chống lặp ở cấp nghiệp vụ nếu cùng operation được phát thành event mới.
 
@@ -60,18 +65,19 @@ Các điểm bắt đầu là `application/service/AccountDeletionApplicationSer
 Các boundary nằm trong `services/board-service/src/main/java/dev/platform/board/deletion/`.
 
 1. Thêm `Project`, `ProjectMember`, `Invitation` vào `board_db`; thêm `project_id` cho Board. Dùng model theo quyết định Project-first; không tạo `project-service` riêng ở Kỳ 1.
-2. Implement `ProjectDeletionDataPort`: tìm Project theo Owner/Member, lấy `boardIds`, hủy Invitation `PENDING`, tạo write barrier, gỡ membership và xóa Project graph thuộc DB board.
+2. Implement `ProjectDeletionDataPort`: tìm Project theo Owner/Member, lấy `boardIds`, hủy Invitation `PENDING`, gỡ Membership ở Project còn lại để thu hồi quyền hiệu lực trước, và ghi operation/Outbox assignment cleanup cùng transaction. Với Project owned, tạo write barrier và xóa Project graph thuộc board_db sau xác nhận downstream.
 3. Implement `ProjectDeletionCoordinator`: tạo operation con theo `projectDeletionId`; phát yêu cầu Task/Notification theo `boardIds`; chờ task-data và notification completion trước khi xóa Project/Board/Column/Membership.
-4. Với Project mà account chỉ là Member, chờ `MemberAssignmentsCleaned` rồi mới gỡ membership. Chỉ gửi completion cho User Service khi cả Project sở hữu và cleanup membership đều hoàn tất.
+4. Với Project mà account chỉ là Member, membership đã bị thu hồi trước khi gửi cleanup event; chờ `MemberAssignmentsCleaned` chỉ để hoàn tất account-deletion operation, không phải điều kiện chặn quyền. Chỉ gửi completion cho User Service khi cả Project sở hữu và cleanup membership đều hoàn tất.
 5. Project `ACTIVE/COMPLETED/CANCELLED` vẫn giữ nguyên ý nghĩa. Khóa xóa là operation riêng; không thêm trạng thái `DELETING` vào status Project.
+6. Trước khi cho cùng User quay lại Project khi cleanup cũ còn pending, áp dụng policy đã chốt: chặn re-invite/Accept/assign đến khi cleanup xong hoặc gắn generation/cutoff. Nếu chưa chốt, chưa bật flow vì event cũ có thể xóa assignment mới.
 
 ### 3. `task-service`
 
 Các boundary nằm trong `services/task-service/src/main/java/dev/platform/task/deletion/`; checkpoint hiện có cursor riêng cho Comment và Card.
 
-1. Implement consumer cho Project cascade và member assignment cleanup. Ghi Inbox + deletion job với unique `deduplicationKey` trong cùng transaction trước khi ACK.
+1. Implement consumer cho Project cascade và member assignment cleanup. Ghi Inbox + deletion job với unique `deduplicationKey` trong cùng transaction trước khi ACK; assignment cleanup phải an toàn khi Account đã bị gỡ khỏi Project.
 2. Implement worker theo batch giới hạn: xóa Comment trước Card; lưu cursor sau mỗi batch; nếu dữ liệu đã vắng mặt thì coi thao tác xóa lặp là đạt trạng thái mong muốn.
-3. Với member removal/account deletion, clear assignee trên Card của các Board trong Project; giữ Comment và attribution lịch sử.
+3. Khi nhận cleanup event sau khi membership đã bị thu hồi, clear assignee trên Card của các Board trong Project; giữ Comment và attribution lịch sử. Không dùng việc unassign hoàn tất làm điều kiện thu hồi quyền Project. Worker phải giới hạn cleanup vào membership generation/cutoff bị revoke, hoặc board-service phải ngăn rejoin/assignment mới cho tới khi job hoàn tất.
 4. Gọi `TaskWriteGuard.requireBoardWritable` trong tất cả đường ghi Card: create, move, assign, comment. Hiện các mutation implementation chưa nối guard; không bật consumer cho cascade cho tới khi write barrier được bảo đảm giữa Board và Task Service.
 5. Ghi completion Outbox trong transaction hoàn tất job cuối; nếu broker lỗi, Outbox Relay gửi lại cùng `eventId` và payload.
 
@@ -82,6 +88,7 @@ Các boundary nằm trong `services/notification-service/src/main/java/dev/platf
 1. Chốt phạm vi notification: skeleton chỉ định xóa notification gắn với `boardIds`; xử lý notification không gắn Board hoặc toàn bộ notification theo Account vẫn còn mở.
 2. Implement consumer ghi Inbox + job trước ACK, rồi worker xóa theo batch/cursor và phát completion Outbox sau khi hết dữ liệu.
 3. Dùng `projectDeletionId` làm khóa duy nhất của job để một yêu cầu xóa Project không tạo nhiều job do redelivery.
+4. Ghi deletion fence/tombstone bền cho Board/Project và buộc mọi consumer tạo Notification kiểm tra fence trước insert; Inbox riêng lẻ không chặn event khác ID đến muộn sau khi batch delete xong. Chốt field/version/retention trước khi bật listener.
 
 ## Bật tích hợp sau khi hoàn thiện
 

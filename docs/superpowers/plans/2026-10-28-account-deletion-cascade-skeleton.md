@@ -2,6 +2,8 @@
 
 > **For agentic workers:** This plan scaffolds the approved flow across the existing services. It is not a production-ready deletion implementation.
 
+> **Decision update (2026-10-28):** On Member removal/account deletion from a Project that remains, revoke Membership first and enqueue Task unassignment as background work. The original “unassign before removing Membership” checklist below has been updated to this decision. Account deletion still waits for the background cleanup before it reports the whole Account operation `COMPLETED`.
+
 **Goal:** Add compile-ready service boundaries, persistence models, RabbitMQ contracts, and a per-service completion guide for account deletion and Project cascade cleanup.
 
 **Architecture:** `user-service` owns the parent Account Deletion Operation; `board-service` coordinates child Project operations; `task-service` and `notification-service` process their own data using durable jobs and checkpoints. `event-contracts` contains only versioned DTOs; `messaging-support` contains the shared Outbox/Inbox persistence boundary and confirm-aware Outbox Relay. Admin routes and Rabbit consumers remain disabled by default until trusted Admin authorization, Project/Membership persistence, and write guards are connected.
@@ -89,7 +91,7 @@
 - `ProjectDeletionCoordinator` is currently an interface only. Implement/register it with `dev-platform.deletion.board-consumer.enabled=true` only after a `ProjectDeletionDataPort` adapter exists. No Rabbit listener is registered by default.
 
 - [x] Create the Board-owned child operation persistence shape keyed by `projectDeletionId` and the typed Project data/coordinator boundaries.
-- [ ] Implement Inbox event handling, cancel pending Invitations, and coordinate Member-only unassignment before removing Membership.
+- [ ] Implement Inbox event handling, cancel pending Invitations, revoke Member-only Membership first, and enqueue idempotent assignment cleanup in the same Board DB transaction/Outbox flow.
 - [ ] Implement one child operation per owned Project and establish the write barrier without changing `Project.status`.
 - [ ] Publish child requests with `boardIds`; wait for both downstream confirmations before deleting Project, Board, Column, and Membership.
 - [ ] Publish Account cleanup completion only after owned Project cascades and Member-only unassignments are confirmed.
@@ -110,7 +112,7 @@
 
 - [x] Create durable job/checkpoint and Board lock shapes, bounded query methods, and the typed handler boundary.
 - [ ] Implement Inbox + job transaction and ACK only after persistence.
-- [ ] Implement Comment-before-Card deletion and Member-only assignment cleanup in bounded batches.
+- [ ] Implement Comment-before-Card deletion and Member-only assignment cleanup in bounded batches after Membership revocation; preserve Comment/history.
 - [ ] Resume unfinished jobs from the saved checkpoint after restart; treat already-absent rows as successfully deleted.
 - [ ] Publish Project task-data completion only after all batches finish.
 

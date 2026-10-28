@@ -16,8 +16,10 @@
 ## Điều kiện trước khi chạy tích hợp
 
 - [ ] Chốt route/payload Admin tạo Account, xóa Account và status operation.
-- [ ] Chốt payload/error Membership và Invitation, invitation read/reject/cancel/expiry.
-- [ ] Chốt Project/Board status transitions, cascade operation status/response/event contract, Notification cleanup scope, retry/DLQ và write barrier.
+- [ ] Chốt User directory/profile API, field được lộ và cách UI compose identity, Membership, Comment author.
+- [ ] Chốt payload/error Membership và Invitation, recipient inbox và Owner list/reject/cancel/expiry; Board-service phải validate target User ACTIVE lúc create/Accept và cleanup-pending rejoin policy.
+- [ ] Chốt Project/Board status transitions, cascade operation status/response/event contract, Notification cleanup scope/deletion fence, retry/DLQ và write barrier.
+- [ ] Chốt cơ chế revoke Redis snapshot đồng bộ: quyền phải bị chặn trước response thành công; stale/unverifiable snapshot fail closed.
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
 - [ ] Gateway có JWT auth/identity forwarding an toàn; không tin X-User-Id do client gửi.
@@ -34,7 +36,8 @@
 - [ ] Owner mời Account đã tồn tại; Invitation PENDING chưa cấp quyền.
 - [ ] Người nhận Accept; Membership tạo đúng một lần trong board-service transaction.
 - [ ] Owner/Member tạo Column/Card, chuyển Card và comment. Chỉ Owner tạo Board, quản lý member và đổi lifecycle.
-- [ ] Owner gỡ Member hoặc Member tự rời: unassign người đó khỏi Cards trước khi hoàn tất membership removal; giữ Comment/history attribution.
+- [ ] Owner gỡ Member hoặc Member tự rời: board-service thu hồi Membership, bảo đảm mọi request mới bị từ chối rồi mới trả thành công; ghi Outbox; Task unassign Cards nền sau đó; giữ Comment/history attribution.
+- [ ] Nếu cleanup cũ còn pending rồi Member được mời lại, xác minh event cũ không xóa assignment mới theo policy block-rejoin hoặc membership generation đã chọn.
 - [ ] Account bị xóa: hủy Invitation PENDING của Account. Project mà Account chỉ là Member được giữ; Project do Account sở hữu được cascade xóa.
 
 ### 2. Card, Comment, realtime và Notification
@@ -42,14 +45,15 @@
 - [ ] Card nằm trong Board thuộc Project; kiểm tra Column thuộc đúng Board và assignee thuộc cùng Project.
 - [ ] Move Card cập nhật thứ tự; realtime event đồng bộ client.
 - [ ] Comment/mention giữ đúng author và phạm vi Project.
-- [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.
+- [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Wire proposal per-Column yêu cầu columnId và cursor gắn Board/Column/sort; khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.
 - [ ] Notification list/read chỉ trả dữ liệu của Account tương ứng.
+- [ ] Cascade Notification xong rồi phát lại event create khác eventId; deletion fence ngăn Notification xuất hiện lại.
 - [ ] Board preference mặc định theo user + Project: route tham khảo có trong demo; service owner/storage/access validation vẫn cần chốt trước khi thành backend contract.
 
 ### 3. Account deletion và Project cascade
 
-- [ ] System Admin khởi tạo xóa; API trả 202 Accepted + operationId sau khi request và Outbox commit.
-- [ ] Account thành DELETING; user-service điều phối, board-service xử lý Project owned và membership ở Project khác.
+- [ ] System Admin khởi tạo xóa; Account-wide authentication bị chặn hiệu lực trước khi API trả 202 Accepted + operationId sau khi request và Outbox commit.
+- [ ] Account thành DELETING; user-service điều phối, board-service hủy Invitation PENDING và thu hồi Membership ở Project khác trước khi Task unassign nền.
 - [ ] Mỗi Project owned có projectDeletionId; Task/Notification xử lý dữ liệu của service mình theo batch và trả completion.
 - [ ] Task-service xóa Card/Comment thuộc Project; Notification scope phải theo contract đã chốt.
 - [ ] Board-service chỉ xóa Project/Board/Column/Membership sau khi đủ downstream confirmations.
@@ -67,6 +71,7 @@
 ## Tiêu chí tích hợp
 
 - [ ] Chỉ Gateway là đường client; quyền mọi Project resource dựa trên membership Project.
+- [ ] Trước response thành công cho Member removal, Redis snapshot cũ không được cấp quyền; nếu không xác minh được invalidation/fencing thì fail closed.
 - [ ] Invitation chưa Accept không cấp membership.
 - [ ] Mỗi service chỉ sửa dữ liệu do mình sở hữu.
 - [ ] Deletion không báo hoàn tất trước downstream confirmation; retry có thể tiếp tục từ operation/job checkpoint.
@@ -76,4 +81,8 @@
 ## Chưa thuộc lần tích hợp Kỳ 1
 
 - Git core/Workflow và service/database topology Kỳ 2.
-- Snapshot/Redis schema và TTL chưa chốt; khi cache không xác minh được, policy hiện hành là fail closed và trả lỗi.
+
+## Thuộc mục tiêu Kỳ 1, chi tiết thiết kế còn mở
+
+- Redis Authentication/Authorization Snapshot là thành phần mục tiêu Kỳ 1, không phải phạm vi Kỳ 2. User-service giữ nguồn chuẩn Account/Auth; board-service giữ nguồn chuẩn Project/Membership; Gateway xác thực danh tính nhưng không sở hữu Authorization Snapshot.
+- RabbitMQ/domain events dự kiến cập nhật snapshot dùng chung. Redis lỗi hoặc snapshot không xác minh được thì fail closed theo quyết định hiện tại. Schema/key, TTL, consumer/projector, cập nhật version và quy trình rebuild cache vẫn cần chốt trước khi implement.

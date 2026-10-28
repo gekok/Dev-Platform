@@ -33,13 +33,13 @@ Kỳ 2 dự kiến mở rộng năng lực Git core và Workflow. Ranh giới se
 Dev-Platform/
 ├── pom.xml
 ├── docker-compose.yml             # 4 PostgreSQL + RabbitMQ cho môi trường local
-├── gateway/                       # cổng vào HTTP
+├── gateway/                       # cổng vào HTTP; docs nội bộ ở gateway/README.md
 ├── services/
 │   ├── user-service/              # tài khoản và xác thực
 │   ├── board-service/             # mục tiêu: Project, Membership, Board, Column
 │   ├── task-service/              # Card, Comment, realtime
 │   └── notification-service/      # Notification
-├── shared/
+├── shared/                        # README.md giải thích library, Outbox/Inbox và cách dùng
 │   ├── event-contracts/           # envelope và DTO event dùng chung
 │   └── messaging-support/         # nền Outbox/Inbox và Outbox Relay
 ├── web-demo/                      # React demo dùng MSW, không phải backend thật
@@ -55,8 +55,8 @@ Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Colum
 
 1. Đọc [chỉ mục tài liệu](docs/README.md) để phân biệt quyết định mục tiêu, API mục tiêu, tài liệu runtime cũ và mock demo.
 2. `docs/project/architecture-decisions.md` là nguồn quyết định backend đã thống nhất; mục “Cần bàn tiếp” chưa phải hợp đồng.
-3. `docs/api/kanban-api.md` ghi route Project-first ở mức đã thống nhất và giữ API Board-first cũ trong phần tham khảo. Chưa implement API mới từ các payload hoặc hành vi đang đánh dấu mở.
-4. Task sheets 01–05 và tài liệu riêng trong `services/*/docs` đã được đồng bộ theo Project-first, đồng thời vẫn mô tả rõ code/schema runtime hiện tại. Các payload/error/operation contract còn mở phải được chốt trước khi dùng tài liệu làm tiêu chí implement.
+3. `docs/api/kanban-api.md` là bản thiết kế HTTP Project-first theo service; nội dung đánh dấu đề xuất/còn mở chưa phải OpenAPI đã duyệt. API Board-first cũ chỉ để tham khảo runtime.
+4. Task sheets 01–06 và `services/*/docs` phân biệt runtime hiện tại với ownership, API và logical database schema mục tiêu của từng service. Schema mục tiêu chưa phải migration/entity đã triển khai; `shared/README.md` và `gateway/README.md` mô tả hai module nền.
 
 ## 5. Mục tiêu và hiện trạng runtime
 

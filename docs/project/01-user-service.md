@@ -14,6 +14,7 @@
 ## Việc cần làm
 
 - [ ] Chốt contract tạo Account cho System Admin và chính sách route register cũ; không mở public signup ngoài quyết định.
+- [ ] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile/tombstone để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
 - [ ] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi.
 - [ ] Chốt Admin delete/status API rồi mới expose request/get-operation ports qua controller.
 - [ ] Đảm bảo Account **DELETING** không đăng nhập/tạo thao tác mới; hiện **AccountAccessGuard** chưa được nối.
@@ -26,4 +27,5 @@
 - Admin-only account provisioning/deletion theo contract được chốt; Owner không có quyền quản trị hệ thống.
 - OperationId đọc được tới trạng thái kết thúc; API chỉ xác nhận yêu cầu bền vững bằng **202 Accepted**, không nói downstream đã xóa xong.
 - Event trùng không thực hiện side effect lần hai; lỗi transaction không để Inbox đánh dấu thành công khi nghiệp vụ chưa commit.
-- Account xóa chỉ hoàn tất khi board-service xác nhận đủ Project owned và Membership cleanup.
+- Account xóa chỉ hoàn tất sau khi board-service xác nhận Project owned đã cascade và assignment cleanup ở Project Member-only đã hoàn tất. Membership ở các Project còn lại phải bị thu hồi trước khi Task unassign nền.
+- Account `DELETING` phải bị chặn bởi authorization path trước khi `202` xác nhận yêu cầu xóa; không dựa riêng vào event RabbitMQ đến sau.
