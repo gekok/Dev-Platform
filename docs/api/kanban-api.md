@@ -1,19 +1,62 @@
-## Kanban API (Phase 1)
+# Kanban API Kỳ 1 — trạng thái chuyển sang Project-first
 
-Base URL (qua gateway):
+**Trạng thái:** Hướng resource Project-first và các nghiệp vụ chính đã thống nhất. Đây chưa phải OpenAPI/schema cuối cùng: payload Invitation, một số mã lỗi, status operation, query cursor và event contract còn mở trong [architecture decisions](../project/architecture-decisions.md).
+
+**Base URL mục tiêu qua Gateway:** `http://localhost:8080/api/v1`.
+
+**Runtime hiện tại:** backend vẫn chủ yếu dùng Board-first API; Auth/Gateway cũng chưa được nối hoàn chỉnh (login port chưa có implementation, `/users/me` còn dùng `X-User-Id`). Phần Board-first ở cuối tài liệu được giữ làm tham chiếu cho code/tài liệu cũ, không phải contract để phát triển tính năng Project-first mới.
+
+## 1. Route map mục tiêu Project-first
+
+Các route dưới đây ghi lại phạm vi đã thống nhất và route đang được dùng làm tham chiếu trong React/MSW demo. Payload, response, lỗi và mức độ đã implement không được suy ra chỉ từ route map này.
+
+| Nhóm | Method | Endpoint | Hành vi mục tiêu |
+|---|---|---|---|
+| Auth | `POST` | `/api/v1/auth/login` | Đăng nhập theo contract hiện có |
+| User | `GET` | `/api/v1/users/me` | Lấy tài khoản hiện tại |
+| Project | `GET`, `POST` | `/api/v1/projects` | Liệt kê và tạo Project |
+| Project | `GET` | `/api/v1/projects/{projectId}` | Xem Project |
+| Membership | `GET` | `/api/v1/projects/{projectId}/members` | Liệt kê Member chính thức |
+| Invitation | `POST` | `/api/v1/projects/{projectId}/invitations` | Owner mời tài khoản đã tồn tại; trạng thái ban đầu `PENDING` |
+| Invitation | `POST` | `/api/v1/projects/{projectId}/invitations/{inviteId}/accept` | Người được mời chấp nhận; lúc này mới tạo Membership |
+| Membership | `DELETE` | `/api/v1/projects/{projectId}/members/{userId}` | Owner gỡ Member hoặc Member tự rời Project; Owner duy nhất không thể tự gỡ |
+| Board | `GET`, `POST` | `/api/v1/projects/{projectId}/boards` | Liệt kê và tạo Board trong Project |
+| Board | `GET` | `/api/v1/boards/{boardId}` | Xem Board và Columns |
+| Column | `POST` | `/api/v1/boards/{boardId}/columns` | Tạo Column |
+| Column | `PATCH` | `/api/v1/boards/{boardId}/columns/order` | Sắp xếp lại Columns |
+| Card | `GET`, `POST` | `/api/v1/boards/{boardId}/cards` | Liệt kê và tạo Card |
+| Card | `GET` | `/api/v1/cards/{cardId}` | Xem Card |
+| Card | `PATCH` | `/api/v1/cards/{cardId}/move` | Chuyển Card |
+| Card | `PATCH` | `/api/v1/cards/{cardId}/assignee` | Gán người xử lý |
+| Comment | `GET`, `POST` | `/api/v1/cards/{cardId}/comments` | Xem và tạo Comment |
+| Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
+| Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
+| Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
+| Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
+
+### Quy tắc đã thống nhất và phần còn mở
+
+- Project là ranh giới membership; Board thuộc một Project. `Project` và `Board` dùng ID số; User dùng UUID.
+- Owner và Member có quyền thao tác công việc như nhau. Owner có thêm quyền tạo Board, quản lý trạng thái Project/Board và membership.
+- Kỳ 1 chỉ thêm tài khoản đã có trong hệ thống bằng Invitation; người nhận chấp nhận mới trở thành Member. Mời người ngoài hệ thống và đổi vai trò để Kỳ 2.
+- Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
+- API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Tên query parameter, response envelope và lỗi cursor chưa chốt.
+- Gateway là ranh giới xác thực mục tiêu. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
+- Route/payload Admin tạo Account, Admin xóa Account và status operation chưa được đặc tả ở đây. Mã lỗi Membership, payload Invitation, API đọc/từ chối/hủy Invitation, phạm vi Notification cascade, retry/DLQ và service/storage/access validation của Board preference cũng còn mở.
+
+Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
+
+## 2. Hợp đồng Board-first cũ — chỉ tham khảo runtime
+
+Phần dưới mô tả API Board-first được viết trước quyết định Project-first. Một số controller đang dùng các route này, nhưng nội dung cũ không đồng nghĩa mọi endpoint đã hoạt động hoàn chỉnh. Không dùng phần này làm thiết kế đích cho API mới.
+
+Base URL cũ qua Gateway:
 
 ```text
 http://localhost:8080/api/v1
 ```
 
-Mọi API xác thực dùng `userId` lấy từ JWT `sub`. Client (React/Flutter)
-không được tự truyền hoặc sửa `userId` trong body.
-
-Ngôn ngữ chung (ubiquitous language): `user`, `board`, `column`,
-`card` (còn gọi là task), `comment`, `notification`.
-
-Mỗi service giữ kho riêng (database per service). ID liên service chỉ giữ
-dạng số (`Long`/`UUID`), không tạo FK JPA chéo database.
+Contract cũ mô tả JWT `sub` làm danh tính và database riêng cho từng service. Thực tế một số controller hiện còn đọc `X-User-Id`; xem ghi chú runtime ở [README](../../README.md).
 
 | Service | Port | DB |
 |---|---|---|
@@ -23,11 +66,11 @@ dạng số (`Long`/`UUID`), không tạo FK JPA chéo database.
 | task-service | 8083 | task_db |
 | notification-service | 8084 | notification_db |
 
-## 1. Auth / User
+### Auth / User (contract cũ)
 
 Thuộc `user-service`. Cấp vé JWT cho các service khác tin.
 
-### 1.1 Đăng ký
+#### Đăng ký
 
 | Method | Endpoint |
 |---|---|
@@ -53,7 +96,7 @@ Response `201 Created`:
 }
 ```
 
-### 1.2 Đăng nhập
+#### Đăng nhập
 
 | Method | Endpoint |
 |---|---|
@@ -77,7 +120,7 @@ Response `200 OK`:
 }
 ```
 
-### 1.3 Lấy hồ sơ hiện tại
+#### Lấy hồ sơ hiện tại
 
 | Method | Endpoint |
 |---|---|
@@ -87,11 +130,11 @@ Header: `Authorization: Bearer <jwt>`.
 
 Response `200 OK`: trả về `id`, `email`, `fullName` của `sub` trong token.
 
-## 2. Board
+### Board
 
 Thuộc `board-service`. Giữ bảng và cột. Không giữ thẻ chi tiết.
 
-### 2.1 Tạo bảng
+#### Tạo bảng
 
 | Method | Endpoint |
 |---|---|
@@ -125,7 +168,7 @@ Response `201 Created`:
 }
 ```
 
-### 2.2 Lấy danh sách bảng của tôi
+#### Lấy danh sách bảng của tôi
 
 | Method | Endpoint |
 |---|---|
@@ -133,16 +176,17 @@ Response `201 Created`:
 
 Response `200 OK`: mảng bảng mà `sub` là owner hoặc member.
 
-### 2.3 Lấy chi tiết bảng kèm cột
+#### Lấy chi tiết bảng kèm cột
 
 | Method | Endpoint |
 |---|---|
 | `GET` | `/api/v1/boards/{boardId}` |
 
-Response `200 OK`: như 2.1. Không trả thẻ ở đây; thẻ lấy ở Task API
-để Board không phình to.
+Response `200 OK`: gồm thông tin Board và Columns như response của
+`POST /api/v1/boards`; không trả Card ở đây. Card lấy ở Task API để Board
+không phình to.
 
-### 2.4 Thêm cột
+#### Thêm cột
 
 | Method | Endpoint |
 |---|---|
@@ -160,7 +204,7 @@ Response `201 Created`:
 { "id": 13, "name": "Review", "position": 3 }
 ```
 
-### 2.5 Đổi thứ tự cột
+#### Đổi thứ tự cột
 
 | Method | Endpoint |
 |---|---|
@@ -174,13 +218,13 @@ Request:
 
 Response `200 OK`: danh sách cột sau khi xếp.
 
-## 3. Card (Task)
+### Card (Task)
 
 Thuộc `task-service`. Giữ thẻ, người được gán, bình luận.
 `boardId` và `columnId` chỉ là số tham chiếu sang board-service.
 `assigneeId` chỉ là UUID tham chiếu sang user-service.
 
-### 3.1 Tạo thẻ
+#### Tạo thẻ
 
 | Method | Endpoint |
 |---|---|
@@ -214,7 +258,7 @@ Response `201 Created`:
 
 `position` là thứ tự thẻ trong cột, bắt đầu từ 0.
 
-### 3.2 Lấy thẻ theo bảng
+#### Lấy thẻ theo bảng
 
 | Method | Endpoint |
 |---|---|
@@ -223,7 +267,7 @@ Response `201 Created`:
 `columnId` là query tùy chọn để lọc. Response `200 OK`: mảng thẻ
 sắp theo `position`.
 
-### 3.3 Kéo thẻ qua cột (move)
+#### Kéo thẻ qua cột (move)
 
 | Method | Endpoint |
 |---|---|
@@ -244,7 +288,7 @@ Server phải dồn `position` của các thẻ còn lại trong cột cũ và c
 trong cùng một transaction. Client lạc quan (optimistic) vẽ trước, server
 là chuẩn cuối cùng.
 
-### 3.4 Gán người làm
+#### Gán người làm
 
 | Method | Endpoint |
 |---|---|
@@ -261,7 +305,7 @@ Request:
 Khi gán mới, task-service bắn event cho notification-service để báo
 người được gán. Không báo chính người thao tác.
 
-### 3.5 Bình luận
+#### Bình luận
 
 | Method | Endpoint |
 |---|---|
@@ -279,12 +323,12 @@ Request:
 Response `201 Created`: bình luận vừa tạo. Người trong
 `mentionedUserIds` nhận thông báo mention.
 
-## 4. Notification
+### Notification
 
 Thuộc `notification-service`. Chỉ đọc và đánh dấu đã đọc.
 Không cho client tự tạo thông báo.
 
-### 4.1 Lấy thông báo của tôi
+#### Lấy thông báo của tôi
 
 | Method | Endpoint |
 |---|---|
@@ -308,7 +352,7 @@ Response `200 OK`:
 
 Các `type` hợp lệ: `ASSIGNED`, `MENTIONED`, `MOVED`.
 
-### 4.2 Đánh dấu đã đọc
+#### Đánh dấu đã đọc
 
 | Method | Endpoint |
 |---|---|
@@ -316,7 +360,7 @@ Các `type` hợp lệ: `ASSIGNED`, `MENTIONED`, `MOVED`.
 
 Response `200 OK`: thông báo sau khi đổi `read` thành `true`.
 
-## 5. Real-time
+### Real-time
 
 Web React giữ một kênh sống (WebSocket) theo bảng:
 
@@ -346,7 +390,7 @@ Mobile Flutter không giữ socket suốt. Nhận việc gán và mention qua đ
 Khi mất mạng rồi nối lại, client phải gọi lại `GET` bảng và thẻ.
 Server là chuẩn cuối cùng, client chỉ vẽ lại.
 
-## 6. Quy ước lỗi
+### Quy ước lỗi cũ
 
 Format thống nhất:
 
@@ -370,9 +414,9 @@ Format thống nhất:
 | `404 Not Found` | Không thấy bảng, thẻ, thông báo |
 | `409 Conflict` | Trùng key bảng, trùng email đăng ký |
 
-## 7. Ghi chú cho kỳ 2 (Dev Platform)
+### Đề xuất Kỳ 2 cũ — không còn là quyết định hiện hành
 
-Kỳ 1 chỉ làm Kanban trên. Kỳ 2 tái dùng trực tiếp:
+Các gạch đầu dòng sau được giữ để tra cứu lịch sử; không dùng làm kiến trúc Kỳ 2 hiện hành. Phạm vi service/API Kỳ 2 được hoãn tới khi có thiết kế riêng trong [architecture decisions](../project/architecture-decisions.md).
 
 - `Board` thành nền cho `Issues` (mỗi issue là một card đặc biệt).
 - `Task` thành nền cho `Branch/Commit/PR` (mỗi PR gắn một `cardId`).

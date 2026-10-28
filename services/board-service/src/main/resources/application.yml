@@ -16,3 +16,26 @@ spring:
       hibernate:
         show_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:devplatform}
+    password: ${RABBITMQ_PASSWORD:devplatform}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+dev-platform:
+  messaging:
+    enabled: ${MESSAGING_ENABLED:false}
+    outbox-relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:false}
+      fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:1000}
+      retry-delay: ${OUTBOX_RELAY_RETRY_DELAY:PT5S}
+      confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
+    consumers:
+      enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
+  deletion:
+    board-consumer:
+      enabled: ${BOARD_DELETION_CONSUMER_ENABLED:false}

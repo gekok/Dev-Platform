@@ -1,48 +1,29 @@
-# Issue 01 — [user-service] Ruột Auth + JWT
+# 01 — user-service: Account, Auth và xóa tài khoản
 
-Service: `user-service`
-Cổng: `8081`
-Kho: `user_db` (Postgres `5432`)
-Hợp đồng: `docs/api/kanban-api.md` mục 1 (1.1 register, 1.2 login, 1.3 me)
-Tài liệu riêng: `services/user-service/docs/api.md`, `docs/database.md`
+**Sở hữu mục tiêu:** Account, credential, trạng thái Account, account deletion operation và tombstone trong **user_db**.
 
-Người nhận: Người 1 (auth + user)
-Nhãn: `service/user-service`
+**Hợp đồng:** [Kanban API](../api/kanban-api.md), [quyết định kiến trúc](architecture-decisions.md), [API/database riêng](../../services/user-service/docs/api.md), [skeleton cascade](account-deletion-skeleton-guide.md).
 
-## Files sở hữu
+## Runtime đã đối chiếu
 
-```
-services/user-service/src/main/java/dev/platform/user/
-├── domain/aggregate/UserAggregate.java
-├── application/command/RegisterCommand.java, LoginCommand.java
-├── application/port/in/RegisterUserPort.java, LoginUserPort.java, GetCurrentUserPort.java
-├── application/port/out/SaveUserPort.java, PasswordEncoderPort.java
-├── infrastructure/adapter/SaveUserAdapter.java
-├── infrastructure/persistence/entity/UserEntity.java
-├── infrastructure/security/BcryptPasswordAdapter.java
-└── api/UserController.java + dto + exception
-```
+- **UserController** khai báo **POST /api/v1/auth/register**, **POST /api/v1/auth/login** và **GET /api/v1/users/me**.
+- **/users/me** hiện đọc **X-User-Id**; chưa parse JWT. **LoginUserPort** chưa có implementation.
+- Đã có **AccountStatus**, operation persistence/use-case biên và completion handler. Chưa có Admin controller, listener, gateway auth hoặc flow end-to-end.
+- Public registration là route cũ; nghiệp vụ mục tiêu là System Admin quản lý tạo/xóa Account. Route/payload provision Account chưa chốt.
 
-## Việc làm từ đầu đến cuối
+## Việc cần làm
 
-- [ ] Viết `@Service` cho `RegisterUserPort` (check email chứa `@`, trùng email → `409`)
-- [ ] Viết `@Service` cho `LoginUserPort` (sai pass → `401`, đúng → cấp JWT)
-- [ ] Viết `@Service` cho `GetCurrentUserPort` (đọc `sub` từ JWT)
-- [ ] Thay `BcryptPasswordAdapter` stub raw bằng `BCryptPasswordEncoder` thật
-- [ ] Thay stub `X-User-Id` bằng parse `Authorization: Bearer <jwt>` → `sub`
-- [ ] Giữ luật: client không tự truyền `userId` trong body
-- [ ] Cập nhật `docs/api.md` nếu field đổi (API-first: sửa doc trước)
+- [ ] Chốt contract tạo Account cho System Admin và chính sách route register cũ; không mở public signup ngoài quyết định.
+- [ ] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi.
+- [ ] Chốt Admin delete/status API rồi mới expose request/get-operation ports qua controller.
+- [ ] Đảm bảo Account **DELETING** không đăng nhập/tạo thao tác mới; hiện **AccountAccessGuard** chưa được nối.
+- [ ] Nối consumer **ACCOUNT_PROJECT_CLEANUP_COMPLETED** với Inbox và completion transaction; ACK sau commit.
+- [ ] Khi hoàn tất cascade, lưu tombstone và xử lý PII theo quyết định; giữ thông tin attribution lịch sử cần thiết.
+- [ ] Cập nhật [API docs riêng](../../services/user-service/docs/api.md) và [database docs riêng](../../services/user-service/docs/database.md) khi field/contract thay đổi.
 
-## Định nghĩa xong
+## Tiêu chí nghiệm thu khi triển khai
 
-- `mvn -pl services/user-service compile` xanh
-- `POST /api/v1/auth/register` → `201` đúng `UserResponse`
-- `POST /api/v1/auth/login` → `200` đúng `TokenResponse`
-- `GET /api/v1/users/me` với JWT → `200` đúng chủ token
-- Không còn đọc `X-User-Id` trong code mới
-
-## Bàn giao tích hợp
-
-- Cấp JWT cho Người 5 test gateway
-- Chốt claim `sub` = UUID user để 4 service còn lại đọc
-- Không đổi path `/api/v1/auth/**`, `/api/v1/users/**`
+- Admin-only account provisioning/deletion theo contract được chốt; Owner không có quyền quản trị hệ thống.
+- OperationId đọc được tới trạng thái kết thúc; API chỉ xác nhận yêu cầu bền vững bằng **202 Accepted**, không nói downstream đã xóa xong.
+- Event trùng không thực hiện side effect lần hai; lỗi transaction không để Inbox đánh dấu thành công khi nghiệp vụ chưa commit.
+- Account xóa chỉ hoàn tất khi board-service xác nhận đủ Project owned và Membership cleanup.

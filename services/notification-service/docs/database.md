@@ -1,26 +1,27 @@
-# Database — notification-service (`notification_db`)
+# notification_db — database do notification-service sở hữu
 
-- DB: `notification_db` (Postgres, port 5435 theo `application.yml`).
-- Service chỉ giữ thông báo. Không giữ user, board, thẻ chi tiết.
-- ID liên service chỉ giữ dạng số (`UUID`/`Long`), không FK JPA chéo DB.
+**Database local:** `notification_db` (PostgreSQL). Đây là mô tả mapping JPA hiện có, chưa phải hợp đồng migration.
 
 ## Bảng `notifications`
 
-| Cột | Kiểu | Ràng buộc |
+| Cột | Kiểu/mapping | Constraint |
 |---|---|---|
-| `id` | `BIGINT` | PK, `IDENTITY` tự tăng |
-| `user_id` | `UUID` | `NOT NULL`, chủ thông báo ở `user_db`, không FK |
-| `type` | `VARCHAR(30)` | `NOT NULL`, `ASSIGNED` / `MENTIONED` / `MOVED` (kỳ 2 thêm `PR_REVIEWED`) |
-| `title` | `VARCHAR(500)` | `NOT NULL` |
-| `card_id` | `BIGINT` | nullable, số tham chiếu sang `task_db`, không FK |
-| `board_id` | `BIGINT` | nullable, số tham chiếu sang `board_db`, không FK |
-| `read` | `BOOLEAN` | `NOT NULL`, mặc định `false` |
-| `created_at` | `TIMESTAMPTZ` | thời điểm tạo, sắp mới nhất trước |
+| `id` | BIGINT | PK, `IDENTITY` |
+| `user_id` | UUID | not null; tham chiếu logic tới Account, không FK chéo DB |
+| `type` | varchar(30) | not null; builder mặc định `ASSIGNED` |
+| `title` | varchar(500) | not null |
+| `card_id`, `board_id` | BIGINT | nullable; ID tham chiếu logic, không FK chéo DB |
+| `read` | boolean | not null; builder mặc định `false` |
+| `created_at` | timestamptz | nullable theo mapping hiện tại |
 
-Index: `(user_id, read)` cho query `unreadOnly=true` (xem `NotificationEntity`).
+Entity khai báo index `(user_id, read)` để hỗ trợ danh sách Notification chưa đọc. Các kiểu thực tế hiện có trong domain/API phải được đối chiếu với `NotificationType`; không coi `PR_REVIEWED` là type đã được duyệt cho Kỳ 2.
 
-## Quan hệ
+## Scaffold cascade
 
-- Không quan hệ JPA ra ngoài. `user_id`/`card_id`/`board_id` là số thuần.
-- Xóa user, board, thẻ không cascade ở đây. Kỳ 1 dọn bằng job hoặc giữ lịch sử.
-- Tạo mới chỉ từ event task-service qua `POST /internal/v1/notifications`.
+`notification_deletion_jobs` có `project_deletion_id` (PK), `operation_id`, `project_id`, `board_ids_json`, `status`, `last_processed_notification_id`, `attempt_count`, `last_error`, `created_at` và `updated_at`. Cursor khởi tạo 0; job khởi tạo `PENDING`.
+
+Repository hiện có query tối đa 100 Notification theo Board IDs và ID cursor. Chưa có worker, Inbox transaction, listener hoặc completion Outbox. Scope xóa Notification chưa chốt cho dữ liệu không có Board ID.
+
+## Messaging và ownership
+
+Outbox/Inbox mapping dùng chung được lưu trong `notification_db`. Notification service không sở hữu User, Project, Board, Card hoặc Comment. Xem [API](api.md), [quyết định chung](../../../docs/project/architecture-decisions.md) và [skeleton guide](../../../docs/project/account-deletion-skeleton-guide.md).

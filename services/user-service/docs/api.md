@@ -1,65 +1,31 @@
-# Auth / User API (user-service, qua gateway `http://localhost:8080/api/v1`)
+# user-service API và ranh giới triển khai
 
-`userId` lấy từ JWT `sub`. Client không tự truyền `userId` trong body.
+**Vai trò mục tiêu:** sở hữu Account, thông tin đăng nhập và trạng thái vòng đời tài khoản. Quyết định chung: [architecture decisions](../../../docs/project/architecture-decisions.md); route Project-first mục tiêu: [Kanban API](../../../docs/api/kanban-api.md).
 
-## 1.1 Đăng ký
+## Controller hiện có
 
-`POST /api/v1/auth/register`
+`POST /api/v1/auth/register` khai báo đăng ký công khai, `POST /api/v1/auth/login` khai báo đăng nhập, `GET /api/v1/users/me` khai báo lấy hồ sơ. Đây là các route được `UserController` ánh xạ; route declaration không chứng minh use case đã chạy hoàn chỉnh.
 
-Request:
+- `/auth/register` nhận `email`, `password`, `fullName` và gọi `RegisterUserPort`.
+- `/auth/login` gọi `LoginUserPort`; hiện chưa có implementation của port này.
+- `/users/me` hiện dùng `X-User-Id` để lấy Account; `Authorization` được đọc nhưng JWT chưa được parse.
+- Repo chưa có route Admin tạo/xóa Account. Chính sách public registration, route tạo Account và route xóa Account phải theo quyết định/hợp đồng Admin; không lấy route register cũ làm bằng chứng đã chốt nghiệp vụ.
 
-```json
-{
-  "email": "sv@fpt.edu.vn",
-  "password": "123456",
-  "fullName": "Nguyen Van A"
-}
-```
+## Thiết kế mục tiêu đã thống nhất
 
-Response `201 Created`:
+- System Admin quản lý vòng đời Account; Admin không có quyền nghiệp vụ trong Project.
+- Owner duy nhất của Project không bị biến thành “admin hệ thống”. Account được mời chỉ thành Member sau khi chấp nhận Invitation.
+- Khi yêu cầu xóa Account được ghi nhận, user-service đặt trạng thái `DELETING`, tạo operation `operationId` và ghi `ACCOUNT_DELETION_REQUESTED` vào Outbox trong cùng transaction.
+- API khởi tạo dự kiến trả `202 Accepted` sau khi request và Outbox commit. Route, status response và lỗi chi tiết còn mở.
+- user-service chỉ hoàn tất operation sau khi board-service xác nhận Project/Membership cleanup; chi tiết consumer/wiring chưa được triển khai.
 
-```json
-{
-  "id": "c0a8b1e2-0000-4000-8000-000000000001",
-  "email": "sv@fpt.edu.vn",
-  "fullName": "Nguyen Van A"
-}
-```
+## Chưa triển khai hoặc cần chốt
 
-## 1.2 Đăng nhập
+- Login, đăng ký/provisioning Account và phát token chưa đủ để coi Auth hoàn chỉnh.
+- `AccountAccessGuard` chưa được nối vào login/controller; trạng thái `DELETING` hiện chưa chặn đăng nhập ở runtime.
+- Chưa có Admin controller, authorization cho Admin, deletion status endpoint, Rabbit listener cho completion hoặc gateway auth.
+- Xem [hướng dẫn cascade skeleton](../../../docs/project/account-deletion-skeleton-guide.md) để tiếp tục theo các TODO đúng service.
 
-`POST /api/v1/auth/login`
+## Nguồn code
 
-Request:
-
-```json
-{
-  "email": "sv@fpt.edu.vn",
-  "password": "123456"
-}
-```
-
-Response `200 OK`:
-
-```json
-{
-  "accessToken": "<jwt>",
-  "tokenType": "Bearer"
-}
-```
-
-## 1.3 Lấy hồ sơ hiện tại
-
-`GET /api/v1/users/me`
-
-Header: `Authorization: Bearer <jwt>`.
-
-Response `200 OK`: `id`, `email`, `fullName` của `sub` trong token.
-
-## Lỗi
-
-| Status | Code | Khi nào |
-|---|---|---|
-| 400 | `BAD_REQUEST` | Thiếu field, email sai, password quá ngắn |
-| 401 | `UNAUTHORIZED` | Thiếu/sai JWT khi gọi `/users/me` |
-| 409 | `EMAIL_EXISTS` | Trùng email đăng ký |
+`UserController`, `AccountDeletionApplicationService`, `AccountDeletionCompletionHandler`, `AccountDeletionOperationEntity` và `UserEntity` trong `services/user-service/src/main/java`.

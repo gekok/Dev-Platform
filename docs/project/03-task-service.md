@@ -1,50 +1,31 @@
-# Issue 03 — [task-service] Ruột Card + Move + WS
+# 03 — task-service: Card, Comment, realtime và cleanup
 
-Service: `task-service`
-Cổng: `8083`
-Kho: `task_db` (Postgres `5434`)
-Hợp đồng: `docs/api/kanban-api.md` mục 3 (3.1 → 3.5) + mục 5 WS
-Tài liệu riêng: `services/task-service/docs/api.md`, `docs/database.md`
+**Sở hữu mục tiêu:** Card và Comment trong **task_db**; task-service không sở hữu Project, Board, Column, Account hay Notification.
 
-Người nhận: Người 3 (task, nặng nhất)
-Nhãn: `service/task-service`
+**Hợp đồng:** [Kanban API](../api/kanban-api.md), [quyết định kiến trúc](architecture-decisions.md), [API/database riêng](../../services/task-service/docs/api.md), [skeleton cascade](account-deletion-skeleton-guide.md).
 
-## Files sở hữu
+## Runtime đã đối chiếu
 
-```
-services/task-service/src/main/java/dev/platform/task/
-├── domain/aggregate/CardAggregate.java
-├── application/command/CreateCardCommand.java, MoveCardCommand.java, AssignCardCommand.java, AddCommentCommand.java
-├── application/port/in/CreateCardPort.java, MoveCardPort.java, AssignCardPort.java, AddCommentPort.java, GetCardsPort.java
-├── application/port/out/SaveCardPort.java, CardEventPublisherPort.java
-├── infrastructure/adapter/SaveCardAdapter.java
-├── infrastructure/persistence/entity/CardEntity.java, CardCommentEntity.java
-├── infrastructure/websocket/BoardWebSocketConfig.java, CardEventAdapter.java
-└── api/CardController.java + dto + exception
-```
+- **CardController** khai báo create/list Card theo Board, move, assign và tạo Comment.
+- WebSocket config khai báo **/ws/boards/{boardId}**; nhiều handler còn nhận **X-User-Id** hoặc chưa yêu cầu identity.
+- Card hiện giữ **board_id**/**column_id**, assignee và Comment; không có cursor list API Project-first.
+- Đã có deletion job/checkpoint shape, batch repository query, write-lock entity/guard. Chưa có listener/worker/Inbox job transaction/completion publisher; guard chưa nối vào mutation.
 
-## Việc làm từ đầu đến cuối
+## Việc cần làm
 
-- [ ] Viết `@Service` cho `CreateCardPort` (title non-blank, position nối đuôi trong cột)
-- [ ] Viết `@Service` cho `GetCardsPort` (lọc `columnId`, sort `position`)
-- [ ] Viết `@Service` cho `MoveCardPort` (dồn position cột cũ + mới trong 1 transaction)
-- [ ] Viết `@Service` cho `AssignCardPort` (gán mới → bắn event, không báo chính mình)
-- [ ] Viết `@Service` cho `AddCommentPort` (mention → bắn event từng `mentionedUserIds`)
-- [ ] Hiện thực `CardEventPublisherPort` (log trước, WS sau)
-- [ ] Bắn WS `card.moved` / `card.created` / `comment.added` ở `WS /ws/boards/{boardId}`
-- [ ] Gọi `POST /internal/v1/notifications` sang notify-service khi gán + mention + move
-- [ ] Thay stub `X-User-Id` bằng `sub` từ JWT
+- [ ] Cập nhật route và authorization theo Project-first contract; Board thuộc Project, mọi thao tác yêu cầu identity từ Gateway đã xác thực.
+- [ ] Hoàn thiện list Card cursor: mặc định 5, tối đa 20, sort **position DESC, id DESC**; query parameter, response envelope và cursor validation cần chốt trong API schema.
+- [ ] Chặn gán Account không thuộc cùng Project theo contract; bỏ assignment khi Member rời/bị gỡ hoặc Account bị xóa.
+- [ ] Giữ Comment/content/attribution khi Account bị xóa hoặc rời Project; UI phân biệt “đã bị xóa” và “không còn trong Project”.
+- [ ] Implement Project cascade và assignment cleanup consumer: Inbox + durable job trước ACK, idempotent batch xóa/unassign, checkpoint và completion Outbox.
+- [ ] Nối **TaskWriteGuard** vào mọi Card mutation. Chốt write-barrier giữa board-service và task-service để không có ghi mới lọt trong lúc cascade.
+- [ ] Dùng eventId/Inbox để chống redelivery; aggregateVersion chỉ giúp nhận biết phiên bản event cũ/mới hoặc dấu hiệu thiếu phiên bản. Quy tắc xử lý stale/gap còn chờ chốt tại architecture decisions; version không thay Inbox.
+- [ ] Hoàn thiện realtime/reload behavior; khi pagination phát hiện dữ liệu bất nhất, client hiện banner đầu trang yêu cầu reload theo quyết định đã thống nhất.
+- [ ] Cập nhật API/database docs riêng sau khi contract/schema thực sự được chốt.
 
-## Định nghĩa xong
+## Tiêu chí nghiệm thu khi triển khai
 
-- `mvn -pl services/task-service compile` xanh
-- `POST /api/v1/boards/{boardId}/cards` → `201`
-- `PATCH /api/v1/cards/{id}/move` → `200` + position 2 cột đúng
-- `POST /cards/{id}/comments` → `201`
-- WS nhận đủ 3 event theo mục 5
-
-## Bàn giao tích hợp
-
-- Chốt `cardId` số + event payload để Người 4 + Người 5 dùng
-- Không đổi path `/api/v1/cards/**`, `/api/v1/boards/**/cards/**`, `/ws/**`
-- Báo Người 2 khi cần check `columnId` thuộc bảng nào
+- Owner và Member được thao tác Card/Comment trong Project; tài khoản không có Membership bị từ chối.
+- List Card có cursor ổn định theo sort đã thống nhất; client dedupe theo cardId và hiển thị reload banner khi cần.
+- Retry cùng deletion request không xóa nhầm dữ liệu khác hoặc chạy side effect lặp; ACK chỉ sau transaction ghi Inbox/job thành công.
+- Project cascade không bắt đầu xóa batch trước khi write barrier được xác nhận.

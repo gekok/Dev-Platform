@@ -37,7 +37,9 @@ MSW provides the mock HTTP API, and product data persists in browser localStorag
 
 Feature pages call API modules through the shared Axios client under `/api/v1`; the browser's MSW worker intercepts those requests. This keeps the UI ready to point at a backend API while the demo remains self-contained.
 
-The mock uses bearer-token identity and Project membership checks. The current backend still has different Kỳ 1 API/auth details, including a temporary `X-User-Id` Board stub and incomplete Card authorization. This demo does not consolidate, replace, or modify those services.
+The mock uses bearer-token identity and Project membership checks. The backend target and the current runtime are tracked separately in the [shared document index](../docs/README.md), [Project-first API map](../docs/api/kanban-api.md), and [architecture decisions](../docs/project/architecture-decisions.md). The current backend still has Board-first routes, a temporary `X-User-Id` identity stub, and incomplete Project membership authorization. This demo does not consolidate, replace, or modify those services.
+
+MSW routes and payloads demonstrate the UI flow; they are not proof that backend controllers or database schemas implement the same contract. Where the demo differs from the approved backend decisions, the shared architecture/API documents are authoritative.
 
 ## Development checks
 

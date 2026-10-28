@@ -1,47 +1,31 @@
-# Issue 02 — [board-service] Ruột Board + Column
+# 02 — board-service: Project, Membership, Invitation, Board và Column
 
-Service: `board-service`
-Cổng: `8082`
-Kho: `board_db` (Postgres `5433`)
-Hợp đồng: `docs/api/kanban-api.md` mục 2 (2.1 → 2.5)
-Tài liệu riêng: `services/board-service/docs/api.md`, `docs/database.md`
+**Sở hữu mục tiêu:** toàn bộ ranh giới workspace Kỳ 1 trong **board_db**. Kỳ 1 không tách deployable **project-service**.
 
-Người nhận: Người 2 (board)
-Nhãn: `service/board-service`
+**Hợp đồng:** [Kanban API](../api/kanban-api.md), [quyết định kiến trúc](architecture-decisions.md), [API/database riêng](../../services/board-service/docs/api.md), [skeleton cascade](account-deletion-skeleton-guide.md).
 
-## Files sở hữu
+## Runtime đã đối chiếu
 
-```
-services/board-service/src/main/java/dev/platform/board/
-├── domain/aggregate/BoardAggregate.java
-├── application/command/CreateBoardCommand.java, AddColumnCommand.java, ReorderColumnsCommand.java
-├── application/port/in/CreateBoardPort.java, AddColumnPort.java, ReorderColumnsPort.java, GetBoardPort.java
-├── application/port/out/SaveBoardPort.java
-├── infrastructure/adapter/SaveBoardAdapter.java
-├── infrastructure/persistence/entity/BoardEntity.java, BoardColumnEntity.java
-└── api/BoardController.java + dto + exception
-```
+- **BoardController** hiện khai báo Board-first API: tạo/list/đọc Board, tạo và reorder Column.
+- **boards** hiện có **owner_id** trực tiếp, không có **project_id**; **board_key** đang unique toàn bảng và code cũ viết hoa.
+- Project, Membership, Invitation entity/adapter chưa có.
+- Cascade mới có **ProjectDeletionCoordinator**, **ProjectDeletionDataPort** và operation entity/repository; chưa có implementation.
 
-## Việc làm từ đầu đến cuối
+## Việc cần làm
 
-- [ ] Viết `@Service` cho `CreateBoardPort` (key `[A-Z0-9]{2,20}`, thiếu columns → tạo 3 mặc định)
-- [ ] Viết `@Service` cho `GetBoardPort` (`getById` + list theo owner, chưa có 403 thì ghi TODO)
-- [ ] Viết `@Service` cho `AddColumnPort` (position nối đuôi)
-- [ ] Viết `@Service` cho `ReorderColumnsPort` (check đủ id + đúng member + thứ tự mới)
-- [ ] Thay stub `X-User-Id` bằng `sub` từ JWT (giống Người 1 chốt)
-- [ ] Trùng `board_key` → `409 BOARD_KEY_CONFLICT`
-- [ ] Không trả thẻ ở `GET /{boardId}` (thẻ thuộc task-service)
+- [ ] Thiết kế/migrate Project và Membership; một Project có đúng một Owner, Member chỉ được tạo sau khi Invitation được Accept.
+- [ ] Thêm Invitation cho tài khoản đã có; chốt payload, lỗi, reject/cancel/expiry contract và transaction Accept trước khi triển khai API.
+- [ ] Thêm quan hệ Board→Project; chuẩn hóa Board key chữ thường, unique trong Project.
+- [ ] Chuyển quyền truy cập từ Board owner trực tiếp sang Project membership. Owner/Member dùng quyền công việc chung; Owner có thêm Board, membership và lifecycle Project/Board.
+- [ ] Implement route Project/Board theo [API chung](../api/kanban-api.md); route map hiện chỉ chốt hướng, payload/error vẫn còn mở.
+- [ ] Chốt transition ACTIVE, COMPLETED, CANCELLED trước khi thêm API đổi trạng thái.
+- [ ] Implement **ProjectDeletionDataPort**/coordinator: tìm Project owned/member, hủy Invitation PENDING khi account bị xóa, tạo Project operation, khóa ghi, điều phối Task/Notification, rồi xóa Project graph sau đủ xác nhận.
+- [ ] Khi Member rời/bị gỡ hoặc Account bị xóa, chờ Task unassign hoàn tất trước khi gỡ Membership; giữ Project họ chỉ là Member.
+- [ ] Cập nhật API/database docs riêng theo schema và contract đã duyệt.
 
-## Định nghĩa xong
+## Tiêu chí nghiệm thu khi triển khai
 
-- `mvn -pl services/board-service compile` xanh
-- `POST /api/v1/boards` → `201` đúng `BoardResponse`
-- `GET /api/v1/boards` → `200` đúng bảng của `sub`
-- `POST /{boardId}/columns` → `201`
-- `PATCH /{boardId}/columns/order` → `200` đúng thứ tự mới
-
-## Bàn giao tích hợp
-
-- Chốt `boardId` + `columnId` số để Người 3 dùng
-- Không đổi path `/api/v1/boards/**`
-- Báo Người 5 khi đổi field `BoardResponse`
+- Project là nơi duy nhất cấp membership boundary; Admin hệ thống không có quyền tự động vào Project.
+- Invitation PENDING không cấp quyền; Accept và Membership creation nguyên tử trong board-service transaction.
+- Không xóa Project thuộc Owner trước khi cleanup dữ liệu downstream hoàn tất.
+- Operation Account có một operationId; mỗi Project cascade có một projectDeletionId; retry dùng cùng operation/job identity phù hợp.

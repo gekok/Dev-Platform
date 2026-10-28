@@ -1,96 +1,31 @@
-# Card API (task-service, qua gateway `http://localhost:8080/api/v1`)
+# task-service API — runtime Board-first và mục tiêu Project-first
 
-`userId` lấy từ JWT `sub`. Kỳ này đọc stub từ header `X-User-Id`.
+**Vai trò:** sở hữu Card, Comment và realtime event. Contract mục tiêu ở [Kanban API](../../../docs/api/kanban-api.md); quyết định phân quyền và service ownership ở [architecture decisions](../../../docs/project/architecture-decisions.md).
 
-## 3.1 Tạo thẻ
+## Controller hiện có
 
-`POST /api/v1/boards/{boardId}/cards`
+`CardController` hiện khai báo:
 
-Request:
+| Method | Route hiện tại | Ghi chú |
+|---|---|---|
+| POST | `/api/v1/boards/{boardId}/cards` | Tạo Card |
+| GET | `/api/v1/boards/{boardId}/cards` | List, `columnId` tùy chọn |
+| PATCH | `/api/v1/cards/{cardId}/move` | Chuyển Column/position |
+| PATCH | `/api/v1/cards/{cardId}/assignee` | Gán User |
+| POST | `/api/v1/cards/{cardId}/comments` | Tạo Comment |
 
-```json
-{
-  "columnId": 10,
-  "title": "Dựng skeleton Dev-Platform",
-  "description": "pom + gateway + api.md",
-  "assigneeId": "c0a8b1e2-0000-4000-8000-000000000001",
-  "dueDate": "2026-10-15T17:00:00Z"
-}
-```
+WebSocket config khai báo `/ws/boards/{boardId}`. Route này hiện vẫn dựa trên Board-first API. Một số endpoint đọc `X-User-Id` không bắt buộc; Card authorization Project-based chưa được triển khai.
 
-Response `201 Created`: `id`, `boardId`, `columnId`, `title`,
-`status`, `position`, `assigneeId`.
+## Thiết kế mục tiêu đã thống nhất
 
-## 3.2 Lấy thẻ theo bảng
+- Mọi Card/Comment được truy cập trong Project membership boundary thông qua Board thuộc Project.
+- Owner và Member có quyền tạo Card, chuyển trạng thái và comment. Khi Account bị gỡ khỏi Project, tự rời hoặc bị xóa, các Card được assign cho họ phải được unassign.
+- Giữ Comment và attribution lịch sử; UI phân biệt Account đã bị xóa với Account còn tồn tại nhưng không còn trong Project.
+- List Card dùng cursor, mặc định 5, tối đa 20, thứ tự `position DESC, id DESC`; cursor opaque mang position và id. Query parameter/response envelope/error còn mở.
+- Kiểm tra quyền đồng bộ qua board-service chưa làm cho tới khi giao tiếp nội bộ có bảo mật. Không dùng header identity từ client làm bằng chứng quyền.
 
-`GET /api/v1/boards/{boardId}/cards?columnId=10`
+## Scaffold cascade hiện có
 
-`columnId` tùy chọn để lọc. Response `200 OK`: mảng thẻ theo `position`.
+Có entity/job/checkpoint, query theo batch cho Card/Comment, bảng write-lock và `TaskWriteGuard`. `TaskDeletionHandler` mới là interface. Chưa có Rabbit listener, worker, Inbox/job transaction, Outbox completion publisher; guard chưa được nối vào create/move/assign/comment. Vì vậy cascade/unassign chưa chạy.
 
-## 3.3 Kéo thẻ qua cột (move)
-
-`PATCH /api/v1/cards/{cardId}/move`
-
-Request:
-
-```json
-{ "toColumnId": 11, "toPosition": 0 }
-```
-
-Response `200 OK`: thẻ sau chuyển, kèm `columnId` + `position` mới.
-
-## 3.4 Gán người làm
-
-`PATCH /api/v1/cards/{cardId}/assignee`
-
-Request:
-
-```json
-{ "assigneeId": "c0a8b1e2-0000-4000-8000-000000000001" }
-```
-
-Khi gán mới bắn event cho notification-service (kỳ 1).
-
-## 3.5 Bình luận
-
-`POST /api/v1/cards/{cardId}/comments`
-
-Request:
-
-```json
-{
-  "content": "@an review giúp em đoạn move",
-  "mentionedUserIds": ["c0a8b1e2-0000-4000-8000-000000000002"]
-}
-```
-
-Response `201 Created`: bình luận vừa tạo.
-
-## 5. Real-time
-
-Kênh WS theo bảng:
-
-```text
-WS /ws/boards/{boardId}
-```
-
-Event server bắn xuống (kỳ 1 qua `CardEventPublisherPort`):
-
-```json
-{ "event": "card.moved", "cardId": 100, "toColumnId": 11, "toPosition": 0 }
-```
-
-```json
-{ "event": "card.created", "cardId": 101, "columnId": 10 }
-```
-
-```json
-{ "event": "comment.added", "cardId": 100, "commentId": 900 }
-```
-
-## Lỗi
-
-| Status | Khi nào |
-|---|---|
-| 400 | Thiếu field, `position` âm, title trống |
-| 404 | Không thấy thẻ |
+Chi tiết: [hướng dẫn skeleton](../../../docs/project/account-deletion-skeleton-guide.md). API, batch ordering và error contract phải theo quyết định chung; không thêm payload riêng ở đây.

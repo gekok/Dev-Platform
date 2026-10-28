@@ -40,10 +40,11 @@ public class SaveUserAdapter implements SaveUserPort {
                 .email(a.getEmail())
                 .passwordHash(a.getPasswordHash())
                 .fullName(a.getFullName())
+                .status(a.getStatus())
                 .build();
     }
 
     private UserAggregate toAggregate(UserEntity e) {
-        return UserAggregate.rehydrate(e.getId(), e.getEmail(), e.getPasswordHash(), e.getFullName());
+        return UserAggregate.rehydrate(e.getId(), e.getEmail(), e.getPasswordHash(), e.getFullName(), e.getStatus());
     }
 }

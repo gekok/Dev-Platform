@@ -4,6 +4,8 @@
 
 **Date:** 2026-10-21
 
+> **Cập nhật phạm vi backend (2026-10-28):** Đây vẫn là spec cho React/MSW demo và tham khảo UX/mock API. Phần nói Kỳ 1 triển khai riêng `project-service`, giữ `Board.key` unique toàn bảng, hoặc không có Invitation/member administration đã bị các quyết định backend mới hơn thay thế tại `docs/project/architecture-decisions.md`. Không dùng phần topology và quyền trong spec này làm contract backend.
+
 ## Purpose
 
 Create a separate React web demo so the product owner can inspect the Project-first Kỳ 1 Kanban experience before connecting a real backend. Feature code will call an HTTP API through Axios; Mock Service Worker (MSW) will intercept those requests and return seeded data.
@@ -16,11 +18,11 @@ Create a separate React web demo so the product owner can inspect the Project-fi
 - Cover Projects and Kỳ 1 Kanban. Git, pull requests, Workflow, Agents, and Actions are outside this demo.
 - A Project contains multiple Boards. Board and Project are one product boundary; they are not separate services.
 
-### Current code and target topology
+### Backend topology at the time of the demo proposal (superseded)
 
-The repository currently has an API Gateway plus `user-service`, `board-service`, `task-service`, and `notification-service`. This demo does not consolidate or modify those backend modules.
+At the time of this demo design, the repository had an API Gateway plus `user-service`, `board-service`, `task-service`, and `notification-service`. The demo itself did not consolidate or modify those backend modules.
 
-The agreed Kỳ 1 target is one deployable `project-service` behind the Gateway. It contains internal modules for identity/user, project/membership, board/columns, cards/comments/realtime, and notifications. Kỳ 2 can add separate `git-core-service` and `workflow-service` deployables. They refer to stable `projectId` and `cardId` values through APIs/events, without database foreign keys into Project storage.
+An early proposal in this spec described one deployable `project-service`. The later backend decision keeps the four existing services and adds Project/Membership inside `board-service`; see `docs/project/architecture-decisions.md`. The exact Kỳ 2 service boundaries are deferred. The React/MSW demo remains separate from backend implementation.
 
 ## Product model and permissions
 

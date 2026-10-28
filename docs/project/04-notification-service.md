@@ -1,48 +1,28 @@
-# Issue 04 — [notification-service] Ruột Notify + Internal
+# 04 — notification-service: Notification và cleanup
 
-Service: `notification-service`
-Cổng: `8084`
-Kho: `notification_db` (Postgres `5435`)
-Hợp đồng: `docs/api/kanban-api.md` mục 4 (4.1 → 4.2)
-Tài liệu riêng: `services/notification-service/docs/api.md`, `docs/database.md`
+**Sở hữu mục tiêu:** Notification trong **notification_db**.
 
-Người nhận: Người 4 (notify)
-Nhãn: `service/notification-service`
+**Hợp đồng:** [Kanban API](../api/kanban-api.md), [quyết định kiến trúc](architecture-decisions.md), [API/database riêng](../../services/notification-service/docs/api.md), [skeleton cascade](account-deletion-skeleton-guide.md).
 
-## Files sở hữu
+## Runtime đã đối chiếu
 
-```
-services/notification-service/src/main/java/dev/platform/notification/
-├── domain/aggregate/NotificationAggregate.java
-├── application/command/CreateNotificationCommand.java, MarkReadCommand.java
-├── application/port/in/CreateNotificationPort.java, ListMyNotificationsPort.java, MarkReadPort.java
-├── application/port/out/SaveNotificationPort.java
-├── infrastructure/adapter/SaveNotificationAdapter.java
-├── infrastructure/event/TaskEventListener.java
-├── infrastructure/persistence/entity/NotificationEntity.java
-└── api/NotificationController.java + api/internal/InternalNotificationController.java + dto
-```
+- **NotificationController** khai báo GET list và PATCH mark-read theo **X-User-Id**.
+- **InternalNotificationController** khai báo **POST /internal/v1/notifications**; không thấy authentication enforcement trong controller. Không coi comment “service token” là bảo vệ đã hoạt động.
+- **TaskEventListener** là placeholder; chưa có event consumer tạo Notification end-to-end.
+- Đã có Notification deletion job/entity/repository shape; chưa có listener, worker hoặc completion publisher.
 
-## Việc làm từ đầu đến cuối
+## Việc cần làm
 
-- [ ] Viết `@Service` cho `CreateNotificationPort` (chỉ task-service gọi, check type hợp lệ)
-- [ ] Viết `@Service` cho `ListMyNotificationsPort` (`unreadOnly=true` dùng index `user_id, read`)
-- [ ] Viết `@Service` cho `MarkReadPort` (sai chủ → `403`, không thấy → `404`)
-- [ ] Nối `TaskEventListener` với `POST /internal/v1/notifications`
-- [ ] Nhận đủ 3 type kỳ 1: `ASSIGNED` / `MENTIONED` / `MOVED`
-- [ ] Giữ chỗ `PR_REVIEWED` kỳ 2 mà không sửa API cũ
-- [ ] Thay stub `X-User-Id` bằng `sub` từ JWT
-- [ ] Cấm client tự tạo: không mở `POST /api/v1/notifications` cho React/Flutter
+- [ ] Hoàn thiện list/mark-read chỉ cho Account hiện tại theo Gateway identity, không tin header do client tự gửi.
+- [ ] Chốt phương thức giao tiếp producer→notification-service; internal REST chưa đưa vào integration path khi chưa có bảo mật service-to-service.
+- [ ] Nối các loại event/tạo Notification theo event contract đã duyệt; bỏ mô tả PR_REVIEWED như một tính năng Kỳ 2 đã chốt.
+- [ ] Chốt phạm vi cascade Notification: các notification có Board/Project reference và dữ liệu không gắn Board/Project.
+- [ ] Implement Inbox + deletion job + batch worker + completion Outbox; redelivery không tạo side effect lặp.
+- [ ] Xác định retention/audit khi notification bị xóa cùng Project/Account theo policy đã duyệt.
+- [ ] Đồng bộ API/database docs riêng sau khi event và cleanup contract chốt.
 
-## Định nghĩa xong
+## Tiêu chí nghiệm thu khi triển khai
 
-- `mvn -pl services/notification-service compile` xanh
-- `GET /api/v1/notifications/me?unreadOnly=true` → `200` đúng tin của `sub`
-- `PATCH /api/v1/notifications/{id}/read` → `200`, sai chủ → `403`
-- `POST /internal/v1/notifications` → `201`, type sai → `400`
-
-## Bàn giao tích hợp
-
-- Chốt service token nội bộ để Người 3 gọi sang
-- Không đổi path `/api/v1/notifications/**`, `/internal/v1/notifications`
-- Báo Người 5 khi thêm type mới kỳ 2
+- Client chỉ đọc/đánh dấu Notification của chính mình.
+- Internal route không được xem là an toàn trước khi có xác thực service-to-service.
+- Operation Project chỉ nhận completion sau khi notification cleanup trong phạm vi đã chốt hoàn tất.

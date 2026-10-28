@@ -1,4 +1,13 @@
 services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-devplatform}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-devplatform}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   postgres-user:
     image: postgres:16
     environment:

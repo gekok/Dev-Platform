@@ -1,64 +1,30 @@
-# API — Notification (kanban-api mục 4)
+# notification-service API — runtime hiện có và mục tiêu cascade
 
-Thuộc `notification-service` (`:8084`). Chỉ đọc và đánh dấu đã đọc.
-Không cho client tự tạo thông báo.
+**Vai trò:** sở hữu Notification trong `notification_db`. Quyết định mục tiêu: [architecture decisions](../../../docs/project/architecture-decisions.md); route client mục tiêu: [Kanban API](../../../docs/api/kanban-api.md).
 
-Auth kỳ 1: stub đọc `X-User-Id` (UUID). TODO parse JWT `sub` ở gateway/service.
+## API client hiện có
 
-## 4.1 Lấy thông báo của tôi
+`NotificationController` khai báo:
 
-`GET /api/v1/notifications/me?unreadOnly=true` → `200 OK`.
+| Method | Route hiện tại | Hành vi |
+|---|---|---|
+| GET | `/api/v1/notifications/me` | Danh sách Notification của user, có `unreadOnly` |
+| PATCH | `/api/v1/notifications/{id}/read` | Đánh dấu đã đọc |
 
-```json
-[
-  {
-    "id": 500,
-    "type": "ASSIGNED",
-    "title": "Bạn được gán thẻ MSS-12",
-    "cardId": 100,
-    "boardId": 1,
-    "read": false,
-    "createdAt": "2026-09-29T10:30:00Z"
-  }
-]
-```
+Identity hiện lấy từ `X-User-Id`; chưa có JWT parsing/authorization hoàn chỉnh trong controller.
 
-- `unreadOnly=true` chỉ trả chưa đọc (query index `user_id, read`).
-- `type` hợp lệ kỳ 1: `ASSIGNED` / `MENTIONED` / `MOVED`.
-- Kỳ 2 thêm `PR_REVIEWED` mà không sửa API cũ.
+## API nội bộ hiện có
 
-## 4.2 Đánh dấu đã đọc
+`InternalNotificationController` khai báo `POST /internal/v1/notifications` để tạo notification. Route không thuộc Gateway. Controller không có cơ chế kiểm tra service token; comment mô tả token không phải bằng chứng endpoint đã được bảo vệ. Chưa đưa API này thành hợp đồng giao tiếp service an toàn.
 
-`PATCH /api/v1/notifications/{id}/read` → `200 OK`.
+`TaskEventListener` hiện là placeholder, chưa nhận event và chưa gọi `CreateNotificationPort`. Không khẳng định luồng gán/mention/move đã tạo Notification end-to-end.
 
-Body trả về là thông báo sau khi đổi `read` thành `true`.
-Đọc nhầm thông báo người khác → `403 FORBIDDEN` (check chủ ở service kỳ 1).
+## Mục tiêu và điểm còn mở
 
-## Internal (task-service gọi sang)
+- Client chỉ list/mark-read Notification của chính Account.
+- Cascade Project sẽ yêu cầu notification-service xóa dữ liệu phụ thuộc trong phạm vi Project sau khi phạm vi dữ liệu được chốt.
+- Skeleton hiện truy vấn notification theo `boardIds`; notification không gắn Board và cách xử lý toàn bộ notification theo Account còn mở.
+- Chưa có queue listener, Inbox/job transaction, batch worker hoặc completion publisher.
+- `PR_REVIEWED` thuộc mô tả Kỳ 2 cũ; chưa phải contract Kỳ 2 đã thống nhất.
 
-`POST /internal/v1/notifications` → `201 Created`.
-
-Không qua gateway. Chỉ gọi trong cụm bằng service token (kỳ 1).
-
-```json
-{
-  "userId": "c0a8b1e2-0000-4000-8000-000000000001",
-  "type": "ASSIGNED",
-  "title": "Bạn được gán thẻ MSS-12",
-  "cardId": 100,
-  "boardId": 1
-}
-```
-
-- `type` sai → `400 BAD_REQUEST`.
-- Gán mới bắn `ASSIGNED`, mention bắn `MENTIONED`, kéo thẻ bắn `MOVED`.
-- Client (React/Flutter) không được gọi đường này.
-
-## Lỗi
-
-Format chuẩn `{code,message,timestamp,path}` (xem kanban-api mục 6):
-
-- `400 BAD_REQUEST` — thiếu `X-User-Id`, `type` sai, thiếu field internal.
-- `401` — thiếu/sai JWT (kỳ sau, hiện thiếu `X-User-Id`).
-- `403 FORBIDDEN` — đánh dấu đọc nhầm thông báo người khác.
-- `404 NOTIFICATION_NOT_FOUND` — không thấy thông báo.
+Xem [skeleton cascade](../../../docs/project/account-deletion-skeleton-guide.md) và mục còn mở trong architecture decisions.

@@ -1,42 +1,30 @@
-# Issue 05 — [gateway] Route + Docker + Tích hợp
+# 05 — API Gateway: xác thực danh tính và định tuyến
 
-Service: `gateway`
-Cổng: `8080`
-Kho: không (chỉ route, xem `gateway/src/main/resources/application.yml`)
-Hợp đồng: `docs/api/kanban-api.md` base `http://localhost:8080/api/v1` + mục 5 WS
+**Vai trò mục tiêu:** Gateway là cổng HTTP cho Web/Mobile, xác thực Account và chuyển tiếp identity context tin cậy; không sở hữu Project authorization snapshot.
 
-Người nhận: Người 5 (gateway + tích hợp)
-Nhãn: `service/gateway`
+**Tham chiếu:** [architecture decisions](architecture-decisions.md), [API Kỳ 1](../api/kanban-api.md), [gateway config hiện tại](../../gateway/src/main/resources/application.yml).
 
-## Files sở hữu
+## Runtime đã đối chiếu
 
-```
-gateway/src/main/java/dev/platform/gateway/GatewayApplication.java
-gateway/src/main/resources/application.yml
-docker-compose.yml (4 DB 5432 → 5435)
-pom.xml (parent Java 21, Boot 4.1.1)
-README.md (mục 4 chạy dự án)
-```
+- Gateway hiện route **/api/v1/auth/** và **/api/v1/users/** sang user-service.
+- Route Card **/api/v1/boards/**/cards** và **/api/v1/cards/** đứng trước route tổng **/api/v1/boards/** sang board-service; **/ws/** sang task-service; notifications sang notification-service.
+- Cấu hình route không có bằng chứng Gateway đang xác thực JWT hoặc xóa header identity giả mạo.
+- RabbitMQ có trong Compose; route HTTP không đồng nghĩa service event consumer đã kết nối.
 
-## Việc làm từ đầu đến cuối
+## Thiết kế đích
 
-- [ ] Giữ thứ tự route: `task-service` (`/cards/**`, `/boards/**/cards/**`) trước `board-service` (`/boards/**`)
-- [ ] Giữ route WS `/ws/**` → `8083`, không để rơi sang notify `8084`
-- [ ] Giữ route user `/users/**`, `/auth/**` → `8081`, notify `/notifications/**` → `8084`
-- [ ] Chuẩn hóa JWT ở gateway (parse `Authorization`, forward `sub`, TODO hiện tại là stub)
-- [ ] Dựng `docker compose up -d` 4 DB chạy ổn (5432 user, 5433 board, 5434 task, 5435 notify)
-- [ ] Viết checklist tích hợp cho Issue 06 (thứ tự bật service, curl mẫu)
-- [ ] Khóa tiền tố `/api/v1` để mobile cũ còn chạy khi lên `v2`
+- Route Project, Invitation, Membership, Board và Column tới board-service; Card/Comment tới task-service; Account/Auth tới user-service; Notification tới notification-service.
+- Giữ route Card-specific trước route Board tổng khi cùng prefix có thể match.
+- Xác thực token tại Gateway và truyền identity context theo cơ chế nội bộ đã chọn; service tin Gateway theo boundary đã duyệt.
+- Loại bỏ/ghi đè identity header do client tự gửi; không để truy cập trực tiếp service trở thành đường bypass Gateway.
+- Admin chỉ quản trị Account; không tự có quyền trong Project.
+- Internal REST giữa service chưa triển khai do chưa có bảo mật nội bộ. Cơ chế header/trust, direct-service restrictions và identity propagation chi tiết còn cần chốt khi triển khai security.
 
-## Định nghĩa xong
+## Việc cần làm
 
-- `mvn -pl gateway compile` xanh
-- Route qua gateway trả đúng 4 service + WS
-- `docker compose ps` 4 DB `healthy` hoặc `running`
-- Có file chạy mẫu từ gateway tới từng service
-
-## Bàn giao tích hợp
-
-- Là đầu mối Issue 06, gom kết quả Người 1 → 4
-- Không đổi path public `/api/v1/**`, `/ws/**`
-- Mọi đổi route phải báo cả 4 người trước
+- [ ] Chốt JWT issuer/signature/expiry, role claim cho System Admin và identity forwarding contract.
+- [ ] Cập nhật routes cho Project-first API; không biến route map thành xác nhận API đã implement.
+- [ ] Bảo đảm route order cho **/projects/**, **/boards/{id}/cards**, **/cards/**, **/boards/**, notifications và WebSocket.
+- [ ] Chốt cách chặn client giả **X-User-Id** và truy cập trực tiếp service.
+- [ ] Tích hợp Admin Account API sau khi route/payload được chốt; Admin không được bypass Project permissions.
+- [ ] Chạy API/integration checks qua Gateway sau khi service contracts và auth wiring hoàn thành.

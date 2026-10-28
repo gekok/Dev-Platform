@@ -1,121 +1,87 @@
 # Dev-Platform
 
-Nền tảng quản lý dự án kiểu GitHub thu gọn, xây theo microservices.
-Một bếp phục vụ hai phòng ăn: web React và app Flutter.
+Nền tảng quản lý công việc theo Project, phát triển theo nhiều kỳ. Kỳ 1 cung cấp workspace Kanban cho web và mobile.
 
-## 1. Chia 2 kỳ thế nào?
+> **Trạng thái quan trọng:** Thiết kế backend mục tiêu hiện là Project-first. Backend trong repo vẫn chủ yếu theo API Board-first; Project/Membership chưa được triển khai. Xem [chỉ mục tài liệu](docs/README.md) để biết tài liệu nào mô tả quyết định mới, API mục tiêu và runtime hiện tại.
 
-Tưởng tượng mở chợ theo quầy, không ôm cả chợ một lúc.
+## 1. Mô hình sản phẩm và phạm vi
 
-Kỳ 1 chỉ dựng quầy Kanban (4 service). Đủ xài như Trello thu gọn:
-đăng nhập, mở bảng, kéo thẻ, bình luận, nhận thông báo.
+Kỳ 1 lấy **Project** làm ranh giới sở hữu, membership và quyền truy cập:
 
-Kỳ 2 mở rộng thành Dev Platform (70% GitHub theo luồng anh vẽ):
-Issues, Git (Branch/Commit/PR/Diff/Review), Workflow (Agent/Actions).
-
-```
-Kỳ 1: User + Board + Task + Notify = Kanban chạy được
-                ↓ tái dùng trực tiếp
-Kỳ 2: Board → Issues, Task → PR, Notify thêm type mới
+```text
+Project (một Owner, các Member)
+└── Boards
+    └── Columns
+        └── Cards
+            └── Comments
 ```
 
-Ranh giới đã chốt để kỳ 2 khỏi đập:
+- Một Project có một Owner. Owner mời tài khoản đã có trong hệ thống; chỉ khi người nhận chấp nhận Invitation `PENDING` thì Membership mới được tạo.
+- Owner và Member cùng thao tác công việc trong Project: tạo Card/Column, chuyển trạng thái Card và comment. Owner có thêm quyền tạo Board, quản lý trạng thái Project/Board và thành viên.
+- Kỳ 1 giữ Gateway và bốn service: `user-service`, `board-service`, `task-service`, `notification-service`. Project, Membership, Board và Column thuộc `board-service` và `board_db`; không có deployable `project-service` riêng.
+- Account deletion là quy trình bất đồng bộ có operation tracking, Outbox/Inbox và xử lý theo service. Scaffold hiện có chưa phải luồng chạy end-to-end; xem [hướng dẫn skeleton](docs/project/account-deletion-skeleton-guide.md).
 
-- `Board` thành nền cho `Issues` (mỗi issue là một card đặc biệt).
-- `Task` thành nền cho `Branch/Commit/PR` (mỗi PR gắn một `cardId`).
-- `Notification` giữ nguyên, thêm `type` mới (như `PR_REVIEWED`).
-- Gateway thêm route `/api/v1/repos/**`, `/api/v1/workflows/**`.
-- Giữ tiền tố `/api/v1` để mobile cũ còn chạy khi API lên `v2`.
+Các quyết định đầy đủ và phần còn mở nằm trong [architecture-decisions.md](docs/project/architecture-decisions.md).
 
-## 2. Cấu trúc repo
+## 2. Kỳ 2
+
+Kỳ 2 dự kiến mở rộng năng lực Git core và Workflow. Ranh giới service, dữ liệu, API và cách tích hợp cụ thể sẽ được chốt khi bắt đầu thiết kế Kỳ 2. Không dùng các mô tả cũ `Board → Issues` hoặc `Task → PR` làm quyết định kiến trúc hiện hành.
+
+## 3. Cấu trúc repo
 
 ```text
 Dev-Platform/
-├── pom.xml                     # parent: Java 21, Boot 4.1.1, Cloud 2025.0.0
-├── docker-compose.yml          # 4 DB Postgres riêng, mỗi service một kho
-├── gateway/                    # cổng 8080, gom route /api/v1/**
+├── pom.xml
+├── docker-compose.yml             # 4 PostgreSQL + RabbitMQ cho môi trường local
+├── gateway/                       # cổng vào HTTP
 ├── services/
-│   ├── user-service/           # cổng 8081, kho user_db: auth + JWT
-│   ├── board-service/          # cổng 8082, kho board_db: bảng + cột
-│   ├── task-service/           # cổng 8083, kho task_db: thẻ + comment + WS
-│   └── notification-service/   # cổng 8084, kho notification_db
+│   ├── user-service/              # tài khoản và xác thực
+│   ├── board-service/             # mục tiêu: Project, Membership, Board, Column
+│   ├── task-service/              # Card, Comment, realtime
+│   └── notification-service/      # Notification
+├── shared/
+│   ├── event-contracts/           # envelope và DTO event dùng chung
+│   └── messaging-support/         # nền Outbox/Inbox và Outbox Relay
+├── web-demo/                      # React demo dùng MSW, không phải backend thật
 └── docs/
-    └── api/
-        └── kanban-api.md       # hợp đồng API kỳ 1 (API-first)
+    ├── README.md                  # thứ tự đọc và trạng thái tài liệu
+    ├── api/kanban-api.md          # API mục tiêu và tham chiếu API cũ
+    └── project/                   # quyết định, hướng dẫn và checklist tích hợp
 ```
 
-Mỗi service giữ kho riêng (database per service). ID liên service chỉ giữ
-dạng số (`Long`/`UUID`), không tạo FK JPA chéo database. Ví dụ `Card`
-giữ `boardId`, `columnId`, `assigneeId` dạng số thuần.
+Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Column` dùng chung `board_db`; các ID được tham chiếu giữa service dưới dạng giá trị, không tạo JPA foreign key xuyên database. RabbitMQ có trong Compose; messaging và Outbox Relay không tự bật theo cấu hình mặc định.
 
-## 3. Ba quy ước bắt buộc
+## 4. Quy ước tài liệu và triển khai
 
-### 3.1 API-first: hợp đồng đi trước, code đi sau
+1. Đọc [chỉ mục tài liệu](docs/README.md) để phân biệt quyết định mục tiêu, API mục tiêu, tài liệu runtime cũ và mock demo.
+2. `docs/project/architecture-decisions.md` là nguồn quyết định backend đã thống nhất; mục “Cần bàn tiếp” chưa phải hợp đồng.
+3. `docs/api/kanban-api.md` ghi route Project-first ở mức đã thống nhất và giữ API Board-first cũ trong phần tham khảo. Chưa implement API mới từ các payload hoặc hành vi đang đánh dấu mở.
+4. Task sheets 01–05 và tài liệu riêng trong `services/*/docs` đã được đồng bộ theo Project-first, đồng thời vẫn mô tả rõ code/schema runtime hiện tại. Các payload/error/operation contract còn mở phải được chốt trước khi dùng tài liệu làm tiêu chí implement.
 
-File `docs/api/kanban-api.md` là thực đơn chung cho cả React và Flutter.
-Muốn thêm/sửa API thì sửa `api.md` trước, review xong mới viết code.
+## 5. Mục tiêu và hiện trạng runtime
 
-Controller mới dựng chỉ là khung giữ chỗ (stub) trả `200`/`201` rỗng.
-Ruột viết sau, nhưng đường và tên field phải khớp `api.md`.
+**Mục tiêu kiến trúc:** Gateway xác thực và định tuyến; `board-service` là nguồn chuẩn về Project/Membership; các service còn lại sở hữu dữ liệu riêng theo ranh giới trên.
 
-### 3.2 DDD: nói tiếng miền, không nói tiếng bảng
+**Runtime hiện tại:** `board-service` vẫn có route Board-first `/api/v1/boards` và stub `X-User-Id`; Project/Membership chưa có entity/adapter thật. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Skeleton xóa Account mới có các biên persistence/use-case và messaging dùng chung, chưa có API Admin hay Rabbit listener/worker end-to-end. Vì vậy README và API mục tiêu không khẳng định backend đã đạt kiến trúc đích.
 
-Mỗi service có một thứ tiếng riêng (ubiquitous language):
-`user`, `board`, `column`, `card`, `comment`, `notification`.
+Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tài liệu tham khảo cho giao diện và một phần route/payload; không đồng nghĩa backend hiện tại đã cung cấp các API đó.
 
-Cụm gốc (aggregate root): `User`, `Board`, `Card`, `Notification`.
-Con sống chết theo gốc (cascade ALL + orphanRemoval): `BoardColumn`
-theo `Board`, `CardComment` theo `Card`.
+## 6. Chạy môi trường local
 
-Luật nghiệp vụ nằm ở miền (domain), không nằm ở controller.
-Ví dụ: move thẻ phải dồn `position` trong cùng transaction;
-server là chuẩn cuối cùng, client chỉ vẽ lại.
-
-### 3.3 Auth: vé JWT là chuẩn duy nhất
-
-`user-service` cấp vé (JWT). Các service khác chỉ đọc `sub` trong vé
-để biết ai đang gọi. Client không được tự gửi `userId` trong body.
-
-Mobile gọi qua gateway giống hệt web. Không gọi thẳng service.
-Không tin bất kỳ `userId` nào client gửi lên.
-
-## 4. Chạy dự án
-
-Yêu cầu: Java 21, Maven, Docker.
+Yêu cầu: Java 21, Maven và Docker.
 
 ```bash
-# 1. Dựng 4 DB
+# Dựng database và RabbitMQ cho các service
 docker compose up -d
 
-# 2. Chạy từng service (mỗi lệnh một terminal)
+# Chạy từng service (mỗi lệnh trong một terminal)
 cd services/user-service && mvn spring-boot:run
 cd services/board-service && mvn spring-boot:run
 cd services/task-service && mvn spring-boot:run
 cd services/notification-service && mvn spring-boot:run
 
-# 3. Chạy gateway
+# Chạy Gateway
 cd gateway && mvn spring-boot:run
 ```
 
-Cổng vào duy nhất: `http://localhost:8080/api/v1`.
-Hợp đồng chi tiết xem `docs/api/kanban-api.md`.
-
-WebSocket bảng Kanban: `WS /ws/boards/{boardId}` (mục 5 trong api.md).
-Mobile nhận gán việc và mention qua đẩy (push FCM), không giữ socket.
-
-## 5. Lộ trình kỳ 1
-
-1. Chốt `kanban-api.md` (đã có khung, review và khóa field).
-2. Viết ruột `user-service`: register, login cấp JWT, me.
-3. Viết ruột `board-service`: bảng + cột + reorder.
-4. Viết ruột `task-service`: thẻ + move + comment + WebSocket.
-5. Viết ruột `notification-service`: event + list + đánh dấu đọc.
-6. Web React tối thiểu: bảng, kéo thẻ, xem thông báo.
-7. App Flutter tối thiểu: đăng nhập, xem bảng, nhận push.
-
-## 6. Lộ trình kỳ 2 (chưa làm, chỉ giữ chỗ)
-
-- Thêm `repo-service`: Branch, Commit, PR, Diff, Code Review.
-- Thêm `workflow-service`: trigger, Agent, Actions.
-- `Board`/`Task` tái dùng, không viết lại.
-- Frontend thêm 2 màn: Git và Workflow.
+Gateway dự kiến là cổng vào `http://localhost:8080/api/v1`. Tình trạng API và xác thực hiện tại được phân biệt trong [API contract](docs/api/kanban-api.md); không suy ra rằng các route Project-first đã được triển khai chỉ từ việc service khởi động được.

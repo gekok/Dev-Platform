@@ -10,6 +10,8 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>shared/event-contracts</module>
+        <module>shared/messaging-support</module>
         <module>gateway</module>
         <module>services/user-service</module>
         <module>services/board-service</module>

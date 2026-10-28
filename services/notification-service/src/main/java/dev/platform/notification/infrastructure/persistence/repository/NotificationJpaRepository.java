@@ -1,6 +1,7 @@
 package dev.platform.notification.infrastructure.persistence.repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,8 @@ public interface NotificationJpaRepository extends JpaRepository<NotificationEnt
     List<NotificationEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<NotificationEntity> findByUserIdAndReadFalseOrderByCreatedAtDesc(UUID userId);
+
+    List<NotificationEntity> findTop100ByBoardIdInAndIdGreaterThanOrderByIdAsc(
+            Collection<Long> boardIds,
+            Long afterId);
 }

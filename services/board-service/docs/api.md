@@ -1,55 +1,33 @@
-# API — Board (kanban-api mục 2)
+# board-service API — runtime Board-first và mục tiêu Project-first
 
-Thuộc `board-service` (`:8082`). Giữ bảng + cột, không trả thẻ chi tiết.
+**Vai trò mục tiêu:** sở hữu Project, Membership, Invitation, Board và Column trong `board_db`; Kỳ 1 không có deployable `project-service` riêng. Quyết định chung: [architecture decisions](../../../docs/project/architecture-decisions.md); API mục tiêu: [Kanban API](../../../docs/api/kanban-api.md).
 
-Auth kỳ 1: stub đọc `X-User-Id` (UUID). TODO parse JWT `sub` ở gateway/service.
+## Controller hiện có
 
-## 2.1 Tạo bảng
+`BoardController` hiện ánh xạ các route Board-first dưới đây. Chúng mô tả runtime hiện tại, không phải API đích:
 
-`POST /api/v1/boards` → `201 Created`.
+| Method | Route hiện khai báo | Hành vi |
+|---|---|---|
+| POST | `/api/v1/boards` | Tạo Board |
+| GET | `/api/v1/boards` | Liệt kê Board theo User hiện tại |
+| GET | `/api/v1/boards/{boardId}` | Lấy Board kèm Columns |
+| POST | `/api/v1/boards/{boardId}/columns` | Tạo Column |
+| PATCH | `/api/v1/boards/{boardId}/columns/order` | Sắp xếp Column |
 
-Request:
+Controller hiện đọc `X-User-Id` làm identity stub. Route tạo Board hiện nhận `name`, `key`, tùy chọn `columns`. Controller chưa kiểm tra Project membership vì Project/Membership chưa có model/adapter.
 
-```json
-{
-  "name": "MSS301 Project",
-  "key": "MSS",
-  "columns": ["To Do", "In Progress", "Done"]
-}
-```
+## API mục tiêu đã thống nhất
 
-- `name` bắt buộc, không rỗng.
-- `key` bắt buộc, `2-20` ký tự hoa/số (`[A-Z0-9]{2,20}`), unique.
-- Thiếu `columns` hoặc rỗng → server tự tạo 3 cột mặc định trên.
+- Project là ranh giới truy cập; Board thuộc một Project.
+- Owner tạo Project và là Owner duy nhất. Owner mời tài khoản hiện có bằng Invitation `PENDING`; Accept mới tạo Membership.
+- Owner và Member thao tác Card/Column/comment theo quyền chung; chỉ Owner tạo Board, quản lý member và lifecycle Project/Board.
+- Route Project-first nằm trong [kanban-api.md](../../../docs/api/kanban-api.md). Không suy ra payload/error cuối cùng từ route map.
+- Board key mục tiêu dùng chữ thường và unique trong Project; không dùng ràng buộc unique toàn DB hiện tại làm contract mới.
 
-Response `201` như kanban-api 2.1 (`id`, `name`, `key`, `ownerId`, `columns[{id,name,position}]`).
+## Cascade deletion boundary hiện có
 
-## 2.2 Lấy danh sách bảng của tôi
+`ProjectDeletionCoordinator` và `ProjectDeletionDataPort` là interface boundary cho việc tìm Project/Board, tạo write barrier, cleanup membership và xóa Project graph. Chưa có implementation adapter, Project entity, consumer hoặc API. Chi tiết hiện trạng: [account deletion skeleton guide](../../../docs/project/account-deletion-skeleton-guide.md).
 
-`GET /api/v1/boards` → `200 OK`, mảng bảng mà `X-User-Id` là owner.
+## Còn mở
 
-## 2.3 Lấy chi tiết bảng kèm cột
-
-`GET /api/v1/boards/{boardId}` → `200 OK`, body như 2.1. Không trả thẻ.
-
-## 2.4 Thêm cột
-
-`POST /api/v1/boards/{boardId}/columns` → `201 Created`.
-
-Request `{ "name": "Review" }` (`name` bắt buộc). Response `{ "id": 13, "name": "Review", "position": 3 }` (cột mới xếp cuối).
-
-## 2.5 Đổi thứ tự cột
-
-`PATCH /api/v1/boards/{boardId}/columns/order` → `200 OK`.
-
-Request `{ "orderedColumnIds": [10, 13, 11, 12] }` (đủ id, không trùng, đều thuộc bảng). Response danh sách cột sau khi xếp.
-
-## Lỗi
-
-Format chuẩn `{code,message,timestamp,path}` (xem kanban-api mục 6):
-
-- `400 BAD_REQUEST` — thiếu field, `key` sai format, `orderedColumnIds` rỗng/trùng/thiếu, cột không thuộc bảng.
-- `401` — thiếu `X-User-Id` (kỳ sau: thiếu/sai JWT).
-- `403` — không phải member bảng (kỳ sau, hiện controller giữ chỗ check).
-- `404 BOARD_NOT_FOUND` — không thấy bảng.
-- `409 BOARD_KEY_CONFLICT` — trùng `key` bảng.
+Payload và lỗi Invitation/Membership, các route list/reject/cancel/expiry Invitation, status transition của Project/Board, operation status/event response và notification cleanup scope chưa được chốt đầy đủ. Xem mục “Cần bàn tiếp” trong architecture decisions.
