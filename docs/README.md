@@ -7,7 +7,7 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 1. [Architecture decisions](project/architecture-decisions.md): quyết định backend đã thống nhất và các mục còn mở. Đây là nguồn chuẩn cho thiết kế mục tiêu Project-first Kỳ 1.
 2. [Kanban API](api/kanban-api.md): bản thiết kế route/payload/response Project-first, phân biệt phần đã chốt với đề xuất/còn mở; API Board-first cũ để tham khảo runtime.
 3. [Integration checklist](project/06-integration.md): tiêu chí tích hợp mục tiêu sau khi các service được cập nhật theo kiến trúc và API mới.
-4. [Account deletion skeleton guide](project/account-deletion-skeleton-guide.md): scaffold hiện có và các bước còn phải triển khai cho từng service.
+4. [Account deletion notes](project/account-deletion-skeleton-guide.md): ghi chú tham khảo cho Kỳ 2; không phải hướng dẫn chạy tính năng Kỳ 1.
 5. Source code và các phần runtime trong tài liệu service-specific: bằng chứng về hành vi hiện có; chúng không tự thay thế quyết định mục tiêu ở mục 1.
 
 ## Tài liệu chung
@@ -18,12 +18,12 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 | `docs/project/architecture-decisions.md` | Nguồn quyết định kiến trúc | Project-first; các mục được liệt kê là cần bàn tiếp chưa phải contract |
 | `docs/api/kanban-api.md` | API mục tiêu và tham chiếu API cũ | Có request/response draft theo service; mục đề xuất/còn mở chưa phải OpenAPI đã duyệt |
 | `docs/project/06-integration.md` | Kịch bản tích hợp liên service | Checklist mục tiêu, chưa phải báo cáo các flow đã chạy |
-| `docs/project/account-deletion-skeleton-guide.md` | Hướng dẫn tiếp tục scaffold cascade delete | Ghi hiện trạng code và TODO theo từng service |
+| `docs/project/account-deletion-skeleton-guide.md` | Ghi chú Account deletion/cascade | Tham khảo Kỳ 2; runtime Kỳ 1 không có luồng này |
 
 ## Tài liệu theo service
 
 - `docs/project/01-user-service.md` đến `docs/project/05-gateway.md` là task sheets triển khai theo ownership Project-first. Các việc chưa có checkbox hoàn thành là TODO triển khai, không phải tính năng đã chạy.
-- `services/{user,board,task,notification}-service/docs/` tách API/JPA runtime hiện tại khỏi API và logical schema Project-first mục tiêu. Các trang database có field/constraint/index thiết kế để lấp schema gap; chúng chưa phải migration hay persistence đã chạy. Ví dụ: board-service hiện vẫn Board-first, chưa có Project/Membership entity.
+- `services/{user,board,task,notification}-service/docs/` tách API/JPA runtime hiện tại khỏi API và logical schema Project-first mục tiêu. Các trang database có field/constraint/index thiết kế để lấp schema gap; chúng chưa phải migration hay persistence đã chạy. Ví dụ: board-service hiện vẫn Board-first, chưa có Project/Membership entity; task-service đã có Card route Project-scoped và Redis guard seam nhưng chưa tích hợp E2E.
 - Khi docs service khác architecture/API chung, architecture decisions là nguồn quyết định; kanban-api là route mục tiêu; docs service là bằng chứng về code/schema thực tế. Phần còn mở phải được giữ nguyên là chưa chốt.
 
 ### Tài liệu nội bộ từng module
@@ -53,6 +53,6 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 ## Trạng thái đồng bộ hiện tại
 
 - README, API chung, task sheets 01–06, API/database docs của bốn service, `shared/README.md` và tài liệu Gateway được đồng bộ theo mô hình Project-first. Common API có contract draft; bốn database docs có logical schema per service. Đây là thiết kế tài liệu, không phải backend đã implement hay toàn bộ contract đã duyệt.
-- Skeleton cascade có persistence/use-case boundary nhưng chưa có consumer/worker/API wiring end-to-end; [hướng dẫn cascade](project/account-deletion-skeleton-guide.md) ghi chi tiết.
+- Account deletion và Project cascade được hoãn sang Kỳ 2; [ghi chú Account deletion](project/account-deletion-skeleton-guide.md) chỉ lưu quyết định định hướng, không hướng dẫn bật scaffold trong Kỳ 1.
 - React demo dùng MSW và mobile client chưa phải bằng chứng backend Project-first đã tích hợp. Các plan/spec giữ vai trò lịch sử hoặc tham khảo theo phạm vi ghi tại mục trên.
-- Các mục còn mở gồm cơ chế Redis snapshot invalidation/fencing để membership revoke có hiệu lực trước request tiếp theo; Admin route/response và role storage; Invitation errors/expiry/cancel và route list lời mời của Owner; Project/Board transitions; cursor query/envelope/scope/stale detection và Card status; event response/retry/DLQ; Notification cleanup scope; Board preference ownership/storage.
+- Các mục còn mở gồm bootstrap System Admin đầu tiên và chính sách một Account đa vai trò; nguồn xác minh Account ACTIVE khi mời/Accept do internal REST chưa bảo mật; Invitation expiry/cancel; Project/Board transition graph; chi tiết cursor/error contract; retry/DLQ; Board preference ownership/storage. Redis snapshot apply là mốc hiệu lực thu hồi quyền; implementation seams và integration TODO được mô tả trong tài liệu service.

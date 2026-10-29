@@ -7,6 +7,7 @@ import dev.platform.notification.application.port.in.CreateNotificationPort;
 import dev.platform.notification.domain.aggregate.NotificationAggregate.TypeValue;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,11 +15,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// API nội bộ cho task-service gọi sang kỳ 1 (tạo ASSIGNED / MENTIONED).
-// Không qua gateway, chỉ gọi trong cụm bằng service token.
+// API skeleton cho task-service tạo ASSIGNED / MENTIONED / MOVED.
+// Chưa có service-to-service authentication; endpoint bị tắt mặc định.
 @RestController
 @RequestMapping("/internal/v1/notifications")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "dev-platform.internal-notifications.enabled", havingValue = "true")
 public class InternalNotificationController {
 
     private final CreateNotificationPort createPort;
@@ -34,6 +36,6 @@ public class InternalNotificationController {
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(NotificationResponse.from(
                 createPort.create(new CreateNotificationCommand(
-                        req.userId(), type.name(), req.title(), req.cardId(), req.boardId()))));
+                        req.userId(), req.projectId(), type.name(), req.title(), req.cardId(), req.boardId()))));
     }
 }

@@ -35,6 +35,9 @@ public class NotificationEntity {
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
     private UUID userId;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(nullable = false, length = 30)
     @Builder.Default
     private String type = "ASSIGNED";

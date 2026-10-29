@@ -9,6 +9,10 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: devplatform
     password: devplatform
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
       ddl-auto: update
@@ -36,3 +40,6 @@ dev-platform:
       confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
     consumers:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
+  assignment-cleanup:
+    enabled: ${MEMBER_ASSIGNMENT_CLEANUP_ENABLED:false}
+    fixed-delay-ms: ${MEMBER_ASSIGNMENT_CLEANUP_FIXED_DELAY_MS:1000}

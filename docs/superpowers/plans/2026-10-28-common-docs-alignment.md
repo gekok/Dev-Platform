@@ -1,5 +1,7 @@
 # Common Documentation Alignment Plan
 
+> **Historical execution note (2026-10-29):** This plan records the earlier shared-documentation pass. The current System Admin and Project-creation policy is maintained in [architecture decisions](../../project/architecture-decisions.md) and [Kanban API](../../api/kanban-api.md); constraints below describe that earlier pass.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make shared Dev-Platform documentation consistently describe the approved Project-first Kỳ 1 target while clearly labeling legacy backend documentation and unresolved contracts.

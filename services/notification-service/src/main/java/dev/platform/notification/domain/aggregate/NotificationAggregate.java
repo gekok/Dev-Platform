@@ -17,6 +17,7 @@ public class NotificationAggregate {
 
     private Long id;
     private UUID userId;
+    private Long projectId;
     private TypeValue type;
     private String title;
     private Long cardId;
@@ -30,7 +31,7 @@ public class NotificationAggregate {
     }
 
     // Tạo mới từ event task-service.
-    public static NotificationAggregate create(UUID userId, TypeValue type, String title,
+    public static NotificationAggregate create(UUID userId, Long projectId, TypeValue type, String title,
             Long cardId, Long boardId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId khong duoc null");
@@ -43,6 +44,7 @@ public class NotificationAggregate {
         }
         NotificationAggregate n = new NotificationAggregate();
         n.setUserId(userId);
+        n.setProjectId(projectId);
         n.setType(type);
         n.setTitle(title.trim());
         n.setCardId(cardId);

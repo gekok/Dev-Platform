@@ -1,5 +1,7 @@
 # Project and Board Navigation Implementation Plan
 
+> **Phạm vi backend (cập nhật 2026-10-29):** Kế hoạch này mô tả React/MSW mock; Owner-only board creation và bearer identity bên dưới không xác định quyền backend. Backend yêu cầu Account `ACTIVE` và identity Gateway khi tạo Project; `SYSTEM_ADMIN` tự nó không cấp Project permission. Demo không mô phỏng SystemRoles hoặc Account snapshot/revocation; Board-first mock routes có thể khác Project-scoped backend Card routes. Xem [architecture decisions](../../../../docs/project/architecture-decisions.md) và [Kanban API](../../../../docs/api/kanban-api.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Project entry open each user's chosen default Board, provide compact account and searchable Board navigation, and retain a clear responsive Kanban workspace.

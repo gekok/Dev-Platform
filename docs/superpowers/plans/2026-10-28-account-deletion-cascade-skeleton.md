@@ -1,8 +1,12 @@
 # Account Deletion and Project Cascade Skeleton Implementation Plan
 
+> **Superseded (2026-10-29):** This plan records the earlier Kỳ 1 cascade scaffold proposal and is retained only as history. Account deletion and Project cascade are Kỳ 2; do not execute these steps. The approved direction is recorded in [architecture decisions](../../project/architecture-decisions.md) and [Kỳ 2 note](../../project/account-deletion-skeleton-guide.md).
+
 > **For agentic workers:** This plan scaffolds the approved flow across the existing services. It is not a production-ready deletion implementation.
 
 > **Decision update (2026-10-28):** On Member removal/account deletion from a Project that remains, revoke Membership first and enqueue Task unassignment as background work. The original “unassign before removing Membership” checklist below has been updated to this decision. Account deletion still waits for the background cleanup before it reports the whole Account operation `COMPLETED`.
+
+> **Authorization boundary (2026-10-29):** “Trusted Admin” in this plan means a Gateway-authenticated `SYSTEM_ADMIN` for Account lifecycle operations only; it grants no Project/Board permission. Whether the same Account can also use Projects remains open. Keep Admin routes disabled until Gateway identity and current Account status/revocation are verified, failing closed when they cannot be verified. See [current architecture decisions](../../project/architecture-decisions.md) and [Kanban API contract](../../api/kanban-api.md).
 
 **Goal:** Add compile-ready service boundaries, persistence models, RabbitMQ contracts, and a per-service completion guide for account deletion and Project cascade cleanup.
 

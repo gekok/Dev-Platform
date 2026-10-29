@@ -8,5 +8,6 @@ public record MemberAssignmentsCleanupRequested(
         UUID operationId,
         Long projectId,
         UUID userId,
-        List<Long> boardIds) {
+        List<Long> boardIds,
+        long membershipVersion) {
 }

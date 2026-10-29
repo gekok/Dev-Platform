@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-21
 
-> **Cập nhật phạm vi backend (2026-10-28):** Đây vẫn là spec cho React/MSW demo và tham khảo UX/mock API. Phần nói Kỳ 1 triển khai riêng `project-service`, giữ `Board.key` unique toàn bảng, hoặc không có Invitation/member administration đã bị các quyết định backend mới hơn thay thế tại `docs/project/architecture-decisions.md`. Không dùng phần topology và quyền trong spec này làm contract backend.
+> **Cập nhật phạm vi backend (2026-10-29):** Đây chỉ là spec React/MSW demo và tham khảo UX/mock API. Backend Kỳ 1 yêu cầu Account nghiệp vụ `ACTIVE` được Gateway xác thực để tạo Project; actor lấy từ identity tin cậy, Project và Owner membership được ghi cùng transaction. `SYSTEM_ADMIN` chỉ quản trị Account, tự nó không cấp quyền Project. Demo không mô phỏng SystemRoles hoặc Account snapshot/revocation. Các route Board-first bên dưới là mock contract, không thay backend Project-scoped Card routes. Xem [architecture decisions](../../project/architecture-decisions.md) và [Kanban API](../../api/kanban-api.md); topology/service proposals cũ không phải contract backend.
 
 ## Purpose
 

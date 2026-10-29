@@ -41,6 +41,8 @@ The mock uses bearer-token identity and Project membership checks. The backend t
 
 MSW routes and payloads demonstrate the UI flow; they are not proof that backend controllers or database schemas implement the same contract. Where the demo differs from the approved backend decisions, the shared architecture/API documents are authoritative.
 
+Backend target detail: Project creation requires a Gateway-authenticated `ACTIVE` business Account; the actor comes from trusted identity context and Project + Owner membership commit together. `SYSTEM_ADMIN` alone grants no Project access. The demo's seeded bearer identity does not simulate system roles or Account snapshot/revocation; its Board-first mock routes may differ from Project-scoped backend Card routes. See [backend authorization decisions](../docs/project/architecture-decisions.md) and [Kanban API](../docs/api/kanban-api.md).
+
 ## Development checks
 
 ```sh

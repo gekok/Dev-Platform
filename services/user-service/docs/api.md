@@ -1,6 +1,8 @@
 # user-service API và ranh giới triển khai
 
-**Vai trò mục tiêu:** sở hữu Account, thông tin đăng nhập và trạng thái vòng đời tài khoản. Quyết định chung: [architecture decisions](../../../docs/project/architecture-decisions.md); route Project-first mục tiêu: [Kanban API](../../../docs/api/kanban-api.md).
+**Vai trò mục tiêu:** sở hữu Account, credential, Account status, `SystemRoles`/`UserSystemRoles` và Account authorization snapshot. Account deletion/cascade được hoãn sang Kỳ 2. Quyết định chung: [architecture decisions](../../../docs/project/architecture-decisions.md); route Project-first mục tiêu: [Kanban API](../../../docs/api/kanban-api.md).
+
+Shared messaging của user-service: [hướng dẫn đọc và dùng](database.md#shared-modules-trong-user-service).
 
 ## Controller hiện có
 
@@ -9,27 +11,30 @@
 - `/auth/register` nhận `email`, `password`, `fullName` và gọi `RegisterUserPort`.
 - `/auth/login` gọi `LoginUserPort`; hiện chưa có implementation của port này.
 - `/users/me` hiện dùng `X-User-Id` để lấy Account; `Authorization` được đọc nhưng JWT chưa được parse.
-- Repo chưa có route Admin tạo/xóa Account. Chính sách public registration, route tạo Account và route xóa Account phải theo quyết định/hợp đồng Admin; không lấy route register cũ làm bằng chứng đã chốt nghiệp vụ.
+- Repo chưa có route Admin tạo Account. Chính sách public registration và route tạo Account còn mở; route register cũ không chứng minh nghiệp vụ mục tiêu đã chốt.
 
 ## Thiết kế mục tiêu đã thống nhất
 
 - System Admin quản lý vòng đời Account; Admin không có quyền nghiệp vụ trong Project.
+- `SYSTEM_ADMIN` là quyền hệ thống, không phải Project role. Chỉ quyền này chưa cho phép tạo/thao tác Project; quy tắc Account đồng thời là Admin và người dùng Project còn mở.
 - Owner duy nhất của Project không bị biến thành “admin hệ thống”. Account được mời chỉ thành Member sau khi chấp nhận Invitation.
 - Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account nên API directory/profile mục tiêu thuộc service này. Hai route dưới đây là đề xuất, chưa có controller.
-- Khi yêu cầu xóa Account được ghi nhận, user-service đặt trạng thái `DELETING`, tạo operation `operationId` và ghi `ACCOUNT_DELETION_REQUESTED` vào Outbox trong cùng transaction.
-- API khởi tạo chỉ trả `202 Accepted` sau khi `DELETING` + operation + Outbox đã commit và account-wide authorization bị chặn hiệu lực. Route, status response, cách xác nhận Redis fence và lỗi chi tiết còn mở; không chờ board/task cleanup.
-- user-service chỉ hoàn tất operation sau khi board-service xác nhận Project/Membership cleanup; chi tiết consumer/wiring chưa được triển khai.
+- Schema mục tiêu lưu system role bằng `SystemRoles` và quan hệ `UserSystemRoles`; bootstrap System Admin đầu tiên còn mở.
+- Khi Account status hoặc system role đổi, tăng `auth_version`, ghi Outbox event và durable snapshot-sync job cùng transaction trong user_db.
+- user-service sở hữu Account authentication snapshot và retry apply vào Redis theo version. Snapshot version cũ không được ghi đè version mới.
+- Account deletion, `DELETING`, deletion operation và tombstone không thuộc Kỳ 1; giữ soft delete/Owner succession cho Kỳ 2.
 
 ## Chưa triển khai hoặc cần chốt
 
 - Login, đăng ký/provisioning Account và phát token chưa đủ để coi Auth hoàn chỉnh.
-- `AccountAccessGuard` chưa được nối vào login/controller; trạng thái `DELETING` hiện chưa chặn đăng nhập ở runtime.
-- Chưa có Admin controller, authorization cho Admin, deletion status endpoint, Rabbit listener cho completion hoặc gateway auth.
-- Xem [hướng dẫn cascade skeleton](../../../docs/project/account-deletion-skeleton-guide.md) để tiếp tục theo các TODO đúng service.
+- Entity/repository `SystemRoles`/`UserSystemRoles` và Account snapshot recorder/Redis worker đã có skeleton; chưa có use case/API quản lý role hoặc bootstrap System Admin.
+- Recorder chưa được nối vào các luồng tạo/thay đổi Account để ghi snapshot job cùng transaction; Redis worker chỉ chạy khi bật property. Vì vậy Account snapshot sync chưa hoạt động end-to-end. Gateway auth và Directory/profile controller cũng chưa có.
+- Bootstrap Admin đầu tiên, chính sách đa vai trò, directory privacy và Account validation từ board-service còn mở.
+- Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 
 ## Nguồn code
 
-`UserController`, `AccountDeletionApplicationService`, `AccountDeletionCompletionHandler`, `AccountDeletionOperationEntity` và `UserEntity` trong `services/user-service/src/main/java`.
+`UserController`, Account/role persistence cùng snapshot recorder/worker skeleton nằm trong `services/user-service/src/main/java`. Snapshot sync chưa được nối với lifecycle Account; Account deletion classes thuộc phạm vi Kỳ 2 và không nằm trong runtime Kỳ 1.
 
 ## Chi tiết contract được khai báo trong source
 
@@ -100,21 +105,19 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 ## API mục tiêu thuộc user-service
 
-User-service sở hữu Account/Auth và là bên điều phối xóa Account. Các route dưới đây là bản thiết kế, không phải controller runtime:
+User-service sở hữu Account/Auth và system role. Các route dưới đây là bản thiết kế, không phải controller runtime:
 
-`POST /api/v1/auth/register` hiện có trong mapping runtime, nhưng public self-registration chưa được chốt làm Kỳ 1 target. Quyết định hiện tại giao System Admin tạo/xóa Account; không suy ra từ controller cũ rằng client được tự đăng ký trong API target.
+`POST /api/v1/auth/register` hiện có trong mapping runtime, nhưng public self-registration chưa được chốt làm Kỳ 1 target. Route tạo Account qua System Admin cũng còn mở; không suy ra nghiệp vụ target từ controller cũ.
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
-| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 TokenResponse` | Public; không cấp token cho account `DELETING` |
+| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 TokenResponse` | Public; chỉ Account `ACTIVE` |
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email | `200 UserCandidate[]` (đề xuất) | Account đã xác thực; chỉ tìm Account `ACTIVE`; quyền directory/privacy và giới hạn cần chốt |
-| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list | `200 UserProfile[]` (đề xuất) | Account đã xác thực; batch profile tối thiểu và tombstone để render attribution |
+| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list | `200 UserProfile[]` (đề xuất) | Account đã xác thực; batch profile tối thiểu |
 | `POST` | `/api/v1/admin/accounts` | Payload chưa chốt | `201 AccountSummary` (đề xuất) | System Admin |
-| `DELETE` | `/api/v1/admin/accounts/{accountId}` | Không body | `202 {operationId,status,statusUrl}` | System Admin; chỉ trả sau khi account bị chặn auth hiệu lực, request + Outbox đã bền |
-| `GET` | `/api/v1/admin/deletion-operations/{operationId}` | UUID path | `200 DeletionOperation` (đề xuất) | System Admin |
 
-`UserCandidate` đề xuất gồm `id`, `fullName`, `email`; email chỉ được trả trong luồng mời nếu quyền tra cứu directory được duyệt. `UserProfile` đề xuất gồm `id`, `displayName`, `accountDeleted`; UUID đã xóa vẫn trả tombstone tối thiểu để Comment/history không mất attribution. Để phân biệt người còn tồn tại nhưng đã rời Project, client đối chiếu profile với danh sách Membership do board-service trả; cách compose và quyền profile lookup còn mở.
+`UserCandidate` đề xuất gồm `id`, `fullName`, `email`; email chỉ được trả trong luồng chọn người mời nếu quyền tra cứu directory được duyệt. `UserProfile` đề xuất gồm `id`, `displayName`. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
 
 Ví dụ response directory và bulk profile (shapes đề xuất):
 
@@ -126,12 +129,11 @@ Ví dụ response directory và bulk profile (shapes đề xuất):
 
 ```json
 [
-  { "id": "550e8400-e29b-41d4-a716-446655440000", "displayName": "Alex Morgan", "accountDeleted": false },
-  { "id": "550e8400-e29b-41d4-a716-446655440001", "displayName": null, "accountDeleted": true }
+  { "id": "550e8400-e29b-41d4-a716-446655440000", "displayName": "Alex Morgan" }
 ]
 ```
 
-Query search tối thiểu, case-folding, page size/max, thứ tự kết quả, giới hạn UUID mỗi batch, hành vi với UUID không biết và authorization directory còn mở. `accountDeleted` nói về trạng thái Account; việc User còn là Project Member được xác định riêng từ board-service.
+Query search tối thiểu, case-folding, page size/max, thứ tự kết quả, giới hạn UUID mỗi batch, hành vi với UUID không biết và authorization directory còn mở.
 
 Error contract mục tiêu (mã cụ thể là đề xuất):
 
@@ -142,12 +144,9 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 | Account không tồn tại | `404` | `ACCOUNT_NOT_FOUND` |
 | Actor không phải System Admin | `403` | `SYSTEM_ADMIN_REQUIRED` |
 | Email đã được dùng | `409` | `EMAIL_ALREADY_EXISTS` |
-| Không thể xác minh authorization fence khi xóa Account | `503` | `AUTHORIZATION_UNAVAILABLE` |
 
-Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, account role storage và credential provisioning còn mở.
+Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, System Admin role storage/bootstrap/cấp-thu hồi, chính sách một Account đa vai trò và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project.
 
-`operationId` theo dõi cả Project cascade và việc gỡ membership/assignment cleanup. `202` xác nhận request đã được lưu bền vững và Account không còn được auth chấp nhận; nó không có nghĩa service downstream đã hoàn tất. Status response/error mapping, route Admin chính thức, role storage, cách System Admin được provision và điểm đồng bộ Redis fence còn mở. Xóa Account Owner làm cascade Project thuộc họ; Project mà họ chỉ là Member được giữ, Membership bị revoke hiệu lực trước rồi Task unassign ở nền. Account operation chỉ `COMPLETED` sau khi cả Project cascade lẫn member assignment cleanup được xác nhận.
-
-`GET /api/v1/admin/deletion-operations/{operationId}` là route mà `statusUrl` của DELETE trỏ tới. Response mục tiêu đề xuất gồm `operationId`, `status`, `createdAt`, `updatedAt`, `totalProjects`, `completedProjects`, `pendingProjects`, `failedProjects` và safe error summaries; chỉ System Admin được đọc. Field set, trạng thái, retention và cách hiển thị lỗi còn mở.
+`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. Bootstrap System Admin đầu tiên, route cấp/thu hồi role và chính sách một Account đa vai trò còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 
 Contract chung và field proposal nằm tại [Kanban API](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế); các API hiện có trong controller và khả năng khởi chạy vẫn được mô tả riêng ở phần runtime phía trên.

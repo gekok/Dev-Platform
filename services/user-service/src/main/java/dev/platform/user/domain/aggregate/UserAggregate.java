@@ -14,13 +14,16 @@ public class UserAggregate {
     private final String passwordHash;
     private final String fullName;
     private AccountStatus status;
+    private long authVersion;
 
-    private UserAggregate(UUID id, String email, String passwordHash, String fullName, AccountStatus status) {
+    private UserAggregate(UUID id, String email, String passwordHash, String fullName, AccountStatus status,
+            long authVersion) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
         this.fullName = fullName;
         this.status = status;
+        this.authVersion = authVersion;
     }
 
     // Tạo mới: validate cơ bản trước khi cấp id.
@@ -31,12 +34,12 @@ public class UserAggregate {
         if (passwordHash == null) {
             throw new IllegalArgumentException("Password hash khong duoc null");
         }
-        return new UserAggregate(UUID.randomUUID(), email, passwordHash, fullName, AccountStatus.ACTIVE);
+        return new UserAggregate(UUID.randomUUID(), email, passwordHash, fullName, AccountStatus.ACTIVE, 1L);
     }
 
     // Dựng lại từ DB: dùng cho adapter, không validate lại.
     public static UserAggregate rehydrate(UUID id, String email, String passwordHash, String fullName) {
-        return rehydrate(id, email, passwordHash, fullName, AccountStatus.ACTIVE);
+        return rehydrate(id, email, passwordHash, fullName, AccountStatus.ACTIVE, 1L);
     }
 
     public static UserAggregate rehydrate(
@@ -45,13 +48,28 @@ public class UserAggregate {
             String passwordHash,
             String fullName,
             AccountStatus status) {
-        return new UserAggregate(id, email, passwordHash, fullName, status);
+        return rehydrate(id, email, passwordHash, fullName, status, 1L);
     }
 
-    public void markDeleting() {
-        if (status != AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Only an active account can enter deletion");
+    public static UserAggregate rehydrate(
+            UUID id,
+            String email,
+            String passwordHash,
+            String fullName,
+            AccountStatus status,
+            long authVersion) {
+        return new UserAggregate(id, email, passwordHash, fullName, status, authVersion);
+    }
+
+    public boolean changeStatus(AccountStatus newStatus) {
+        if (newStatus == null) {
+            throw new IllegalArgumentException("status khong duoc null");
         }
-        status = AccountStatus.DELETING;
+        if (status == newStatus) {
+            return false;
+        }
+        status = newStatus;
+        authVersion++;
+        return true;
     }
 }

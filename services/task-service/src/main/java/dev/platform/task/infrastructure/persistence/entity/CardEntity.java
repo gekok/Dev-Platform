@@ -1,8 +1,6 @@
 package dev.platform.task.infrastructure.persistence.entity;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +27,9 @@ public class CardEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
+
     @Column(name = "board_id", nullable = false)
     private Long boardId;
 
@@ -48,9 +49,6 @@ public class CardEntity {
     @Column(nullable = false)
     @Builder.Default
     private int position = 0;
-
-    @Column(name = "assignee_id", columnDefinition = "uuid")
-    private UUID assigneeId;
 
     @Column(name = "due_date", columnDefinition = "timestamptz")
     private OffsetDateTime dueDate;

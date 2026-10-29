@@ -10,9 +10,9 @@ public interface CardRepository {
 
     CardAggregate save(CardAggregate card);
 
-    Optional<CardAggregate> findById(Long id);
+    Optional<CardAggregate> findById(Long projectId, Long id);
 
-    List<CardAggregate> findByBoardIdOrderByPosition(Long boardId);
+    List<CardAggregate> findByProjectIdAndBoardIdOrderByPosition(Long projectId, Long boardId);
 
-    List<CardAggregate> findByBoardIdAndColumnId(Long boardId, Long columnId);
+    List<CardAggregate> findByProjectIdAndBoardIdAndColumnId(Long projectId, Long boardId, Long columnId);
 }

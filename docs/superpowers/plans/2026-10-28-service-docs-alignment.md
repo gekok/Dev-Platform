@@ -1,5 +1,7 @@
 # Service Documentation Alignment Plan
 
+> **Historical execution note (2026-10-29):** This plan records an earlier service-doc alignment pass. Current System Admin, Project-creation, and Account-revocation policy is maintained in [architecture decisions](../../project/architecture-decisions.md) and [Kanban API](../../api/kanban-api.md); the constraints below describe that earlier pass.
+
 > **For agentic workers:** Execute inline in this session. This is a documentation-only alignment plan; do not implement backend behavior.
 
 **Goal:** Align service-specific and project-wide documentation with the approved Project-first Kỳ 1 decisions while clearly separating target contracts from the current Board-first runtime.

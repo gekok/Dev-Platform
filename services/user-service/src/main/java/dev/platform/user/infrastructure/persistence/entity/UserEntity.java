@@ -44,4 +44,8 @@ public class UserEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private AccountStatus status = AccountStatus.ACTIVE;
+
+    @Column(name = "auth_version", nullable = false)
+    @Builder.Default
+    private long authVersion = 1L;
 }

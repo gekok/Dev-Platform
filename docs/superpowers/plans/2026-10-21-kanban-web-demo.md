@@ -1,5 +1,7 @@
 # Kanban Web Demo Implementation Plan
 
+> **Phạm vi backend (cập nhật 2026-10-29):** Kế hoạch này chỉ triển khai React/MSW demo. Bearer identity, Owner-only UI và Project creation trong các bước dưới đây là hành vi mock; chúng không thay thế backend contract về Account `ACTIVE`, identity Gateway hoặc quyền `SYSTEM_ADMIN`. Demo không mô phỏng Account snapshot/revocation. Tham chiếu [architecture decisions](../../project/architecture-decisions.md) và [Kanban API](../../api/kanban-api.md). Mock Board-first routes có thể khác backend Project-scoped Card routes.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Build a standalone React demo for Project-first Kỳ 1 Kanban, using MSW as a persistent mock HTTP backend.

@@ -21,26 +21,26 @@ Các service khai báo dependency `messaging-support`, import `MessagingSupportC
 
 ## `event-contracts`
 
-`EventEnvelope<T>` dùng các trường `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt`, `payload`. Event ID là định danh retry/dedup; aggregate version thuộc từng aggregate. Các payload và mapping tên wire hiện được ghi là provisional, phải đối chiếu [event decisions](../docs/project/architecture-decisions.md) trước khi bật consumer.
+`EventEnvelope<T>` dùng các trường `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt`, `payload`. Event ID là định danh retry/dedup; aggregate version thuộc từng aggregate. Tên wire và payload tối thiểu ở [event decisions](../docs/project/architecture-decisions.md) là hợp đồng thiết kế hiện tại; các record trong module này mới là skeleton contract, chưa chứng minh serialization, publish, consume hoặc schema evolution đã tích hợp end-to-end.
 
-Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm, ví dụ `account.deletion.requested` và `project.deletion.requested`. Module chỉ định nghĩa kiểu dữ liệu; nó không publish, validate schema, version migration hoặc đảm bảo consumer xử lý.
+Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Module chỉ định nghĩa kiểu dữ liệu; nó không publish, validate schema, version migration hoặc đảm bảo consumer xử lý.
 
 | Wire event | Payload fields hiện khai báo |
 |---|---|
-| `account.deletion.requested` | `operationId`, `accountId`, `reason` |
-| `project.deletion.requested` | `operationId`, `projectDeletionId`, `projectId`, `boardIds`, `reason` |
-| `project.task-data.deleted` | `operationId`, `projectDeletionId`, `projectId` |
-| `project.notifications.deleted` | `operationId`, `projectDeletionId`, `projectId` |
-| `member.assignments.cleanup-requested` | `operationId`, `projectId`, `userId`, `boardIds` |
-| `member.assignments.cleaned` | `operationId`, `projectId`, `userId` |
-| `project.cleanup.completed` | `operationId`, `projectDeletionId`, `projectId` |
-| `account.project-cleanup.completed` | `operationId`, `accountId` |
+| `user.status.changed` | `userId`, `status`, `authVersion` |
+| `user.system-roles.changed` | `userId`, `systemRoles`, `authVersion` |
+| `project.membership.changed` | `projectId`, `userId`, `status`, `role`, `membershipVersion` |
+| `project.membership.removed` | `projectId`, `userId`, `membershipVersion` |
+| `member.assignments.cleanup-requested` | `operationId`, `projectId`, `userId`, `boardIds`, `membershipVersion` |
+| `member.assignments.cleaned` | `operationId`, `projectId`, `userId`, `membershipVersion` |
 
-Tên/payload trên là code shape provisional. Việc có class không có nghĩa event đã được publish/consume trong runtime.
+Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume trong runtime; queue/binding, listener, Inbox transaction và ACK vẫn là phần tích hợp riêng.
 
-Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership trước rồi mới để Task xử lý unassign nền; event này chỉ dọn `assignee_id`, không phải tín hiệu cấp/thu hồi quyền. Redis authorization snapshot phải có invalidation/fencing riêng để snapshot cũ không tiếp tục cho phép truy cập; RabbitMQ delivery bất đồng bộ tự nó không đảm bảo thu hồi tức thời.
+Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership, Outbox và snapshot-sync job trước. Quyền chỉ bị thu hồi khi snapshot mới được apply vào Redis; nếu còn pending, API trả `202` cùng operation handle. Event này chỉ khởi chạy unassign nền, không phải tín hiệu thu hồi quyền. Cleanup mang `membershipVersion` và chỉ được bỏ assignment đúng generation đã revoke.
 
-Payload hiện khai báo chưa có membership generation/cutoff. Vì vậy, nếu cùng User được mời lại trước khi cleanup job cũ kết thúc, event cũ có thể clear assignment mới. Trước khi bật consumer cần chốt chặn rejoin/assign đến khi cleanup hoàn tất hoặc bổ sung generation/cutoff vào event/job/query. Đây là gap contract, không được coi payload hiện tại đã bảo vệ được race.
+`membershipVersion` tăng theo từng lần Membership được tạo lại và giữ nguyên khi lần đó bị thu hồi. `authorizationVersion` tăng mỗi khi quyền đổi, là Membership envelope `aggregateVersion`, đồng thời được dùng cho Redis CAS và unique key của snapshot-sync job. Nhờ hai version tách biệt, retry snapshot ACTIVE cũ không thể ghi đè REMOVED cùng generation. Nếu Redis đã có version mới hơn trước khi job cũ chạy, job đó được đánh dấu `SUPERSEDED`, không được hiểu là snapshot cũ đã apply.
+
+Task lưu `membershipVersion` trên từng assignment và durable fence theo `(projectId,userId,membershipVersion)`; việc ghi assignment phải được tuần tự hóa với fence. Durable cleanup job cũng lưu `sourceAggregateVersion` từ request envelope, và completion giữ nguyên version nguồn này. Do đó cleanup cũ chỉ xóa đúng generation cũ, không xóa assignment sau khi User tham gia lại.
 
 ## `messaging-support`
 
@@ -125,13 +125,13 @@ Khởi động broker local (chưa khởi động các service):
 docker compose up -d rabbitmq
 ```
 
-Để tích hợp vào service: khai báo dependency `messaging-support`, import `MessagingSupportConfiguration`, scan package shared cho JPA entity/repository, cấu hình Rabbit connection, rồi ghi Outbox trong transaction producer. Mỗi service vẫn dùng database riêng của nó. Tham khảo [`architecture decisions`](../docs/project/architecture-decisions.md), [schema chung trong user_db](../services/user-service/docs/database.md#bảng-messaging-dùng-chung) và [account deletion guide](../docs/project/account-deletion-skeleton-guide.md).
+Để tích hợp vào service: khai báo dependency `messaging-support`, import `MessagingSupportConfiguration`, scan package shared cho JPA entity/repository, cấu hình Rabbit connection, rồi ghi Outbox trong transaction producer. Mỗi service vẫn dùng database riêng của nó. Tham khảo [`architecture decisions`](../docs/project/architecture-decisions.md), [schema chung trong user_db](../services/user-service/docs/database.md#bảng-messaging-dùng-chung) và [ghi chú Account deletion Kỳ 2](../docs/project/account-deletion-skeleton-guide.md).
 
 ## Giới hạn contract hiện tại
 
 - At-least-once delivery; Outbox retry có thể publish lặp cùng `eventId` nếu confirm bị mất.
 - Consumer cần Inbox theo `(consumerName, eventId)` và xử lý idempotent; không dùng `aggregateVersion` thay dedup.
 - Redis Authentication/Authorization Snapshot vẫn thuộc kiến trúc mục tiêu Kỳ 1; schema/key, TTL, consumer cập nhật snapshot và cách xử lý gap/stale event chưa được chốt. `shared/` hiện không triển khai Redis cache.
-- Inbox chống cùng `eventId`, không chống Notification create event khác ID đến muộn sau Project cascade. notification-service cần durable deletion fence/tombstone hoặc rule version/order trước khi bật consumer.
+- Account/Project deletion và Notification cascade không thuộc Kỳ 1. Chỉ Member assignment cleanup là tác vụ cleanup được giữ trong event-contracts Kỳ 1.
 - Schema evolution, retry/DLQ, queue names/bindings và consumer ordering chưa được chốt đầy đủ.
 - Các class hiện có là nền dùng chung, không chứng minh cascade Account/Project đã chạy end-to-end.

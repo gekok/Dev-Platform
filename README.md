@@ -17,9 +17,10 @@ Project (một Owner, các Member)
 ```
 
 - Một Project có một Owner. Owner mời tài khoản đã có trong hệ thống; chỉ khi người nhận chấp nhận Invitation `PENDING` thì Membership mới được tạo.
+- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` được Gateway xác thực; người tạo thành Owner trong cùng transaction. Quyền System Admin chỉ dành cho quản trị Account và tự nó không cấp quyền Project.
 - Owner và Member cùng thao tác công việc trong Project: tạo Card/Column, chuyển trạng thái Card và comment. Owner có thêm quyền tạo Board, quản lý trạng thái Project/Board và thành viên.
 - Kỳ 1 giữ Gateway và bốn service: `user-service`, `board-service`, `task-service`, `notification-service`. Project, Membership, Board và Column thuộc `board-service` và `board_db`; không có deployable `project-service` riêng.
-- Account deletion là quy trình bất đồng bộ có operation tracking, Outbox/Inbox và xử lý theo service. Scaffold hiện có chưa phải luồng chạy end-to-end; xem [hướng dẫn skeleton](docs/project/account-deletion-skeleton-guide.md).
+- Kỳ 1 chưa triển khai xóa Account hoặc cascade Project. Hướng xử lý soft delete và chuyển Owner sang Member đủ điều kiện tham gia sớm nhất được giữ cho Kỳ 2; nếu không có Member kế nhiệm thì chặn xóa.
 
 Các quyết định đầy đủ và phần còn mở nằm trong [architecture-decisions.md](docs/project/architecture-decisions.md).
 
@@ -62,7 +63,7 @@ Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Colum
 
 **Mục tiêu kiến trúc:** Gateway xác thực và định tuyến; `board-service` là nguồn chuẩn về Project/Membership; các service còn lại sở hữu dữ liệu riêng theo ranh giới trên.
 
-**Runtime hiện tại:** `board-service` vẫn có route Board-first `/api/v1/boards` và stub `X-User-Id`; Project/Membership chưa có entity/adapter thật. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Skeleton xóa Account mới có các biên persistence/use-case và messaging dùng chung, chưa có API Admin hay Rabbit listener/worker end-to-end. Vì vậy README và API mục tiêu không khẳng định backend đã đạt kiến trúc đích.
+**Runtime hiện tại:** `board-service` vẫn có route Board-first `/api/v1/boards` và stub `X-User-Id`; Project/Membership chưa có entity/adapter thật. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Kỳ 1 đang bổ sung skeleton Redis snapshot và assignment cleanup; những integration chưa nối end-to-end được ghi rõ trong tài liệu. Account deletion/cascade không thuộc runtime Kỳ 1.
 
 Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tài liệu tham khảo cho giao diện và một phần route/payload; không đồng nghĩa backend hiện tại đã cung cấp các API đó.
 

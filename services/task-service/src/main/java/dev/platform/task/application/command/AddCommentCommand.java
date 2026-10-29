@@ -5,6 +5,7 @@ import java.util.UUID;
 
 // Lệnh thêm bình luận vào thẻ.
 public record AddCommentCommand(
+        Long projectId,
         Long cardId,
         UUID authorId,
         String content,

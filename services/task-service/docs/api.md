@@ -1,118 +1,45 @@
-# task-service API — runtime Board-first và mục tiêu Project-first
+# task-service API
 
-**Vai trò:** sở hữu Card, Comment và realtime event. Contract mục tiêu ở [Kanban API](../../../docs/api/kanban-api.md); quyết định phân quyền và service ownership ở [architecture decisions](../../../docs/project/architecture-decisions.md).
+**Sở hữu:** Card và Comment trong task_db. Contract mục tiêu nằm ở [Kanban API](../../../docs/api/kanban-api.md); quyết định nguồn quyền ở [architecture decisions](../../../docs/project/architecture-decisions.md).
 
-## Controller hiện có
+Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
-`CardController` hiện khai báo:
+## Route được khai báo trong source
 
-| Method | Route hiện tại | Ghi chú |
-|---|---|---|
-| POST | `/api/v1/boards/{boardId}/cards` | Tạo Card |
-| GET | `/api/v1/boards/{boardId}/cards` | List, `columnId` tùy chọn |
-| PATCH | `/api/v1/cards/{cardId}/move` | Chuyển Column/position |
-| PATCH | `/api/v1/cards/{cardId}/assignee` | Gán User |
-| POST | `/api/v1/cards/{cardId}/comments` | Tạo Comment |
+CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Đây là mapping của controller; các inbound port chưa có implementation hoàn chỉnh, Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
 
-WebSocket config khai báo `/ws/boards/{boardId}`. Route này hiện vẫn dựa trên Board-first API. Một số endpoint đọc `X-User-Id` không bắt buộc; Card authorization Project-based chưa được triển khai.
+| Method | Route | Request/query | Response |
+|---|---|---|---|
+| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 CardResponse |
+| GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId? | 200 CardResponse[] |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 200 CardResponse |
+| POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
 
-## Thiết kế mục tiêu đã thống nhất
+X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED.
 
-- Mọi Card/Comment được truy cập trong Project membership boundary thông qua Board thuộc Project.
-- Owner và Member có quyền tạo Card, chuyển trạng thái và comment. Khi Account bị gỡ khỏi Project, tự rời hoặc bị xóa, các Card được assign cho họ phải được unassign.
-- Giữ Comment và attribution lịch sử; UI phân biệt Account đã bị xóa với Account còn tồn tại nhưng không còn trong Project.
-- List Card dùng cursor, mặc định 5, tối đa 20, thứ tự `position DESC, id DESC`; cursor opaque mang position và id. Query parameter/response envelope/error còn mở.
-- Kiểm tra quyền đồng bộ qua board-service chưa làm cho tới khi giao tiếp nội bộ có bảo mật. Không dùng header identity từ client làm bằng chứng quyền.
+CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List hiện trả toàn bộ kết quả; cursor chưa được nối vào controller.
 
-## Scaffold cascade hiện có
+## Contract mục tiêu và phần chưa có trong source
 
-Có entity/job/checkpoint, query theo batch cho Card/Comment, bảng write-lock và `TaskWriteGuard`. `TaskDeletionHandler` mới là interface. Chưa có Rabbit listener, worker, Inbox/job transaction, Outbox completion publisher; guard chưa được nối vào create/move/assign/comment. Vì vậy cascade/unassign chưa chạy.
+Contract chung còn có GET /api/v1/projects/{projectId}/cards/{cardId} để đọc một Card. Route này chưa được khai báo trong controller hiện tại. Mọi route Card phải giữ projectId trong URL để giới hạn đọc/ghi theo cards.project_id; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
 
-Chi tiết: [hướng dẫn skeleton](../../../docs/project/account-deletion-skeleton-guide.md). API, batch ordering và error contract phải theo quyết định chung; không thêm payload riêng ở đây.
+Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Internal REST đang hoãn vì chưa có bảo mật service-to-service, nên không được xem riêng projectId do caller gửi là bằng chứng cho quan hệ Board–Project. Đây là integration TODO trước khi bật luồng end-to-end.
 
-## Chi tiết contract được khai báo trong source
+Phân trang mục tiêu theo từng Column: cursor opaque, mặc định 5, tối đa 20, position DESC, id DESC; controller hiện chưa có limit/cursor. Dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload.
 
-| Method | Path | Header/query | Request | Success |
-|---|---|---|---|---|
-| `POST` | `/api/v1/boards/{boardId}/cards` | `X-User-Id` optional | `columnId`, `title`, `description`, `assigneeId`, `dueDate` | `201`, `CardResponse` |
-| `GET` | `/api/v1/boards/{boardId}/cards` | `columnId` optional | Không có body | `200`, `CardResponse[]` |
-| `PATCH` | `/api/v1/cards/{cardId}/move` | Không có identity header | `toColumnId`, `toPosition` | `200`, `CardResponse` |
-| `PATCH` | `/api/v1/cards/{cardId}/assignee` | `X-User-Id` optional | `assigneeId` nullable UUID | `200`, `CardResponse` |
-| `POST` | `/api/v1/cards/{cardId}/comments` | `X-User-Id` optional | `content`, `mentionedUserIds` | `201`, `CommentResponse` |
+## Cleanup assignment của Membership
 
-`boardId` và `cardId` là path parameter kiểu `Long`; query `columnId` trên GET danh sách cũng là `Long` và tùy chọn.
+Khi board-service thu hồi Membership, request envelope mang `aggregateVersion=authorizationVersion`; payload mang projectId, userId, boardIds, operationId, membershipVersion. Task ghi Inbox, generation fence và job bền vững (gồm source aggregate version) trong một transaction trước ACK; worker chỉ gỡ assignment cùng Project/User/membershipVersion và gửi completion qua Outbox với source aggregate version. Cleanup là tác vụ nền độc lập, không giữ quyền truy cập lại và không chặn operation revoke hoàn tất.
 
-Ví dụ tạo Card:
+Consumer listener/ACK wiring và migration chưa được nối; scheduler cleanup mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
 
-```json
-{
-  "columnId": 12,
-  "title": "Prepare release",
-  "description": "Draft notes",
-  "assigneeId": "550e8400-e29b-41d4-a716-446655440000",
-  "dueDate": "2026-11-15T10:00:00Z"
-}
-```
+## Lỗi source hiện có
 
-| Request field | Kiểu JSON | Bắt buộc/validation và hành vi trong source |
-|---|---|---|
-| `columnId` | integer/Long | Không có Bean Validation; `CardAggregate.create` yêu cầu khác null. |
-| `title` | string | Không có Bean Validation; domain từ chối null/rỗng/toàn khoảng trắng và trim khi tạo. |
-| `description` | string hoặc null | Tùy chọn; không có validation độ dài ở DTO/domain hiện tại. |
-| `assigneeId` | UUID string hoặc null | Tùy chọn; API chưa kiểm tra user tồn tại hoặc membership Project. |
-| `dueDate` | ISO-8601 offset date-time hoặc null | Tùy chọn; biểu diễn bằng `OffsetDateTime`. |
+| Tình huống | HTTP | Code |
+|---|---:|---|
+| Input/domain validation | 400 | BAD_REQUEST |
+| Không có quyền Project | 403 | PROJECT_ACCESS_DENIED |
+| Không đọc/giải mã được snapshot | 503 | AUTHORIZATION_SNAPSHOT_UNAVAILABLE |
 
-Không có `position` trong request. Cách chọn position do use case tạo Card quyết định; inbound port hiện chưa có implementation nên chưa thể xác nhận hành vi runtime.
-
-`CardResponse` hiện gồm `id`, `boardId`, `columnId`, `title`, `status`, `position`, `assigneeId`; response chưa trả `description` hoặc `dueDate` dù request/entity có các field này. `status` hiện là `TODO`, `IN_PROGRESS`, `DONE`. `CommentResponse` gồm `id`, `cardId`, `authorId`, `content`, `createdAt`.
-
-Ví dụ response Card và Comment:
-
-```json
-{"id":42,"boardId":7,"columnId":12,"title":"Prepare release","status":"TODO","position":0,"assigneeId":null}
-```
-
-```json
-{"id":900,"cardId":42,"authorId":"550e8400-e29b-41d4-a716-446655440000","content":"Ready for review","createdAt":"2026-10-28T09:00:00Z"}
-```
-
-Các request DTO không gắn Jakarta Bean Validation. `CardAggregate` chỉ có validation hiện hành cho create/move; chưa có validation nghiệp vụ cho comment. Do `AddCommentPort` chưa có implementation, không coi ràng buộc `card_comments.content NOT NULL` là validation REST đã được nối.
-
-| Endpoint | Request fields và hành vi hiện có |
-|---|---|
-| `PATCH /api/v1/cards/{cardId}/move` | `toColumnId` (`Long`, domain yêu cầu khác null); `toPosition` (`integer`, domain yêu cầu không âm). |
-| `PATCH /api/v1/cards/{cardId}/assignee` | `assigneeId` (UUID hoặc null; null biểu thị bỏ gán). Chưa kiểm tra Account tồn tại/membership. |
-| `POST /api/v1/cards/{cardId}/comments` | `content` (string) và `mentionedUserIds` (array UUID, có thể vắng/null); DTO/aggregate không đặt validation cho các field này. Mention IDs chưa có xử lý/API response. |
-
-`CardResponse` có `id`, `boardId`, `columnId` (`Long`), `title`/`status` (string), `position` (integer), `assigneeId` (UUID hoặc null); `CommentResponse` có `id`, `cardId` (`Long`), `authorId` (UUID hoặc null tại DTO edge hiện tại), `content` (string), `createdAt` (ISO-8601 offset date-time). Controller nhận `X-User-Id` tùy chọn và `CommentValue` không ép `authorId` khác null; persistence column `card_comments.author_id` lại not-null. Use case chưa được nối nên phải chốt/enforce author khi implement. `mentionedUserIds` không có trong response. List trả toàn bộ kết quả theo Board hoặc Column, repository sort `position ASC`; chưa nhận `limit`/`cursor`, chưa phải cursor API mục tiêu `position DESC, id DESC`.
-
-## Identity, errors, realtime và readiness
-
-Global handler ánh xạ `IllegalArgumentException` thành `400` với `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }`. Handler chưa định nghĩa 403/404, validation-body chuẩn hoặc lỗi access denial.
-
-`X-User-Id` không bắt buộc ở create/assign/comment và các endpoint move/list không nhận actor; hiện không có Project-membership authorization tại API boundary. Đây là stub, không phải contract bảo mật.
-
-Controller cần `CreateCardPort`, `GetCardsPort`, `MoveCardPort`, `AssignCardPort`, `AddCommentPort`; source hiện có repository adapter nhưng không có bean triển khai các inbound port. Các mapping không chứng minh endpoint đã được nối và khởi chạy được.
-
-WebSocket được khai báo ở `BoardWebSocketConfig`, nhưng `registerWebSocketHandlers` chưa đăng ký handler. `CardEventAdapter` mới log `card.created`, `card.moved`, `comment.added`; chưa broadcast payload. Path `/ws/boards/{boardId}` trong task sheet là mục tiêu, chưa phải endpoint đang phục vụ.
-
-## API mục tiêu thuộc task-service
-
-Task-service sở hữu Card/Comment; mọi request phải đi qua Gateway và quyền bắt nguồn từ Membership Project qua Board. Đây là API mục tiêu, chưa được ánh xạ vào controller Board-first:
-
-| Method | Route | Request/Query | Success | Ghi chú |
-|---|---|---|---|---|
-| `GET` | `/api/v1/boards/{boardId}/cards?columnId={id}&limit=5&cursor={opaque}` | Per-Column pagination proposal: `columnId` bắt buộc; limit mặc định 5, max 20 | `200 CardPage` | `position DESC, id DESC`; cursor bind với Board + Column; envelope còn đề xuất |
-| `POST` | `/api/v1/boards/{boardId}/cards` | `columnId,title,description?,assigneeId?,dueDate?` | `201 Card` | Column thuộc Board; assignee là Project Member |
-| `GET` | `/api/v1/cards/{cardId}` | Path ID | `200 CardDetail` | Member/Owner |
-| `PATCH` | `/api/v1/cards/{cardId}/move` | `{toColumnId,toPosition}` | `200 Card` | Column cùng Board; Member/Owner |
-| `PATCH` | `/api/v1/cards/{cardId}/assignee` | `{assigneeId: UUID|null}` | `200 Card` | `null` bỏ gán; assignee thuộc Project |
-| `GET`, `POST` | `/api/v1/cards/{cardId}/comments` | Create `{content,mentionedUserIds?}` | `200 Comment[]` / `201 Comment` | Mention phải thuộc cùng Project |
-
-Thứ tự cursor `(position DESC,id DESC)`, default 5, max 20 đã chốt. `id` unique tạo tie-breaker toàn phần kể cả khi position trùng giữa các Column. Vì UI cuộn riêng từng Column, wire proposal yêu cầu `columnId` và cursor phải chỉ dùng lại trong cùng `boardId`, `columnId` và sort; cursor sai scope trả `400 INVALID_CURSOR` (đề xuất). Query names, page envelope `{items,nextCursor,hasMore}`, lỗi và consistency khi dữ liệu bị move vẫn cần duyệt. `columnId` là API scope đề xuất, không phải điều kiện toán học để cursor xác định thứ tự. Client dedupe theo `cardId`, dùng realtime nếu có và hiện banner yêu cầu reload khi phát hiện bất nhất. Không có snapshot isolation giữa các trang.
-
-Shape Card tối thiểu đề xuất: `{id, boardId, columnId, title, position, assigneeId}`; detail thêm `description`, `dueDate`, timestamps nếu được duyệt. Card create nhận `columnId`, `title`, `description?`, `assigneeId?`, `dueDate?`; move nhận `{toColumnId,toPosition}`; assign nhận `{assigneeId: UUID|null}`. Comment create nhận `{content,mentionedUserIds?}`; Comment response hiện chưa thống nhất có trả `mentionedUserIds` hay profile embed. `Card.status` cần chốt bỏ hay derive từ Column vì demo hiện giữ `TODO/IN_PROGRESS/DONE` riêng và không đổi theo move.
-
-Error mapping đề xuất: `400 INVALID_CURSOR`/validation; `401 UNAUTHENTICATED`; `403 PROJECT_ACCESS_DENIED`; `404 BOARD_NOT_FOUND`/`CARD_NOT_FOUND`/`COLUMN_NOT_FOUND`; `409 PROJECT_NOT_ACTIVE`, `COLUMN_NOT_IN_BOARD`, `ASSIGNEE_NOT_PROJECT_MEMBER`. Mã/status cụ thể chưa duyệt. Gateway identity/context là nguồn actor; không tin `X-User-Id` do client tự gửi. Cần chốt lớp nào đọc Redis authorization snapshot để chặn request Card sau khi Membership revoke, vì Internal REST giữa Task và Board đang hoãn.
-
-Khi Member bị gỡ/tự rời hoặc Account bị xóa, board-service thu hồi quyền hiệu lực trước rồi phát cleanup event; Task unassign chạy nền, idempotent và giữ Comment/attribution. Không dùng worker cleanup làm điều kiện authorization. Nếu cleanup cũ còn pending, API phải ngăn lần tham gia/assignment mới hoặc phân biệt membership generation để event cũ không xóa assignment mới; policy còn mở. Profile author được compose bằng User bulk profile + Membership; response embed hay client composition chưa chốt. WebSocket protocol cũng còn mở. Xem [contract chung](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế).
+Các use case inbound chưa có implementation, nên bảng trên mô tả mapping controller/handler, không khẳng định các thao tác CRUD đã chạy end-to-end.

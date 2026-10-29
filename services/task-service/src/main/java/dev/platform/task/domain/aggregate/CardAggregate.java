@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +20,7 @@ import lombok.Setter;
 public class CardAggregate {
 
     private Long id;
+    private Long projectId;
     private Long boardId;
     private Long columnId;
     private String title;
@@ -26,6 +28,10 @@ public class CardAggregate {
     private Status status = Status.TODO;
     private int position;
     private UUID assigneeId;
+    private Long assigneeMembershipVersion;
+    private UUID assigneeAssignedByUserId;
+    @Setter(AccessLevel.NONE)
+    private boolean assigneeChangeRequested;
     private OffsetDateTime dueDate;
     private List<CommentValue> comments = new ArrayList<>();
 
@@ -39,8 +45,12 @@ public class CardAggregate {
     }
 
     // Tạo thẻ mới, title bắt buộc, position >= 0.
-    public static CardAggregate create(Long boardId, Long columnId, String title,
-            String description, UUID assigneeId, OffsetDateTime dueDate, int position) {
+    public static CardAggregate create(Long projectId, Long boardId, Long columnId, String title,
+            String description, UUID assigneeId, Long assigneeMembershipVersion, UUID assignedByUserId,
+            OffsetDateTime dueDate, int position) {
+        if (projectId == null) {
+            throw new IllegalArgumentException("projectId khong duoc null");
+        }
         if (boardId == null) {
             throw new IllegalArgumentException("boardId khong duoc null");
         }
@@ -54,6 +64,7 @@ public class CardAggregate {
             throw new IllegalArgumentException("position khong duoc am");
         }
         CardAggregate card = new CardAggregate();
+        card.setProjectId(projectId);
         card.setBoardId(boardId);
         card.setColumnId(columnId);
         card.setTitle(title.trim());
@@ -61,6 +72,9 @@ public class CardAggregate {
         card.setStatus(Status.TODO);
         card.setPosition(position);
         card.setAssigneeId(assigneeId);
+        card.setAssigneeMembershipVersion(assigneeMembershipVersion);
+        card.setAssigneeAssignedByUserId(assignedByUserId);
+        card.assigneeChangeRequested = assigneeId != null;
         card.setDueDate(dueDate);
         card.setComments(new ArrayList<>());
         return card;
@@ -79,11 +93,15 @@ public class CardAggregate {
     }
 
     // Gán người mới, trả true nếu đổi để bắn event.
-    public boolean assign(UUID newAssignee) {
-        if (Objects.equals(this.assigneeId, newAssignee)) {
+    public boolean assign(UUID newAssignee, Long membershipVersion, UUID assignedByUserId) {
+        if (Objects.equals(this.assigneeId, newAssignee)
+                && Objects.equals(this.assigneeMembershipVersion, membershipVersion)) {
             return false;
         }
         this.assigneeId = newAssignee;
+        this.assigneeMembershipVersion = newAssignee == null ? null : membershipVersion;
+        this.assigneeAssignedByUserId = newAssignee == null ? null : assignedByUserId;
+        this.assigneeChangeRequested = true;
         return true;
     }
 }

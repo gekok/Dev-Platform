@@ -1,191 +1,116 @@
 # board_db — database do board-service sở hữu
 
-**Database local:** `board_db` (PostgreSQL). Project và Board cùng thuộc database này theo topology Kỳ 1. Tài liệu phân biệt mapping trong skeleton với schema mục tiêu Project-first.
+**Database local:** board_db (PostgreSQL). Theo kiến trúc Kỳ 1, board-service sẽ sở hữu Project cùng Membership, Invitation, Board và Column; project-service không phải deployable riêng. Không có foreign key sang database của user/task/notification service. Entity mapping hiện tại chưa phải migration đã triển khai.
 
-**Thiết kế mục tiêu Kỳ 1:** board-service sở hữu Project, ProjectMember, Invitation, Board và Column. Mỗi Project có một Owner; Membership unique theo `(project_id, user_id)`; Invitation `PENDING` chỉ tạo Membership sau khi Accept. Board thuộc Project, `key` lowercase unique trong Project. Các quan hệ còn thiếu DDL được ghi ở phần ERD mục tiêu; Outbox/Inbox lưu trong `board_db`.
+Đọc [Shared README](../../../shared/README.md) để biết event envelope và mapping Outbox/Inbox.
 
-**Ghi chú source:** skeleton còn các class `domain.Board` và `domain.BoardColumn` được đánh dấu `@Deprecated` cùng mapping hạ tầng mới. Đây là tình trạng code, không phải schema mục tiêu cần giữ nguyên.
+## Runtime mapping hiện có trong JPA
 
-## Mapping trong skeleton hiện tại
+### boards
 
-### `boards`
+| Cột | Mapping hiện tại |
+|---|---|
+| id | BIGINT identity, PK |
+| name | varchar(255), not null |
+| board_key | varchar(20), not null, unique toàn bảng trong mapping hiện tại |
+| owner_id | UUID, not null; scalar Account reference |
+| columns | quan hệ JPA nội bộ với board_columns |
 
-| Cột | Kiểu/mapping | Constraint |
-|---|---|---|
-| `id` | BIGINT | PK, `IDENTITY` |
-| `name` | varchar(255) | not null |
-| `board_key` | varchar(20) | not null, unique toàn bảng |
-| `owner_id` | UUID | not null; tham chiếu logic tới Account, không FK chéo DB |
+BoardEntity hiện chưa có project_id; owner_id trực tiếp là mapping cũ Board-first. Không dùng nó làm schema đích Project-first.
 
-Board hiện được sở hữu trực tiếp bởi `owner_id`. Không có `project_id`. Key validation hiện cũ theo chữ hoa/số; đó không phải quy tắc key mục tiêu.
+### board_columns
 
-### `board_columns`
+| Cột | Mapping hiện tại |
+|---|---|
+| id | BIGINT identity, PK |
+| board_id | FK nội bộ tới `boards.id`, not null |
+| name | varchar(100), not null |
+| position | integer, not null; thứ tự hiện được đọc tăng dần |
 
-| Cột | Kiểu/mapping | Constraint |
-|---|---|---|
-| `id` | BIGINT | PK, `IDENTITY` |
-| `board_id` | BIGINT | not null; quan hệ JPA tới `boards` |
-| `name` | varchar(100) | not null |
-| `position` | integer | not null |
+Board–Column là quan hệ nội bộ `board_db`; chưa có migration version.
 
-`BoardEntity.columns` có `cascade=ALL` và `orphanRemoval=true`, được đọc theo `position ASC`. Ba Column mặc định được tạo trong domain khi request không truyền danh sách rỗng; không phải dữ liệu mặc định trong DB.
+## Schema logic mục tiêu Kỳ 1
 
-## Scaffold operation cascade
-
-### `project_deletion_operations`
-
-| Cột | Kiểu/mapping | Constraint |
-|---|---|---|
-| `project_deletion_id` | UUID | PK |
-| `operation_id` | UUID | not null; operation Account cha |
-| `project_id` | BIGINT | not null |
-| `board_ids_json` | TEXT | not null |
-| `task_data_deleted`, `notifications_deleted` | boolean | not null |
-| `status` | varchar(30) | not null; `PENDING`, `WAITING_FOR_DOWNSTREAM`, `COMPLETED`, `FAILED`; bắt đầu `PENDING` |
-| `created_at`, `updated_at` | timestamptz | not null |
-
-Entity có index trên `operation_id` và `project_id`. Hiện bảng operation có entity/repository nhưng chưa có Project graph hay coordinator adapter để chạy cascade.
-
-## Thiết kế Project-first chưa có trong runtime schema
-
-Các bảng Project, Membership và Invitation; quan hệ Board→Project; key chữ thường unique theo Project; trạng thái Project/Board và các constraint nghiệp vụ chưa có entity/migration trong service. Phần “Schema mục tiêu Project-first” bên dưới là logical design để lấp gap, không phải DDL đã duyệt. Field/length, index không suy ra từ quyết định, và cách thực thi một số invariant được đánh dấu đề xuất/còn mở thay vì coi là implementation contract.
-
-## Messaging và ranh giới dữ liệu
-
-Outbox/Inbox dùng mapping từ `shared/messaging-support` nhưng phải được lưu trong `board_db`. Card/Comment thuộc `task_db`; Notification thuộc `notification_db`. Không tạo JPA foreign key chéo database. Xem [API](api.md), [quyết định chung](../../../docs/project/architecture-decisions.md) và [hướng dẫn skeleton](../../../docs/project/account-deletion-skeleton-guide.md).
-
-## ERD runtime
-
-```mermaid
-erDiagram
-    BOARDS ||--o{ BOARD_COLUMNS : "board_id FK"
-    PROJECT_DELETION_OPERATIONS {
-        uuid project_deletion_id PK
-        uuid operation_id
-        bigint project_id
-    }
-    OUTBOX_EVENTS {
-        uuid event_id PK
-    }
-    INBOX_EVENTS {
-        string consumer_name PK
-        uuid event_id PK
-    }
-```
-
-`boards` hiện không chứa `project_id`; vì vậy runtime ERD không vẽ quan hệ Board→Project deletion operation. `project_id` và `operation_id` trong bảng operation là scalar tham chiếu logic, không phải quan hệ JPA/FK sang Project hoặc user-service. `board_columns.board_id` là quan hệ JPA thật.
-
-## Constraint, index và persistence detail
-
-| Table | Keys/constraints/indexes | Quan hệ / hành vi |
-|---|---|---|
-| `boards` | PK `id`; unique `board_key` toàn bảng | `owner_id` UUID là tham chiếu logic tới Account; chưa có `project_id` |
-| `board_columns` | PK `id`; `board_id`, `name`, `position` not-null | FK/JPA `ManyToOne` tới `boards`; Board collection dùng cascade `ALL` + `orphanRemoval`; load order `position ASC` |
-| `project_deletion_operations` | PK `project_deletion_id`; index `operation_id`, `project_id` | Project/parent operation IDs là scalar, chưa có FK; `board_ids_json` lưu danh sách Board dạng TEXT |
-| `outbox_events` | PK `event_id`; index `(status, next_attempt_at, created_at)` | Mapping shared được ghi trong `board_db` |
-| `inbox_events` | Composite PK `(consumer_name, event_id)` | Mapping shared được ghi trong `board_db` |
-
-Không có index khai báo cho `board_columns.board_id` hoặc unique theo cặp `(board_id, position)`. Cần chốt và tạo bằng migration nếu query/ordering production yêu cầu. `board_key` runtime uppercase và unique toàn DB; không tương đương key lowercase unique trong Project ở target.
-
-## Schema mục tiêu Project-first (logical design, chưa phải DDL đã duyệt)
-
-```mermaid
-erDiagram
-    PROJECT ||--o{ PROJECT_MEMBER : contains
-    PROJECT ||--o{ PROJECT_INVITATION : has
-    PROJECT ||--o{ BOARD : owns
-    BOARD ||--o{ BOARD_COLUMN : contains
-    PROJECT_MEMBER }o..|| USER : "user UUID; logical reference"
-    PROJECT_INVITATION }o..|| USER : "recipient UUID; logical reference"
-    PROJECT }o..|| USER : "single owner UUID; logical reference"
-```
-
-Các bảng dưới đây là thiết kế logical để lấp schema gap, không khẳng định table/entity/migration đã tồn tại. Rule nghiệp vụ chốt và field/constraint đề xuất được tách rõ; schema migration phải có version, công cụ migration chưa chọn.
+Các bảng dưới đây mô tả thiết kế Project-first đã thống nhất, **chưa phải JPA mapping hoặc migration hiện có**. Tên bảng/cột dùng snake_case. Project/Board/Column dùng ID số; User dùng UUID scalar. Kích thước chuỗi và một số timestamp cần được phản ánh nhất quán vào API validation trước khi tạo migration.
 
 ### `projects`
 
-| Field | Kiểu mục tiêu | Khóa/null | Trạng thái |
-|---|---|---|---|
-| `id` | BIGINT | PK, not null | ID Project số đã thống nhất |
-| `name` | varchar | not null | Field cần có; length/normalization còn mở |
-| `status` | varchar/enum | not null; `ACTIVE`, `COMPLETED`, `CANCELLED` | Tập giá trị đã chốt; transition chưa chốt |
-| `created_at`, `updated_at` | timestamptz | đề xuất not null | Audit field đề xuất |
+| Cột | Kiểu/constraint mục tiêu | Ý nghĩa |
+|---|---|---|
+| `id` | BIGINT identity, PK | Project ID |
+| `name` | varchar, not null | Tên Project |
+| `status` | varchar(20), not null, default `ACTIVE`; CHECK `ACTIVE`, `COMPLETED`, `CANCELLED` | Vòng đời Project |
+| `created_by_user_id` | UUID, not null | Scalar reference đến Account tạo Project; không phải FK chéo DB |
+| `created_at`, `updated_at` | timestamptz, not null | Thời điểm UTC |
 
-Owner được biểu diễn ở `project_members` với role `OWNER`, tránh hai nguồn `owner_id`/membership không đồng nhất. API `ownerId` có thể được suy ra từ Owner membership. Đây là schema recommendation cần duyệt trước DDL.
+Owner hiện tại được xác định từ đúng một Membership có role `OWNER`; không lưu thêm `owner_id` làm nguồn thứ hai trong `projects`. Nếu API trả `ownerId`, giá trị đó được suy ra từ Membership. Project creation và Owner Membership phải commit cùng transaction. Mỗi Project phải có một Owner; partial unique index ngăn có hơn một Owner đang hoạt động, còn việc bảo đảm có ít nhất một Owner thuộc transaction/business rule.
 
-### `project_members`
+### `project_memberships`
 
-| Field | Kiểu mục tiêu | Khóa/null | Trạng thái |
-|---|---|---|---|
-| `project_id` | BIGINT | PK part, FK → `projects.id`, not null | Cùng board_db nên có FK vật lý |
-| `user_id` | UUID | PK part, not null | User service sở hữu; chỉ là logical reference, không FK cross-DB |
-| `role` | varchar/enum | not null; `OWNER` hoặc `MEMBER` | Role Project; Admin hệ thống không phải role tại đây |
-| `joined_at` | timestamptz | đề xuất not null | Audit field đề xuất |
+| Cột | Kiểu/constraint mục tiêu | Ý nghĩa |
+|---|---|---|
+| `project_id` | BIGINT, PK thành phần, FK tới `projects.id` | Project sở hữu Membership |
+| `user_id` | UUID, PK thành phần | Account; scalar reference, không FK sang `user_db` |
+| `role` | varchar(20), not null; CHECK `OWNER`, `MEMBER` | Vai trò trong Project |
+| `status` | varchar(20), not null; CHECK `ACTIVE`, `REMOVED` | Chỉ `ACTIVE` được cấp quyền |
+| `joined_at` | timestamptz, not null | Thời điểm tham gia lần hiện hành |
+| `removed_at` | timestamptz, nullable | Thời điểm gỡ/rời; null khi đang active |
+| `updated_at` | timestamptz, not null | Lần cập nhật gần nhất |
 
-Constraint chốt: unique `(project_id,user_id)`. Đề xuất partial unique index trên `project_id WHERE role='OWNER'` để chặn hơn một Owner; tạo Project và Owner membership trong cùng transaction để bảo đảm ít nhất một Owner. Owner không thể tự rời/gỡ; Member rời hoặc bị gỡ thì membership bị xóa trước, assignment cleanup chạy nền.
+PK `(project_id,user_id)` ngăn Membership đang lưu bị trùng. Rejoin chuyển Membership về `ACTIVE` sau Accept và phải lấy generation mới từ `project_membership_versions`. Tạo Membership, Outbox event, version và snapshot-sync job của thao tác Accept/gỡ phải được đồng bộ theo transaction đã nêu trong architecture decisions. Unique partial index trên `(project_id)` với điều kiện `role='OWNER' AND status='ACTIVE'` ngăn hai Owner đồng thời. Index `(user_id,status,project_id)` phục vụ liệt kê Project theo Account.
 
-### `project_invitations`
+### `invitations`
 
-| Field | Kiểu mục tiêu | Khóa/null | Ý nghĩa/trạng thái |
-|---|---|---|---|
-| `invitation_id` | UUID | PK, not null | ID riêng; kiểu/strategy còn là đề xuất |
-| `project_id` | BIGINT | FK → `projects.id`, not null | Project nhận lời mời |
-| `invited_user_id` | UUID | not null, logical reference | User đã tồn tại; không FK sang `user_db` |
-| `invited_by_user_id` | UUID | not null, logical reference | Actor Owner |
-| `status` | varchar/enum | not null | `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED`, `EXPIRED` là tập đề xuất; chỉ Accept tạo Membership |
-| `created_at` | timestamptz | đề xuất not null | Thời điểm tạo |
-| `responded_at`, `expires_at` | timestamptz | nullable | Field thời gian đề xuất; expiry policy chưa chốt |
+| Cột | Kiểu/constraint mục tiêu | Ý nghĩa |
+|---|---|---|
+| `id` | BIGINT identity, PK | Invitation ID dùng trong route `{inviteId}` |
+| `project_id` | BIGINT, not null, FK tới `projects.id` | Project đích |
+| `user_id` | UUID, not null | Người nhận; chỉ mời Account đã có, không FK sang `user_db` |
+| `invited_by_user_id` | UUID, not null | Owner tạo lời mời; scalar reference |
+| `status` | varchar(20), not null; CHECK `PENDING`, `ACCEPTED`, `REJECTED`, `CANCELLED` | Trạng thái lời mời |
+| `created_at`, `updated_at` | timestamptz, not null | Thời gian tạo/cập nhật |
+| `responded_at` | timestamptz, nullable | Thời điểm Accept/Reject |
 
-Đề xuất partial unique `(project_id,invited_user_id) WHERE status='PENDING'` để chặn pending trùng; index `(invited_user_id,status,created_at)` cho inbox lời mời và `(project_id,status,created_at)` cho Owner list lời mời trong Project. Thời hạn, mời lại sau REJECTED/CANCELLED/EXPIRED và giữ lịch sử Invitation cần chốt.
+Unique partial index trên `(project_id,user_id)` với điều kiện `status='PENDING'` ngăn lời mời chờ trùng. Index `(user_id,status,created_at)` phục vụ inbox và `(project_id,status,created_at)` phục vụ Owner xem lời mời của Project. Accept đổi Invitation sang `ACCEPTED` và tạo/reactivate Membership trong cùng transaction. Chưa thêm `expires_at`/`EXPIRED` vì chính sách hết hạn chưa chốt; mời email chưa đăng ký thuộc Kỳ 2.
 
-Board-service phải xác thực `invited_user_id` còn tồn tại/ACTIVE lúc create và revalidate khi Accept; client search không phải integrity check. Không có FK tới `user_db`. Vì Internal REST chưa sẵn sàng, nguồn check/freshness (ví dụ versioned Account snapshot) và hành vi khi không xác minh được còn là blocker trước migration/endpoint.
+### `boards` và `board_columns` mục tiêu
 
-### `boards` và `board_columns`
+| Bảng/cột | Kiểu/constraint mục tiêu |
+|---|---|
+| `boards.id` | BIGINT identity, PK |
+| `boards.project_id` | BIGINT, not null, FK nội bộ tới `projects.id` |
+| `boards.name` | varchar(255), not null |
+| `boards.board_key` | varchar(20), not null; chữ thường theo input contract |
+| `boards.status` | varchar(20), not null, default `ACTIVE`; CHECK `ACTIVE`, `COMPLETED`, `CANCELLED` |
+| `boards.created_by_user_id` | UUID, not null; scalar Account reference |
+| `boards.created_at`, `boards.updated_at` | timestamptz, not null |
+| `UNIQUE (project_id, board_key)` | Board key chỉ unique trong Project |
+| `board_columns.id` | BIGINT identity, PK |
+| `board_columns.board_id` | BIGINT, not null, FK tới `boards.id` |
+| `board_columns.name` | varchar(100), not null |
+| `board_columns.position` | integer, not null, CHECK `position >= 0` |
+| `UNIQUE (board_id, position)` | Không trùng vị trí Column trong Board |
 
-| Table/field | Kiểu mục tiêu | Khóa/constraint | Ghi chú |
-|---|---|---|---|
-| `boards.id` | BIGINT | PK | ID Board số |
-| `boards.project_id` | BIGINT | FK → `projects.id`, not null | Project và Board cùng board_db |
-| `boards.name` | varchar | not null | Chiều dài/validation cần chốt |
-| `boards.board_key` | varchar | not null; unique `(project_id,board_key)` | Chốt lowercase và unique trong Project; đề xuất DB check lowercase |
-| `boards.status` | varchar/enum | not null; `ACTIVE`, `COMPLETED`, `CANCELLED` | Tập status đã chốt; transition chưa chốt |
-| `boards.created_by_user_id` | UUID | logical reference | Audit actor, đề xuất; không quyết định quyền |
-| `boards.created_at`, `updated_at` | timestamptz | đề xuất | Audit fields cần chốt |
-| `board_columns.id` | BIGINT | PK | ID Column số |
-| `board_columns.board_id` | BIGINT | FK → `boards.id`, not null | Cascade khi xóa Board |
-| `board_columns.name` | varchar | not null | Chiều dài và uniqueness/case-folding cần chốt |
-| `board_columns.position` | integer | not null | Order trong Board; index `(board_id,position)` đề xuất |
+Target bỏ `boards.owner_id`: quyền Board kế thừa Project Membership. Board key phải được validate chữ thường ở API; việc tự chuẩn hóa chữ hoa chưa được chọn. Project/Board/Column cùng `board_db` nên có FK nội bộ; không thêm FK tới User DB hay service DB khác.
 
-Index đề xuất: unique `(project_id,board_key)` cho Board picker/lookup; `(project_id,status)` nếu lọc theo trạng thái; `(board_id,position)` cho thứ tự Column. Chưa chốt unique `(board_id,position)`: nếu cần constraint này, reorder phải dùng cập nhật hai bước hoặc unique constraint deferred để tránh va chạm giữa các vị trí trong cùng transaction. Các index ngoài unique key chưa benchmark.
+## Mapping snapshot/membership generation đã có trong source
 
-### Cleanup operations và messaging
+### project_membership_versions
 
-`project_deletion_operations` hiện có ở skeleton: `project_deletion_id` UUID PK, `operation_id` UUID, `project_id` BIGINT, `board_ids_json`, flags xác nhận Task/Notification, status và timestamps. Giữ operation record sau khi graph bị xóa; không FK tới `projects` để không cản xóa. Status/response/event fields cuối cùng còn mở.
+Composite key (project_id, user_id), `membership_version` BIGINT, `authorization_version` BIGINT và `row_version` optimistic lock. `membership_version` giữ generation qua remove và tăng khi rejoin; `authorization_version` tăng với mọi thay đổi trạng thái phân quyền, gồm remove, role change và rejoin. `row_version` chỉ là optimistic lock. Bảng này là persistence seam, chưa có Project/Membership aggregate hoặc API mutation nối vào.
 
-Đề xuất bảng `member_assignment_cleanup_operations`: `cleanup_operation_id` UUID PK; `operation_id` UUID của account deletion nếu có; `project_id` BIGINT; `target_user_id` UUID; `board_ids_json`; `status`; `attempt_count`; `last_error`; `created_at`, `updated_at`, `completed_at`. Mọi ID ngoài `board_db` là scalar. Tạo operation + Outbox `MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED` trong cùng transaction Membership revoke; API không chờ Task worker. Cần chốt unique business dedupe key và quan hệ operation con với account operation khi một Account thuộc nhiều Project.
+### project_authorization_snapshot_sync_jobs
 
-### Authorization revocation và cleanup/rejoin race
+job_id UUID PK; operation_id UUID unique; project_id; user_id; membership_version; authorization_version; snapshot_json; status; attempt_count; last_error; created_at; updated_at; next_attempt_at. Unique constraint trên (project_id, user_id, authorization_version), index theo status/next_attempt_at. `operation_id` liên kết lần thay đổi quyền với trạng thái sync bền vững để status endpoint tương lai tra cứu. Worker dùng `authorization_version` cho Redis compare-and-set và retry. Redis cho kết quả APPLIED, ALREADY_CURRENT hoặc SUPERSEDED; job bị version mới hơn vượt qua có trạng thái `SUPERSEDED`, không phải xác nhận snapshot cũ đã có hiệu lực. Cờ worker mặc định tắt.
 
-Membership revoke phải chặn quyền hiệu lực trước khi API xác nhận thành công; assignment cleanup chỉ chạy nền. Outbox/RabbitMQ async không thể tự loại bỏ snapshot Redis cũ khỏi quyết định authorization. Nếu cần cache rebuild hoặc kiểm tra version, schema mục tiêu phải giữ được thông tin revoke/version sau khi row Membership bị xóa. Bảng revocation ledger/tombstone (ví dụ `project_id`, `user_id`, `membership_version`, `revoked_at`) là phương án đề xuất, chưa được chọn; Redis key/schema và điểm đồng bộ trước response vẫn mở.
+Các bảng Project/Membership/Invitation và `boards.project_id` ở trên chưa có JPA mapping hay migration. `projects` không có `project_key` vì field/key này chưa xuất hiện trong contract Project-first; `Board.key` là chữ thường và unique trong phạm vi Project.
 
-Failure path cần lưu được: Membership + Outbox đã commit nhưng Redis fence chưa được xác nhận. Chỉ dựa vào row Membership đã xóa sẽ không đủ để request retry tiếp tục việc revoke. Có thể dùng durable `authorization_revocation_operations` trong `board_db` gồm `revocation_id` UUID PK, `project_id`, `user_id`, `membership_version`, `status`, `requested_at`, `confirmed_at`, `last_error`; IDs bên ngoài vẫn là scalar. Đây là schema candidate, chưa được chốt. Retry/reconciler phải tiếp tục fence; endpoint không trả thành công khi quyền vẫn có thể được cấp từ snapshot cũ. Tên status, uniqueness và thứ tự Redis/DB commit cần chốt cùng với cơ chế authorization.
+## Outbox/Inbox và Redis
 
-Khi `member_assignment_cleanup_operations` còn hoạt động, một lời mời/Accept lại có thể đua với worker cũ và làm worker bỏ `assignee_id` của lần tham gia mới. Cần chọn trước migration: chặn re-invite/Accept/assign cho cặp `(project_id,user_id)` đến khi cleanup COMPLETED, hoặc gắn membership/assignment generation để cleanup chỉ chạm đúng generation đã revoke. Không dùng unique pending Invitation để giả định race này đã được giải quyết.
+outbox_events/inbox_events từ shared/messaging-support nằm trong board_db riêng. Khi nối mutation, source Membership, Outbox event và snapshot-sync job phải commit trong cùng transaction. Redis là authorization snapshot dùng chung, không phải database nguồn; Task đọc snapshot trực tiếp. Snapshot apply mới là mốc revoke đã chốt.
 
-`outbox_events`/`inbox_events` được tạo riêng trong `board_db`. Inbox unique `(consumer_name,event_id)`; Outbox event retry giữ cùng `eventId`, `schemaVersion`, `aggregateVersion` và payload. Xem [shared mappings](../../../shared/README.md#physical-table-mappings).
+Shared mapping chỉ là thư viện JPA/messaging; mỗi service có bảng Outbox/Inbox riêng. Bảng snapshot job và membership version hiện chưa có migration. Các unique/check/index mục tiêu cần được tạo bằng migration khi migration tool được chọn; không dùng `ddl-auto=update` làm schema versioning.
 
-### Invariant, index và ranh giới
+## Phạm vi Kỳ 1
 
-- Project tạo cùng Owner membership; Membership unique theo `(project_id,user_id)`; Account được mời phải tồn tại và chỉ có Membership sau khi Accept.
-- `project_id` là owner boundary cho mọi Board; `board_id`/`project_id` references trong DB này dùng FK nội bộ. Không tạo FK tới `user_db`, `task_db` hoặc `notification_db`.
-- Gỡ Member: thu hồi membership trước; unassign Card nền; giữ Comment/attribution. Redis snapshot cũ không được dùng để cấp quyền sau khi membership đã bị gỡ; cơ chế invalidation/fencing còn mở.
-- Membership revoke phải có một điểm đồng bộ khiến request tiếp theo bị từ chối trước response thành công; RabbitMQ event là propagation/cleanup, không phải bằng chứng revoke đã có hiệu lực.
-- ID Invitation, field audit, unique pending invitation, expiry, status transitions và operation state machine là đề xuất cần chốt; không được coi là DDL đã duyệt.
-
-## Database local và migration
-
-- Compose tạo `board_db` trên PostgreSQL port `5433`; `board-service` mặc định dùng `localhost:5433/board_db`.
-- Local config hiện dùng `spring.jpa.hibernate.ddl-auto=update`, `show_sql=true`. Repo chưa có migration SQL/Flyway/Liquibase; đây không phải migration strategy production.
-- Outbox/Inbox entities của `shared/messaging-support` được scan và lưu trong `board_db`; không có database `shared_db`.
-- Cột/kiểu chi tiết của bảng messaging chung xem [shared physical mappings](../../../shared/README.md#physical-table-mappings); mapping được tạo riêng trong `board_db`.
-- Project, Membership, Invitation và `boards.project_id` chưa có entity/repository/migration trong code hiện tại. Schema mục tiêu ở trên là logical design, không khẳng định persistence đã tồn tại.
+Kỳ 1 không có project_deletion_operations, Account deletion operation, Project cascade coordinator/job, DELETING status hay write lock cascade. Account deletion và Owner succession được ghi định hướng ở [Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md).

@@ -21,38 +21,37 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Membership | `GET` | `/api/v1/projects/{projectId}/members` | Liệt kê Member chính thức |
 | Invitation | `POST` | `/api/v1/projects/{projectId}/invitations` | Owner mời tài khoản đã tồn tại; trạng thái ban đầu `PENDING` |
 | Invitation | `GET` | `/api/v1/projects/{projectId}/invitations?status=PENDING` | Owner xem các lời mời của Project để theo dõi/hủy; route đề xuất |
-| Invitation | `GET` | `/api/v1/users/me/project-invitations` | Danh sách lời mời gửi tới tài khoản hiện tại; route đề xuất |
+| Invitation | `GET` | `/api/v1/projects/invitations` | Danh sách lời mời gửi tới tài khoản hiện tại; recipient lấy từ identity đã xác thực |
 | Invitation | `POST` | `/api/v1/projects/{projectId}/invitations/{inviteId}/accept` | Người được mời chấp nhận; lúc này mới tạo Membership |
 | Invitation | `POST` | `/api/v1/projects/{projectId}/invitations/{inviteId}/reject` | Người được mời từ chối; route đề xuất |
 | Invitation | `DELETE` | `/api/v1/projects/{projectId}/invitations/{inviteId}` | Owner hủy lời mời; route đề xuất |
-| Membership | `DELETE` | `/api/v1/projects/{projectId}/members/{userId}` | Owner gỡ Member hoặc Member tự rời Project; Owner duy nhất không thể tự gỡ |
+| Membership | `DELETE` | `/api/v1/projects/{projectId}/members/{userId}` | Owner gỡ Member hoặc Member tự rời Project; Owner duy nhất không thể tự gỡ; trả operation handle khi Redis apply còn pending |
 | Board | `GET`, `POST` | `/api/v1/projects/{projectId}/boards` | Liệt kê và tạo Board trong Project |
 | Board | `GET` | `/api/v1/boards/{boardId}` | Xem Board và Columns |
 | Column | `POST` | `/api/v1/boards/{boardId}/columns` | Tạo Column |
 | Column | `PATCH` | `/api/v1/boards/{boardId}/columns/order` | Sắp xếp lại Columns |
-| Card | `GET`, `POST` | `/api/v1/boards/{boardId}/cards` | Liệt kê và tạo Card |
-| Card | `GET` | `/api/v1/cards/{cardId}` | Xem Card |
-| Card | `PATCH` | `/api/v1/cards/{cardId}/move` | Chuyển Card |
-| Card | `PATCH` | `/api/v1/cards/{cardId}/assignee` | Gán người xử lý |
-| Comment | `GET`, `POST` | `/api/v1/cards/{cardId}/comments` | Xem và tạo Comment |
+| Card | `GET`, `POST` | `/api/v1/projects/{projectId}/boards/{boardId}/cards` | Liệt kê và tạo Card trong Project/Board |
+| Card | `GET` | `/api/v1/projects/{projectId}/cards/{cardId}` | Xem Card trong Project |
+| Card | `PATCH` | `/api/v1/projects/{projectId}/cards/{cardId}/move` | Chuyển Card |
+| Card | `PATCH` | `/api/v1/projects/{projectId}/cards/{cardId}/assignee` | Gán người xử lý |
+| Comment | `GET`, `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Xem và tạo Comment |
 | Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
 | Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
 | Account Admin | `POST` | `/api/v1/admin/accounts` | Tạo Account hệ thống; route/payload đề xuất, chờ chốt |
-| Account Admin | `DELETE` | `/api/v1/admin/accounts/{accountId}` | Khởi tạo cascade xóa Account, trả `202` + `operationId`; route đề xuất |
-| Account Admin | `GET` | `/api/v1/admin/deletion-operations/{operationId}` | Đọc tiến độ cascade mà `statusUrl` trả về; route/response đề xuất |
 | Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
 | Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
 
 ### Quy tắc đã thống nhất và phần còn mở
 
-- Project là ranh giới membership; Board thuộc một Project. `Project` và `Board` dùng ID số; User dùng UUID.
+- Project là ranh giới membership; Board thuộc một Project. ID Project, Board, Column, Invitation, Card, Comment và Notification là số; User dùng UUID.
 - Owner và Member có quyền thao tác công việc như nhau. Owner có thêm quyền tạo Board, quản lý trạng thái Project/Board và membership.
 - Kỳ 1 chỉ thêm tài khoản đã có trong hệ thống bằng Invitation; người nhận chấp nhận mới trở thành Member. Mời người ngoài hệ thống và đổi vai trò để Kỳ 2.
 - Owner cần tra cứu tài khoản đang hoạt động để chọn người mời; API directory/bulk profile dưới đây là đề xuất bổ sung, chưa có route runtime.
 - Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
 - API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Cặp `(position,id)` đã tạo thứ tự toàn phần vì `id` là duy nhất. Wire proposal cho infinite-scroll riêng từng Column yêu cầu `columnId` và cursor ràng buộc với `boardId` + `columnId` + sort; đây là scope API/UI cần duyệt, không phải điều kiện toán học của cursor.
-- Gateway là ranh giới xác thực mục tiêu. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
-- Route/payload Admin tạo Account, API directory/bulk profile, status operation, lỗi nghiệp vụ Membership/Invitation, policy list/reject/cancel/expiry Invitation, transition Project/Board, status Card, response envelope/cursor scope, retry/DLQ, phạm vi Notification cascade và service/storage/access validation của Board preference còn mở hoặc mới ở mức đề xuất.
+- Gateway là ranh giới xác thực mục tiêu. Identity phải được suy ra từ access token hợp lệ; Gateway loại bỏ/ghi đè identity header do client gửi trước khi chuyển tiếp. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
+- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. `SYSTEM_ADMIN` tự nó không cấp quyền Project; chính sách một Account đa vai trò vẫn mở.
+- Bootstrap System Admin đầu tiên và chính sách một Account đa vai trò còn mở. API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -62,49 +61,50 @@ Phần này bổ sung payload/response và quyền theo service để làm nền
 
 ### Quy ước chung
 
-- Client gọi qua Gateway và gửi `Authorization: Bearer <accessToken>`. `userId` của người gọi được suy ra từ danh tính đã xác thực; không nhận `userId` do client gửi để giả danh người gọi. Gateway hiện chưa hoàn thiện Auth/authorization.
-- Project, Board, Column, Card, Comment, Notification dùng ID số; Account dùng UUID. ID giữa database/service chỉ là tham chiếu logic, không tạo FK chéo database.
+- Client gọi qua Gateway và gửi `Authorization: Bearer <accessToken>`. `userId` của người gọi được suy ra từ danh tính đã xác thực; Gateway phải loại bỏ/ghi đè `X-User-Id` do client gửi. Gateway hiện chưa hoàn thiện Auth/authorization.
+- Account không ở trạng thái `ACTIVE` không được dùng để cấp hoặc giữ quyền. Kỳ 1 chưa triển khai Account deletion; trạng thái Account và authorization snapshot phải được xác minh qua nguồn có thẩm quyền, không xác minh được thì fail closed.
+- Project, Board, Column, Invitation, Card, Comment và Notification dùng ID số; Account dùng UUID. ID giữa database/service chỉ là tham chiếu logic, không tạo FK chéo database.
 - Lỗi mục tiêu dùng envelope `{ "code", "message", "timestamp", "path" }` theo format đang được tham chiếu trong tài liệu. Mã lỗi cụ thể phải ổn định theo từng nghiệp vụ; mapping nào chưa chốt được đánh dấu ở dưới.
-- Thành công ghi dữ liệu đồng bộ chỉ được trả sau khi business data và Outbox cùng commit. Khi gỡ Member, board-service thu hồi Membership trước; quyền phải bị chặn hiệu lực trên mọi request mới trước khi API báo thành công. Task unassign chạy nền, response không chờ worker. Nếu Gateway đọc snapshot, Redis invalidation/fencing là yêu cầu cần thiết; RabbitMQ bất đồng bộ một mình không bảo đảm thu hồi tức thời. Cơ chế cụ thể và điểm xác nhận còn mở; khi không chứng minh được quyền hiện hành, phải fail closed.
+- Thành công ghi dữ liệu đồng bộ chỉ được trả sau khi business data, Outbox và durable snapshot-sync job cùng commit. Khi gỡ Member, Redis apply snapshot mới là mốc thu hồi quyền; nếu apply còn pending thì trả `202` + `operationId`/`statusUrl`. Task unassign chạy nền độc lập, không chặn revoke completion. Task đọc snapshot từ Redis; snapshot thiếu/lỗi không được xác minh thì fail closed.
 - Mapping HTTP khung đề xuất: `401` chưa xác thực; `403` không có quyền; `404` resource không tồn tại/không thuộc phạm vi đọc; `400` input sai; `409` xung đột trạng thái/nghiệp vụ; `503 AUTHORIZATION_UNAVAILABLE` khi không thể chứng minh revoke/fence đã có hiệu lực và phải fail closed. Status/error code cụ thể vẫn cần chốt.
 
 ### `user-service`: Auth và System Admin
 
+Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; `SYSTEM_ADMIN` chỉ cho phép quản trị Account, không cấp quyền Project. Bootstrap Admin đầu tiên còn mở. Kỳ 1 không triển khai Account deletion.
+
 | Method | Route mục tiêu | Request | Thành công | Quyền/trạng thái |
 |---|---|---|---|---|
-| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 { "accessToken": "...", "tokenType": "Bearer" }` | Account `DELETING`/đã xóa không được cấp token; token claims/expiry còn mở |
+| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 { "accessToken": "...", "tokenType": "Bearer" }` | Chỉ Account `ACTIVE`; token claims/expiry còn mở |
 | `GET` | `/api/v1/users/me` | Không body | `200 { "id": "uuid", "email": "...", "fullName": "..." }` | Chỉ Account hiện tại |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tìm theo tên/email | `200 UserCandidate[]` (đề xuất) | User đã xác thực; chỉ trả Account đang hoạt động; privacy/limit còn mở |
 | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID batch trong query | `200 UserProfile[]` (đề xuất) | User đã xác thực; field tối thiểu phục vụ tên tác giả/member và tombstone |
 | `POST` | `/api/v1/admin/accounts` | Payload tạo Account **còn mở** | `201 AccountSummary` (đề xuất) | Chỉ System Admin; route/status/payload còn mở |
-| `DELETE` | `/api/v1/admin/accounts/{accountId}` | Không body | `202 { "operationId": "uuid", "status": "PENDING", "statusUrl": "..." }` | Chỉ System Admin; lưu operation + Outbox và chặn auth Account trước response |
-| `GET` | `/api/v1/admin/deletion-operations/{operationId}` | Path UUID | `200 DeletionOperation` (đề xuất) | Chỉ System Admin; route/response/error còn mở |
 
 `UserCandidate` đề xuất chỉ gồm `id`, `fullName`, `email`; `UserProfile` đề xuất gồm `id`, `displayName`, `accountDeleted`. Email chỉ trả trong luồng chọn người mời nếu quyền directory được duyệt. Bulk profile trả dấu tombstone cho UUID đã xóa để UI giữ attribution. “Không còn trong Project” được xác định bằng đối chiếu với Membership hiện tại do board-service sở hữu. Cách client compose hai API, quyền tra cứu directory, query syntax và giới hạn batch còn mở.
 
-`202` chỉ xác nhận flow đã được ghi bền vững và Account không còn được authorization path chấp nhận; không xác nhận service downstream đã hoàn tất. Nếu snapshot chưa thể bị fence, fail closed và không báo thành công. Ví dụ status operation `PENDING`, `PROCESSING`, `RETRYING`, `FAILED`, `COMPLETED` là đề xuất; state machine, retry visibility và response fields chưa được duyệt. Xóa Account không xóa Project mà Account chỉ là Member; Membership ở các Project đó bị thu hồi trước, rồi Card assignment được dọn nền. Project thuộc Owner được cascade theo `projectDeletionId`.
-
-`DeletionOperation` đề xuất trả `operationId`, `status`, `createdAt`, `updatedAt`, `totalProjects`, `completedProjects`, `pendingProjects`, `failedProjects` và các lỗi/bước cần retry đã được lọc an toàn. `statusUrl` từ DELETE phải trỏ đúng GET theo `operationId`; response fields, quyền đọc khi Account đã xóa và cách phân trang lỗi còn mở.
+Tạo/quản trị Account qua System Admin thuộc nghiệp vụ quản trị hệ thống, không cấp quyền Project. API xóa Account và operation status chưa thuộc Kỳ 1; soft delete, Owner succession và xử lý cascade được bàn ở Kỳ 2.
 
 ### `board-service`: Project, Membership, Invitation, Board, Column
 
 | Method | Route mục tiêu | Request/Query | Thành công | Quyền chính |
 |---|---|---|---|---|
 | `GET` | `/api/v1/projects` | Không body | `200 ProjectSummary[]` | Member/Owner thấy Project mình tham gia |
-| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }` | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ đã xác thực; System Admin không có quyền Project (quy tắc account đa vai trò còn mở) |
+| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }`; không nhận `ownerId`/`userId` của actor | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ `ACTIVE`, danh tính do Gateway xác thực; System Admin-only không có quyền Project; quyền dùng Project của Account đa vai trò còn mở |
 | `GET` | `/api/v1/projects/{projectId}` | Path ID | `200 ProjectDetail` | Member/Owner |
 | `GET` | `/api/v1/projects/{projectId}/members` | Path ID | `200 MemberSummary[]` | Member/Owner |
 | `POST` | `/api/v1/projects/{projectId}/invitations` | `{ "userId": "uuid" }` | `201 Invitation` có `status: PENDING` | Owner; tài khoản đã tồn tại |
 | `GET` | `/api/v1/projects/{projectId}/invitations?status=PENDING` | `status` tùy chọn | `200 Invitation[]` (đề xuất) | Owner xem lời mời của Project để theo dõi/hủy |
-| `GET` | `/api/v1/users/me/project-invitations` | Không body | `200 Invitation[]` | Người nhận hiện tại; route đề xuất |
+| `GET` | `/api/v1/projects/invitations` | Không body | `200 Invitation[]` | Người nhận hiện tại; recipient suy ra từ identity |
 | `POST` | `/api/v1/projects/{projectId}/invitations/{inviteId}/accept` | Không body | `201 Membership` (đề xuất; không gắn body với `204`) | Chỉ người nhận; accept + tạo Membership cùng transaction |
 | `POST` | `/api/v1/projects/{projectId}/invitations/{inviteId}/reject` | Không body | `204 No Content` (đề xuất) | Chỉ người nhận; route đề xuất |
 | `DELETE` | `/api/v1/projects/{projectId}/invitations/{inviteId}` | Không body | `204` (đề xuất) | Owner hủy Invitation; route đề xuất |
-| `DELETE` | `/api/v1/projects/{projectId}/members/{userId}` | Path IDs | `204` không body sau khi Membership bị revoke hiệu lực + Outbox commit | Owner gỡ Member; Member chỉ tự rời; Owner không tự gỡ |
+| `DELETE` | `/api/v1/projects/{projectId}/members/{userId}` | Path IDs | `202 { "operationId": "uuid", "status": "PENDING", "statusUrl": "..." }` khi Redis snapshot còn chờ apply | Owner gỡ Member; Member chỉ tự rời; Owner không tự gỡ |
 | `GET`, `POST` | `/api/v1/projects/{projectId}/boards` | Create: `{ "name": "...", "key": "ops", "columns": ["To Do"] }` | `200 BoardSummary[]` / `201 BoardDetail` | List Member/Owner; tạo Board chỉ Owner |
 | `GET` | `/api/v1/boards/{boardId}` | Path ID | `200 BoardDetail` kèm Columns | Member/Owner |
 | `POST` | `/api/v1/boards/{boardId}/columns` | `{ "name": "Review" }` | `201 Column` | Owner và Member theo quyền đã chốt |
 | `PATCH` | `/api/v1/boards/{boardId}/columns/order` | `{ "orderedColumnIds": [1, 2, 3] }` | `200 Column[]` | Quyền reorder còn mở |
+
+Project creation: `board-service` chỉ dùng actor ID từ identity context tin cậy do Gateway chuyển tiếp, không dùng `userId` trong payload hoặc header client tự gửi. Project và Membership `OWNER` được ghi cùng transaction. Request không có danh tính hợp lệ bị từ chối theo quy tắc `401`; danh tính đã xác thực nhưng không có quyền Account nghiệp vụ bị từ chối theo quy tắc `403`. Khi kiểm tra trạng thái Account cần nguồn xác minh vì internal REST chưa bảo mật; không xác minh được thì fail closed. Account deletion thuộc Kỳ 2.
 
 Payload/response field tham khảo:
 
@@ -131,7 +131,7 @@ Request mời đã chốt dùng `userId` của Account có sẵn, không dùng e
 
 Invitation `PENDING` không tạo Membership/quyền truy cập. Accept chỉ do người nhận gọi và tạo Membership trong transaction board-service. Client không chọn role; người nhận trở thành `MEMBER`. Không cho pending trùng cùng User+Project (409 đề xuất). Board-service phải kiểm tra User tồn tại/ACTIVE khi tạo Invitation và revalidate khi Accept; user directory do client gọi không thay thế check server-side. Vì Internal REST chưa sẵn sàng, nguồn kiểm tra/freshness Account còn mở. Mã lỗi `USER_NOT_FOUND`, `USER_NOT_ACTIVE`, `MEMBER_ALREADY_EXISTS`, `INVITATION_NOT_FOUND`, `INVITATION_NOT_PENDING`, `PROJECT_NOT_ACTIVE` còn cần chốt.
 
-Gỡ Member: board-service thu hồi Membership trước, lưu assignment-cleanup operation + Outbox trong cùng transaction. API chỉ trả `204` sau khi quyền bị chặn hiệu lực cho request mới; Task-service nhận event và unassign Card thuộc `boardIds` ở nền; Comment/history được giữ. `DELETE` không chờ assignment cleanup. Redis invalidation/fencing và cách xử lý khi chưa xác nhận được revoke còn mở. Nếu cleanup cũ còn pending rồi Member được mời/accept lại, event cũ không được xóa assignment mới; cần chốt khóa rejoin đến khi cleanup xong hoặc generation/cutoff cho assignment.
+Gỡ Member: board-service ghi Membership change, Outbox và snapshot-sync job trong cùng transaction. `authorizationVersion` tăng và là Membership `aggregateVersion`, Redis CAS/job retry dùng version này; `membershipVersion` giữ generation đã bị thu hồi để cleanup assignment. Redis apply snapshot mới là mốc thu hồi quyền; khi còn pending, API trả `202` cùng `operationId`/`statusUrl`. Snapshot job lưu `operationId`; job status `SYNCED` ánh xạ thành operation status `COMPLETED` khi đúng version đã apply hoặc đã tồn tại. Nếu version mới hơn vượt qua, job và operation mang status `SUPERSEDED`; đây không phải xác nhận revoke đã có hiệu lực và client cần tải lại Membership. Status route và quyền đọc trạng thái chưa triển khai trong skeleton. Task-service unassign Card ở job nền độc lập, giữ Comment/history và chỉ xóa assignment có đúng `membershipVersion`; cleanup thất bại không khôi phục quyền.
 
 ### Quy tắc lỗi mục tiêu (mã cụ thể đang là đề xuất)
 
@@ -140,7 +140,7 @@ Gỡ Member: board-service thu hồi Membership trước, lưu assignment-cleanu
 | Project/Invitation/Member không tồn tại hoặc không thuộc phạm vi đọc | `404` | `PROJECT_NOT_FOUND`, `INVITATION_NOT_FOUND`, `MEMBER_NOT_FOUND` |
 | Người gọi không phải Member/Owner, hoặc không phải Owner khi thao tác quản trị | `403` | `PROJECT_ACCESS_DENIED`, `PROJECT_OWNER_REQUIRED` |
 | User ID mời không tồn tại | `404` | `USER_NOT_FOUND` |
-| User đã bị xóa/đang `DELETING` | `409` | `USER_NOT_ACTIVE` |
+| User không ở trạng thái `ACTIVE` | `409` | `USER_NOT_ACTIVE` |
 | User đã là Member hoặc đã có Invitation PENDING | `409` | `MEMBER_ALREADY_EXISTS`, `INVITATION_ALREADY_PENDING` |
 | Invitation không còn PENDING / Project không ACTIVE | `409` | `INVITATION_NOT_PENDING`, `PROJECT_NOT_ACTIVE` |
 | Owner cố tự gỡ mình | `409` | `OWNER_CANNOT_LEAVE_PROJECT` |
@@ -153,27 +153,29 @@ Project/Board status dùng `ACTIVE`, `COMPLETED`, `CANCELLED`, nhưng chưa có 
 
 | Method | Route mục tiêu | Request/Query | Thành công | Quyền chính |
 |---|---|---|---|---|
-| `GET` | `/api/v1/boards/{boardId}/cards?columnId={columnId}&limit=5&cursor={opaque}` | Per-Column pagination proposal: `columnId` bắt buộc; `limit` mặc định 5, tối đa 20; `cursor` tùy chọn | `200 CardPage` | Member/Owner; cursor sort `position DESC, id DESC`, gắn với Board + Column |
-| `POST` | `/api/v1/boards/{boardId}/cards` | `{ "columnId": 10, "title": "...", "description": null, "assigneeId": null, "dueDate": null }` | `201 Card` | Member/Owner; Column thuộc Board; assignee thuộc Project |
-| `GET` | `/api/v1/cards/{cardId}` | Path ID | `200 CardDetail` | Member/Owner |
-| `PATCH` | `/api/v1/cards/{cardId}/move` | `{ "toColumnId": 11, "toPosition": 0 }` | `200 Card` | Member/Owner; Column đích cùng Board |
-| `PATCH` | `/api/v1/cards/{cardId}/assignee` | `{ "assigneeId": "uuid" }`; `null` để bỏ gán | `200 Card` | Member/Owner; assignee phải là Project Member |
-| `GET` | `/api/v1/cards/{cardId}/comments` | Path ID | `200 Comment[]` | Member/Owner |
-| `POST` | `/api/v1/cards/{cardId}/comments` | `{ "content": "...", "mentionedUserIds": ["uuid"] }` | `201 Comment` | Member/Owner; mentioned users là Project Member |
+| `GET` | `/api/v1/projects/{projectId}/boards/{boardId}/cards?columnId={columnId}&limit=5&cursor={opaque}` | Per-Column pagination proposal: `columnId` bắt buộc; `limit` mặc định 5, tối đa 20; `cursor` tùy chọn | `200 CardPage` | Member/Owner; cursor sort `position DESC, id DESC`, gắn Project + Board + Column |
+| `POST` | `/api/v1/projects/{projectId}/boards/{boardId}/cards` | `{ "columnId": 10, "title": "...", "description": null, "assigneeId": null, "dueDate": null }` | `201 Card` | Member/Owner; assignee thuộc Project |
+| `GET` | `/api/v1/projects/{projectId}/cards/{cardId}` | Path IDs | `200 CardDetail` | Member/Owner; Project ID phải khớp Card đã lưu |
+| `PATCH` | `/api/v1/projects/{projectId}/cards/{cardId}/move` | `{ "toColumnId": 11, "toPosition": 0 }` | `200 Card` | Member/Owner; Column đích cùng Board/Project |
+| `PATCH` | `/api/v1/projects/{projectId}/cards/{cardId}/assignee` | `{ "assigneeId": "uuid" }`; `null` để bỏ gán | `200 Card` | Member/Owner; assignee phải là Project Member |
+| `GET` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Path IDs | `200 Comment[]` | Member/Owner; Project ID phải khớp Card |
+| `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | `{ "content": "...", "mentionedUserIds": ["uuid"] }` | `201 Comment` | Member/Owner; mentioned users là Project Member |
 
 Envelope phân trang đề xuất:
 
 ```json
 {
-  "items": [{ "id": 42, "boardId": 7, "columnId": 10, "title": "Prepare release", "position": 8, "assigneeId": null }],
+  "items": [{ "id": 42, "projectId": 5, "boardId": 7, "columnId": 10, "title": "Prepare release", "position": 8, "assigneeId": null }],
   "nextCursor": "opaque-token-or-null",
   "hasMore": true
 }
 ```
 
-Thứ tự đã chốt là giảm dần theo `(position, id)`. `id` unique nên cặp này total order kể cả khi position lặp giữa Column. Vì UI tải vô hạn riêng từng Column, wire proposal cho endpoint trên yêu cầu `columnId`; cursor phải chỉ dùng lại với cùng `boardId`, `columnId` và sort contract, nếu sai phạm vi thì trả `400 INVALID_CURSOR` (đề xuất). Token opaque có thể chứa hoặc ký scope cùng `{position,id}`. Tên query, shape `items/nextCursor/hasMore`, lỗi cursor và snapshot consistency vẫn cần duyệt. `columnId` là scope API/UI, không phải điều kiện toán học để cursor xác định thứ tự. Backend đọc trạng thái hiện hành mỗi request, không hứa snapshot pagination. Client dedupe `cardId`, dùng realtime nếu có và hiện banner đầu bảng yêu cầu reload khi phát hiện bất nhất.
+Thứ tự đã chốt là giảm dần theo `(position, id)`. `id` unique nên cặp này total order kể cả khi position lặp giữa Column. Vì UI tải vô hạn riêng từng Column, wire proposal cho endpoint trên yêu cầu `columnId`; cursor phải chỉ dùng lại với cùng `projectId`, `boardId`, `columnId` và sort contract, nếu sai phạm vi thì trả `400 INVALID_CURSOR` (đề xuất). Token opaque có thể chứa hoặc ký scope cùng `{position,id}`. Tên query, shape `items/nextCursor/hasMore`, lỗi cursor và snapshot consistency vẫn cần duyệt. Backend đọc trạng thái hiện hành mỗi request, không hứa snapshot pagination. Client dedupe `cardId`, dùng realtime nếu có và hiện banner đầu bảng yêu cầu reload khi phát hiện bất nhất.
 
-Card response tối thiểu đề xuất có `id`, `boardId`, `columnId`, `title`, `position`, `assigneeId`, cùng `description`/`dueDate` ở detail. `status` hiện có trong demo (`TODO`, `IN_PROGRESS`, `DONE`) nhưng không đổi theo move; cần chốt có bỏ field này hay ràng buộc nó với Column. Comment giữ `id`, `cardId`, `authorId`, `content`, `createdAt`; `mentionedUserIds` là request input, response/storage model cần thống nhất.
+Card response tối thiểu đề xuất có `id`, `projectId`, `boardId`, `columnId`, `title`, `position`, `assigneeId`, cùng `description`/`dueDate` ở detail. Task lưu `project_id` scalar và mỗi read/write phải khớp `projectId` trên route với Card đã lưu. `status` hiện có trong demo (`TODO`, `IN_PROGRESS`, `DONE`) nhưng không đổi theo move; cần chốt có bỏ field này hay ràng buộc nó với Column. Comment giữ `id`, `cardId`, `authorId`, `content`, `createdAt`; `mentionedUserIds` là request input, response/storage model cần thống nhất.
+
+Board/Column thuộc Project phải được xác minh từ nguồn đáng tin cậy trước khi bật create-card end-to-end. Vì internal REST chưa được bảo mật, route `projectId` do client gửi không tự chứng minh Board/Column có quan hệ với Project.
 
 ### `notification-service`: Notification
 
@@ -182,9 +184,9 @@ Card response tối thiểu đề xuất có `id`, `boardId`, `columnId`, `title
 | `GET` | `/api/v1/notifications/me?unreadOnly=false` | `unreadOnly` mặc định false | `200 Notification[]` | Chỉ Notification của Account hiện tại |
 | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Không body | `200 Notification` đã đọc | Chỉ recipient |
 
-Shape tham khảo: `{ id, type, title, cardId, boardId, read, createdAt }`. Demo hiện dùng `ASSIGNED`, `MENTIONED`, `MOVED`; type Kỳ 1 cần duyệt theo event thực tế. Notification được tạo từ domain event/internal integration, không cho client tự tạo. API internal runtime hiện tại chưa có bảo vệ service-to-service; không expose qua Gateway.
+Shape tham khảo: `{ id, type, title, projectId, cardId, boardId, read, createdAt }`; `projectId`, `cardId`, `boardId` có thể null với Notification hệ thống hoặc Notification không gắn entity tương ứng. Demo hiện dùng `ASSIGNED`, `MENTIONED`, `MOVED`; type Kỳ 1 cần duyệt theo event thực tế. Notification được tạo từ domain event/internal integration, không cho client tự tạo. Internal route hiện là skeleton và bị tắt mặc định; nếu bật, nó vẫn chưa có bảo vệ service-to-service và không được expose qua Gateway.
 
-Khi cascade Project, notification-service chỉ xóa dữ liệu do nó sở hữu. Phạm vi Notification gắn Board và Notification không gắn Board phải được chốt; event request/completion nội bộ không phải HTTP client API. Cần deletion fence/tombstone hoặc version rule để event Notification đến muộn không tạo lại dữ liệu của Board đã xóa; Inbox chỉ chống lặp cùng eventId.
+Account/Project deletion và Notification retention thuộc Kỳ 2. Notification Kỳ 1 thuộc Account nhận; Project/Board/Card chỉ là context, không có cascade delete theo Project.
 
 ### Board preference (chỉ từ demo, chưa phải service contract)
 
@@ -494,6 +496,7 @@ Response `200 OK`:
     "id": 500,
     "type": "ASSIGNED",
     "title": "Bạn được gán thẻ MSS-12",
+    "projectId": 5,
     "cardId": 100,
     "boardId": 1,
     "read": false,

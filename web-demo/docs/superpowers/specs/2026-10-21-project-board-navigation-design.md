@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved in chat: compact avatar account menu, no Overview/board tabs, searchable Board switcher, an explicit per-user/per-Project default saved through the mock HTTP API, Kanban retained with a clearer workspace, and `+ New board` at the dropdown footer with no Manage boards entry. This technical specification is awaiting review before the implementation plan is written.
+Approved in chat for the React/MSW demo: compact avatar account menu, no Overview/board tabs, searchable Board switcher, an explicit per-user/per-Project default saved through the mock HTTP API, Kanban retained with a clearer workspace, and `+ New board` at the dropdown footer with no Manage boards entry. This spec describes mock UI behavior, not backend authorization. Backend Project creation requires a trusted Gateway identity for an `ACTIVE` Account; `SYSTEM_ADMIN` alone gives no Project access. The demo does not simulate SystemRoles or Account snapshot/revocation, and its Board-first mock routes can differ from backend Project-scoped Card routes. See [backend decisions](../../../../docs/project/architecture-decisions.md) and [Kanban API](../../../../docs/api/kanban-api.md).
 
 ## Context
 

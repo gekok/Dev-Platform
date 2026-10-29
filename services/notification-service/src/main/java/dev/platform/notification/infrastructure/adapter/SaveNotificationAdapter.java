@@ -50,6 +50,7 @@ public class SaveNotificationAdapter implements SaveNotificationPort {
         return NotificationEntity.builder()
                 .id(n.getId())
                 .userId(n.getUserId())
+                .projectId(n.getProjectId())
                 .type(n.getType() == null ? "ASSIGNED" : n.getType().name())
                 .title(n.getTitle())
                 .cardId(n.getCardId())
@@ -64,6 +65,7 @@ public class SaveNotificationAdapter implements SaveNotificationPort {
         return new NotificationAggregate(
                 e.getId(),
                 e.getUserId(),
+                e.getProjectId(),
                 parseType(e.getType()),
                 e.getTitle(),
                 e.getCardId(),

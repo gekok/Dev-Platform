@@ -1,185 +1,54 @@
 # task_db — database do task-service sở hữu
 
-**Database local:** `task_db` (PostgreSQL). Tài liệu tách mapping trong skeleton khỏi thiết kế mục tiêu; Card/Comment thuộc task-service và migration schema chưa được chốt.
+**Database local:** task_db (PostgreSQL). task-service sở hữu Card, assignment và Comment. Project, Board, Column, Account và Notification thuộc service/database khác; các ID tham chiếu chéo là scalar, không có cross-database foreign key. Schema thay đổi cần migration có version; cấu hình ddl-auto=update hiện tại không thay migration.
 
-**Thiết kế mục tiêu Kỳ 1:** task-service sở hữu Card và Comment trong `task_db`; `boardId`, `columnId`, `assigneeId` và `authorId` là tham chiếu logic, không có FK xuyên database. Khi Member rời/bị gỡ hoặc Account bị xóa, Card được unassign nhưng lịch sử Comment được giữ. Cascade xóa Project xóa Card/Comment thuộc các Board của Project. Outbox/Inbox nằm trong `task_db`.
+Đọc [hướng dẫn Shared](../../../shared/README.md) trước khi nối event contracts hoặc Outbox/Inbox.
 
-**Ghi chú source:** skeleton còn class `domain.Card`/`domain.CardComment` được đánh dấu `@Deprecated` bên cạnh các mapping hạ tầng mới. Những khác biệt giữa chúng được ghi dưới đây để giải thích source hiện tại, không phải quyết định schema mục tiêu.
+## Mapping đang có trong JPA source
 
-## Mapping Card và Comment trong skeleton
+### cards
 
-### `cards`
-
-| Cột | Kiểu/mapping | Constraint |
+| Cột | Mapping | Ghi chú |
 |---|---|---|
-| `id` | BIGINT | PK, `IDENTITY` |
-| `board_id`, `column_id` | BIGINT | not null; ID tham chiếu logic sang board-service, không FK chéo DB |
-| `title` | varchar(500) | not null |
-| `description` | TEXT | nullable |
-| `status` | varchar(30) | Java builder mặc định `TODO`; field mapping hiện nullable |
-| `position` | integer | builder mặc định 0, not null |
-| `assignee_id` | UUID | nullable; tham chiếu logic tới Account |
-| `due_date` | timestamptz | nullable |
+| id | BIGINT, identity, PK | ID Card |
+| project_id | BIGINT, not null | Project scope dùng cho API, query và cleanup; scalar reference |
+| board_id, column_id | BIGINT, not null | Scalar reference tới board_db |
+| title | varchar(500), not null | |
+| description | TEXT, nullable | |
+| status | varchar(30), nullable trong entity; mặc định builder TODO | |
+| position | integer, not null; mặc định 0 | |
+| due_date | timestamptz, nullable | |
 
-`CardEntity` hiện không khai báo `@Index`; index theo board/column/position trong tài liệu cũ chưa được định nghĩa trong entity này.
+### task_assignees
 
-### `card_comments`
-
-| Cột | Kiểu/mapping | Constraint |
+| Cột | Mapping | Ghi chú |
 |---|---|---|
-| `id` | BIGINT | PK, `IDENTITY` |
-| `card_id` | BIGINT | not null; quan hệ JPA tới Card trong cùng DB |
-| `author_id` | UUID | not null; tham chiếu logic tới Account |
-| `content` | TEXT | not null |
-| `created_at` | timestamptz | nullable theo mapping hiện tại |
+| task_id, user_id | composite PK | task_id FK nội bộ tới cards.id; user_id là scalar Account reference |
+| assigned_by_user_id | UUID, not null | Actor gán |
+| assigned_at | timestamptz, not null | |
+| membership_version | BIGINT, not null | Generation lấy từ Project authorization snapshot |
+| is_primary | boolean, not null | Kỳ 1 vẫn hỗ trợ tối đa một assignee qua API |
 
-`CardEntity` trong skeleton không khai báo association tới Comment; class cũ `domain.Card` có collection Comment với `cascade=ALL` và `orphanRemoval=true`. Đây là khác biệt giữa các mapping source, không phải quyết định cho schema mục tiêu. Scaffold cascade hiện dùng query/job batch nhưng worker chưa được nối.
+### membership_assignment_fences
 
-## Scaffold xóa theo batch
+Composite PK (project_id, user_id, membership_version); lưu event_id và fenced_at. Fence nằm cùng task_db, không FK sang board_db. Assignment write và fence check được serialize theo Project/User để một cleanup cũ không xóa assignment của lần tham gia mới.
 
-### `task_deletion_jobs`
+### member_assignment_cleanup_jobs
 
-| Cột | Kiểu/mapping | Constraint/default |
-|---|---|---|
-| `job_id` | UUID | PK, not null |
-| `deduplication_key` | varchar(200) | unique, not null |
-| `job_type` | varchar(40) | not null; `PROJECT_CASCADE` hoặc `MEMBER_ASSIGNMENT_CLEANUP` |
-| `operation_id` | UUID | not null |
-| `project_deletion_id` | UUID | nullable |
-| `project_id` | BIGINT | nullable |
-| `board_ids_json` | TEXT | not null |
-| `target_user_id` | UUID | nullable; dùng cho assignment cleanup |
-| `status` | varchar(20) | not null; `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`; constructor khởi tạo `PENDING` |
-| `last_processed_comment_id`, `last_processed_card_id` | BIGINT | nullable; constructor khởi tạo 0 |
-| `attempt_count` | integer | not null; constructor khởi tạo 0 |
-| `last_error` | TEXT | nullable |
-| `created_at`, `updated_at` | timestamptz | not null |
+Job bền vững riêng cho unassign nền: job_id, unique deduplication_key, unique event_id, operation_id, project_id, user_id, membership_version, source_aggregate_version, board_ids_json, status, cursor last_processed_card_id, attempt_count, last_error, created_at, updated_at, next_attempt_at. `membership_version` giữ generation để cleanup chỉ query đúng Project/User/version và các Board trong event; `source_aggregate_version` giữ `aggregateVersion` của request envelope để completion không nhầm nó với generation. Retry giữ nguyên cả hai.
 
-Index `idx_task_deletion_status(status, created_at)`. Các UUID/ID liên kết operation, Project, Board, User là scalar, không có FK sang service/database khác.
+### card_comments
 
-### `board_write_locks`
+id BIGINT PK, card_id BIGINT not null FK nội bộ tới cards.id, author_id UUID scalar, content TEXT not null, created_at timestamptz. Không xóa Comment/attribution khi Member rời Project.
 
-| Cột | Kiểu/mapping | Constraint |
-|---|---|---|
-| `board_id` | BIGINT | Primary key, not null |
-| `project_deletion_id` | UUID | not null; tham chiếu logic tới operation do board-service sở hữu |
-| `created_at` | timestamptz | not null |
+## Redis authorization và messaging
 
-Đây là persistence shape cho barrier xóa, chưa được gắn vào mọi mutation.
+Task đọc Account Authentication snapshot do user-service sở hữu và Project Membership snapshot do board-service sở hữu. Membership snapshot mang cả `membershipVersion` (generation cho assignment) và `authorizationVersion` (`aggregateVersion` dùng cho thứ tự/CAS). Redis không phải nguồn chuẩn DB. Nếu snapshot thiếu/không hợp lệ hoặc Redis lỗi, API từ chối thao tác có quyền (fail closed). Snapshot-sync jobs thuộc từng source DB; Task không sở hữu snapshot.
 
-Repo có query batch tối đa 100 Card/Comment theo Board IDs và ID cursor; Card indexes chưa được thiết kế theo cursor mục tiêu. Không coi query batch hiện có là implementation của API cursor list Card.
+outbox_events và inbox_events từ shared/messaging-support được lưu cục bộ trong task_db. Outbox/Inbox là messaging dùng chung; không có Account/Project deletion job hay Board write-lock table trong schema Kỳ 1.
 
-## Messaging và ownership
+## Phạm vi target và giới hạn
 
-Outbox/Inbox mapping từ `shared/messaging-support` lưu trong `task_db`. task-service sở hữu Card/Comment và job cleanup; Project, Membership, Column và Notification không thuộc database này. Xem [API](api.md) và [quyết định chung](../../../docs/project/architecture-decisions.md).
+cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities nhưng chưa có migration version. Inbound Card use case cũng chưa được nối hoàn chỉnh; việc có entity không chứng minh schema đã được deploy. Board/Column-to-Project validation vẫn là integration TODO vì internal REST chưa được bảo mật/triển khai.
 
-## ERD runtime và quan hệ
-
-```mermaid
-erDiagram
-    CARDS ||--o{ CARD_COMMENTS : "card_id FK"
-    BOARD ||..o{ CARDS : "board_id logical; board_db"
-    BOARD_COLUMN ||..o{ CARDS : "column_id logical; board_db"
-    USER ||..o{ CARDS : "assignee_id logical; user_db"
-    OUTBOX_EVENTS {
-        uuid event_id PK
-    }
-    INBOX_EVENTS {
-        string consumer_name PK
-        uuid event_id PK
-    }
-```
-
-Chỉ `card_comments.card_id` là quan hệ JPA trong `task_db`. Board, Column, Account là service khác sở hữu; các ID scalar không tạo cross-database FK.
-
-## Keys, constraints, indexes và query behavior
-
-| Table | Keys/constraints/indexes | Quan hệ và lưu ý |
-|---|---|---|
-| `cards` | PK `id`; `title` not-null/length 500; `board_id`, `column_id`, `position` not-null | Không khai báo `@Index`; `status` không bị DB mapping đánh not-null; `assignee_id` là UUID nullable |
-| `card_comments` | PK `id`; `card_id`, `author_id`, `content` not-null | `CardCommentEntity` có `ManyToOne` tới CardEntity; class `domain.Card` trong skeleton có cascade `ALL`/orphan removal |
-| `task_deletion_jobs` | PK `job_id`; unique `deduplication_key`; index `(status, created_at)` | Cursor/checkpoint và lỗi retry là dữ liệu job; `board_ids_json` lưu TEXT |
-| `board_write_locks` | PK `board_id` | `project_deletion_id` là UUID tham chiếu operation logic; chưa có FK |
-| `outbox_events` | PK `event_id`; index `(status, next_attempt_at, created_at)` | Outbox trong `task_db` |
-| `inbox_events` | Composite PK `(consumer_name, event_id)` | Inbox trong `task_db` |
-
-Card list query hiện sort theo `board_id, position ASC` hoặc `board_id, column_id, position ASC`. Batch cleanup lấy tối đa 100 record theo Board IDs và ID cursor tăng dần. Entity chưa khai báo index hỗ trợ các query này; không coi query cleanup là endpoint pagination.
-
-## Mô hình ownership đích
-
-```mermaid
-erDiagram
-    PROJECT ||--o{ BOARD : "board-service owns"
-    BOARD ||--o{ BOARD_COLUMN : "board-service owns"
-    BOARD ||..o{ CARD : "board_id; scalar reference"
-    BOARD_COLUMN ||..o{ CARD : "column_id; scalar reference"
-    CARD ||--o{ CARD_COMMENT : "task_db FK"
-    USER ||..o{ CARD : "assignee_id; scalar reference"
-    USER ||..o{ CARD_COMMENT : "author_id; scalar reference"
-```
-
-Trong target, Project là ranh giới authorization nhưng Card/Comment vẫn thuộc `task_db`; không nhân bản Membership làm nguồn chuẩn và không tạo FK cross-database. Khi Member rời/bị gỡ hoặc Account bị xóa, assignee được gỡ nhưng lịch sử Comment được giữ. Chi tiết write barrier/cascade và status còn mở theo [architecture decisions](../../../docs/project/architecture-decisions.md).
-
-## Schema mục tiêu Kỳ 1 — thiết kế để hoàn thiện
-
-Đây là logical schema để triển khai cursor API và cleanup đã thống nhất; không phải migration đã tồn tại. Field cơ bản theo Card/Comment hiện có; tên constraint/index bên dưới là đề xuất cần rà lại với query thật. Schema change phải có migration version; công cụ migration chưa chọn.
-
-### `cards`
-
-| Field | Kiểu mục tiêu | Khóa/null | Ý nghĩa |
-|---|---|---|---|
-| `id` | BIGINT | PK | ID Card số |
-| `board_id` | BIGINT | not null, logical reference | Board thuộc board_db; không cross-DB FK |
-| `column_id` | BIGINT | not null, logical reference | Column thuộc Board; Task phải xác minh cùng Board |
-| `title` | varchar(500) | not null | Tên Card |
-| `description` | TEXT | null | Nội dung chi tiết |
-| `status` | varchar/enum | nullability/tập giá trị còn mở | Demo có TODO/IN_PROGRESS/DONE nhưng không cập nhật khi move; cần chốt có bỏ hay derive từ Column |
-| `position` | integer hoặc rank | not null | Thứ tự trong Column; cách renumber/rank cần giữ nhất quán với cursor |
-| `assignee_id` | UUID | null | User reference; sau Member removal được xóa ở background |
-| `due_date` | timestamptz | null | Thời điểm có timezone |
-| `created_at`, `updated_at` | timestamptz | đề xuất | Audit fields cần chốt |
-
-### `card_comments` và mention
-
-`card_comments`: `id` BIGINT PK; `card_id` BIGINT FK → `cards.id`; `author_id` UUID logical reference tới Account; `content` TEXT not null; `created_at` timestamptz. Không xóa Comment khi author rời Project/bị xóa; UI hiển thị “Tài khoản đã bị xóa” hoặc “Tài khoản không còn trong Project”.
-
-Mock API nhận `mentionedUserIds` nhưng response không trả danh sách này. Đề xuất bảng `card_comment_mentions(comment_id,user_id)` với PK `(comment_id,user_id)`, FK nội bộ `comment_id` tới Comment và `user_id` scalar UUID; cần duyệt trước khi triển khai vì schema/runtime hiện chưa có bảng này.
-
-### Cursor và indexes
-
-Agreed ordering: `position DESC, id DESC`, page size mặc định 5, tối đa 20. Vì UI tải từng Column, API proposal yêu cầu `column_id`; cursor opaque chứa hoặc xác thực scope `board_id`, `column_id`, sort contract cùng position+id để không dùng lẫn giữa các Column. Sai scope là `INVALID_CURSOR` proposal. Vì `id` unique, cặp `(position,id)` total order kể cả khi nhiều Column có cùng position. Query mục tiêu cho per-Column pagination là:
-
-```sql
-SELECT *
-FROM cards
-WHERE board_id = :boardId
-  AND column_id = :columnId
-  AND (
-    position < :lastPosition
-    OR (position = :lastPosition AND id < :lastId)
-  )
-ORDER BY position DESC, id DESC
-LIMIT :limitPlusOne;
-```
-
-Index đề xuất cho list theo Column: `(board_id,column_id,position DESC,id DESC)`. Nếu API cho list xuyên các Column, index/order phải được thiết kế lại theo global key, không thể ngầm dùng index theo Column. Index đề xuất cho unassign/background cleanup: `(board_id,assignee_id,id)` hoặc `(assignee_id,board_id,id)` sau khi đối chiếu điều kiện query/batch. Index đề xuất cho comment list: `(card_id,created_at,id)`. PostgreSQL row-value comparison có thể thay OR nếu query planner phù hợp; cần đo bằng query plan, không khẳng định index hiện tại đã tối ưu.
-
-Query hiện tại trong repository còn sort `position ASC`; đây là runtime mapping/query, không target cursor đã thống nhất. `columnId` là filter bắt buộc trong API proposal nếu chọn infinite-scroll từng Column. Nếu muốn list toàn Board bằng một cursor, cần đổi scope/contract/index theo quyết định riêng; không phải vì `(position,id)` mất total order khi bỏ `columnId`.
-
-### `task_deletion_jobs`, `board_write_locks`, Outbox/Inbox
-
-Skeleton đã có persistence shape `task_deletion_jobs`: `job_id` UUID PK; `deduplication_key` unique; `job_type` (`PROJECT_CASCADE`/`MEMBER_ASSIGNMENT_CLEANUP`); operation/project/projectDeletion IDs; `board_ids_json`; `target_user_id`; `status`; Card/Comment checkpoints; attempts/error/timestamps. Giữ unique job key để cùng operation không lặp side effect dù có event ID khác. Status/error/checkpoint lifecycle cần worker contract.
-
-Với `MEMBER_ASSIGNMENT_CLEANUP`, worker chỉ được bỏ assignment thuộc membership generation đã bị revoke. Nếu thiết kế chọn block rejoin/assign tới khi cleanup xong, job phải giữ key `(project_id,target_user_id)` để board-service biết lúc nào mở lại; nếu chọn generation, event/job và dữ liệu assignment cần mang generation/cutoff. Chọn một trong hai trước khi đóng schema; nếu cleanup chỉ lọc `board_id + assignee_id`, event cũ có thể xóa assignment mới của lần tham gia sau.
-
-`board_write_locks` dùng `board_id` PK để chặn write trong Project cascade; `project_deletion_id` là scalar operation reference. Không dùng lock cascade để trì hoãn membership revoke: Project access bị chặn trước, assignment cleanup của Member chạy nền. Ghi Inbox + durable job/checkpoint cùng transaction trước ACK; cleanup update Card assignee là idempotent.
-
-Outbox/Inbox được lưu riêng trong `task_db`, dùng mapping shared; Inbox PK `(consumer_name,event_id)`. Consumer xử lý lại event cùng ID thì skip side effect và ACK sau khi Inbox đã commit. Chi tiết cột xem [shared mappings](../../../shared/README.md#physical-table-mappings).
-
-## Database local và migration
-
-- Compose tạo `task_db` trên PostgreSQL port `5434`; service mặc định dùng `localhost:5434/task_db`.
-- Local config dùng `spring.jpa.hibernate.ddl-auto=update`, `show_sql=true`. Repo chưa có migration SQL/Flyway/Liquibase; production schema cần migration có version.
-- Job/checkpoint/lock là persistence shape; chưa có listener, Inbox/job transaction, worker hoặc completion publisher. Các bảng tồn tại không có nghĩa cleanup chạy.
-- Outbox/Inbox entities được scan từ shared module và lưu trong `task_db`, không dùng database chung.
-- Chi tiết tất cả cột của `outbox_events`/`inbox_events` dùng chung được giữ tại [shared physical mappings](../../../shared/README.md#physical-table-mappings).
+Kỳ 1 không có cards.assignee_id, task_deletion_jobs, board_write_locks, Project cascade hay Account deletion operation. Mọi tài liệu cũ mô tả các đối tượng này là lịch sử/Kỳ 2, không phải schema hiện hành.

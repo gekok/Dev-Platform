@@ -27,6 +27,8 @@ spring:
       mandatory: true
 
 dev-platform:
+  internal-notifications:
+    enabled: ${INTERNAL_NOTIFICATIONS_ENABLED:false}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:

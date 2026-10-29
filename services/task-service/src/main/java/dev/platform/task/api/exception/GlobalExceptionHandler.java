@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import dev.platform.task.application.service.AuthorizationSnapshotUnavailableException;
+import dev.platform.task.application.service.ProjectAccessDeniedException;
 import jakarta.servlet.http.HttpServletRequest;
 
 // Bắt lỗi validate Aggregate, trả 400 theo kanban-api.md mục 6.
@@ -23,6 +25,23 @@ public class GlobalExceptionHandler {
                 OffsetDateTime.now().toString(),
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(ProjectAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleProjectAccessDenied(
+            ProjectAccessDeniedException ex, HttpServletRequest request) {
+        ErrorResponse body = new ErrorResponse(
+                "PROJECT_ACCESS_DENIED", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    @ExceptionHandler(AuthorizationSnapshotUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleSnapshotUnavailable(
+            AuthorizationSnapshotUnavailableException ex, HttpServletRequest request) {
+        ErrorResponse body = new ErrorResponse(
+                "AUTHORIZATION_SNAPSHOT_UNAVAILABLE", ex.getMessage(), OffsetDateTime.now().toString(),
+                request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 
     // Body lỗi chuẩn mục 6 kanban-api.md.

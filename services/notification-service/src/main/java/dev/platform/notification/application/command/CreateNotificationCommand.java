@@ -5,6 +5,7 @@ import java.util.UUID;
 // Lệnh tạo thông báo (chỉ service gọi, không cho client).
 public record CreateNotificationCommand(
         UUID userId,
+        Long projectId,
         String type,
         String title,
         Long cardId,

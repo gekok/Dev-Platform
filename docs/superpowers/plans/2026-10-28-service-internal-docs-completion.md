@@ -1,5 +1,7 @@
 # Service Internal Documentation Completion Plan
 
+> **Historical execution note (2026-10-29):** This plan records earlier API/database/Gateway documentation work. Current System Admin and Project-creation authorization is defined in [architecture decisions](../../project/architecture-decisions.md) and [Kanban API](../../api/kanban-api.md); this plan is not a separate policy source.
+
 > **For agentic workers:** Execute inline in this session. Documentation-only; do not change service behavior or infer unresolved API/schema decisions.
 
 **Goal:** Keep each service's runtime API/schema reference complete and separately document the Project-first Kỳ 1 API and database design to the level already agreed, while marking unapproved contract details explicitly.

@@ -7,5 +7,5 @@ import dev.platform.task.domain.aggregate.CardAggregate;
 // Cổng vào: đọc thẻ theo bảng (lọc cột tùy chọn).
 public interface GetCardsPort {
 
-    List<CardAggregate> getByBoard(Long boardId, Long columnId);
+    List<CardAggregate> getByBoard(Long projectId, Long boardId, Long columnId);
 }

@@ -9,6 +9,10 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: devplatform
     password: devplatform
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
       ddl-auto: update
@@ -36,6 +40,7 @@ dev-platform:
       confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
     consumers:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
-  deletion:
-    board-consumer:
-      enabled: ${BOARD_DELETION_CONSUMER_ENABLED:false}
+  snapshot-sync:
+    project:
+      enabled: ${PROJECT_AUTH_SNAPSHOT_SYNC_ENABLED:false}
+      fixed-delay-ms: ${PROJECT_AUTH_SNAPSHOT_SYNC_FIXED_DELAY_MS:1000}
