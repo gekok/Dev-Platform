@@ -1,0 +1,2034 @@
+<mxfile host="Electron" agent="Codex" pages="17">
+  <diagram id="page-01" name="00 - Topology and ownership">
+    <mxGraphModel dx="1373" dy="835" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1780" pageHeight="1120" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="18" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="5" value="HTTPS / REST / WebSocket">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="6" value="Auth/User/Admin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="7" value="Project/Membership/Board">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="21" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="8" value="Project-scoped Cards">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="22" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="9" value="Notifications">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="10" value="owns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="24" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="11" value="owns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="25" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="12" value="owns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="26" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="13" value="owns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="27" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="14" value="user snapshot sync (authVersion)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="28" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="14" value="Project snapshot sync (authorizationVersion)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="14" value="Task reads both snapshots; fail closed">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#2e8b57;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="15" value="Outbox → events (wiring TODO)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="31" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#2e8b57;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="15" value="Outbox → events (target)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="15" value="Card event contract/wiring open">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="33" edge="1" parent="1" source="15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="9" value="Notification consumer placeholder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" target="7" value="Internal REST security/integration TODO">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" value="&lt;b&gt;Dev-Platform — topology, ownership và communication boundaries&lt;/b&gt;" vertex="1">
+          <mxGeometry height="42" width="1704" x="38" y="18" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" value="Thiết kế Project-first Kỳ 1; một file nhiều trang, có đánh dấu runtime, target, TODO và Kỳ 2." vertex="1">
+          <mxGeometry height="44" width="1700" x="40" y="62" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" value="&lt;b&gt;Web / Mobile&lt;/b&gt;&lt;br/&gt;Bearer token / REST / WebSocket" vertex="1">
+          <mxGeometry height="70" width="420" x="680" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;API Gateway :8080&lt;/b&gt;&lt;br/&gt;Target: xác thực + định tuyến + identity forwarding&lt;br/&gt;Runtime: chưa có JWT/header sanitization" vertex="1">
+          <mxGeometry height="90" width="480" x="650" y="255" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="&lt;b&gt;user-service :8081&lt;/b&gt;&lt;br/&gt;Account/Auth + SystemRoles" vertex="1">
+          <mxGeometry height="100" width="350" x="60" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="&lt;b&gt;board-service :8082&lt;/b&gt;&lt;br/&gt;Project/Membership/Invitation/Board/Column" vertex="1">
+          <mxGeometry height="100" width="350" x="480" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="&lt;b&gt;task-service :8083&lt;/b&gt;&lt;br/&gt;Card/TaskAssignees/Comment" vertex="1">
+          <mxGeometry height="100" width="350" x="900" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="&lt;b&gt;notification-service :8084&lt;/b&gt;&lt;br/&gt;Notification theo Account nhận" vertex="1">
+          <mxGeometry height="100" width="350" x="1320" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;verticalAlign=middle;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;user_db&lt;/b&gt;&lt;br/&gt;PostgreSQL&lt;br/&gt;service-owned data + local Outbox/Inbox" vertex="1">
+          <mxGeometry height="105" width="350" x="60" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;verticalAlign=middle;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;board_db&lt;/b&gt;&lt;br/&gt;PostgreSQL&lt;br/&gt;service-owned data + local Outbox/Inbox" vertex="1">
+          <mxGeometry height="105" width="350" x="480" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;verticalAlign=middle;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;task_db&lt;/b&gt;&lt;br/&gt;PostgreSQL&lt;br/&gt;service-owned data + local Outbox/Inbox" vertex="1">
+          <mxGeometry height="105" width="350" x="900" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;align=center;verticalAlign=middle;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;notification_db&lt;/b&gt;&lt;br/&gt;PostgreSQL&lt;br/&gt;service-owned data + local Outbox/Inbox" vertex="1">
+          <mxGeometry height="105" width="350" x="1320" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;Redis&lt;/b&gt;&lt;br/&gt;Shared AuthN/AuthZ snapshots&lt;br/&gt;Kỳ 1 target; not in Compose" vertex="1">
+          <mxGeometry height="100" width="420" x="300" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;RabbitMQ&lt;/b&gt;&lt;br/&gt;Domain events; broker in Compose&lt;br/&gt;relay/consumers not fully wired" vertex="1">
+          <mxGeometry height="100" width="470" x="1020" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;Không có deployable project-service.&lt;/b&gt; Project/Membership cùng board-service và board_db. Mỗi service có database riêng; không có cross-database FK." vertex="1">
+          <mxGeometry height="76" width="500" x="40" y="785" as="geometry" />
+        </mxCell>
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;TODO:&lt;/b&gt; Task đọc snapshot trực tiếp từ Redis và fail closed. Internal REST Task → Board để xác minh Board/Column thuộc Project chưa dùng vì chưa có bảo mật service-to-service." vertex="1">
+          <mxGeometry height="76" width="680" x="610" y="785" as="geometry" />
+        </mxCell>
+        <mxCell id="35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=6;fontSize=10;strokeColor=#c7d4df;fillColor=#f5f8fb;" value="&lt;b&gt;Nguồn:&lt;/b&gt; docs/project/architecture-decisions.md · docs/api/kanban-api.md · docs/project/06-integration.md · services/*/docs/database.md · shared/README.md · gateway/docs/routing.md · Kỳ 2 account-deletion-skeleton-guide.md" vertex="1">
+          <mxGeometry height="34" width="1680" x="50" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="36" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="Runtime/JPA skeleton" vertex="1">
+          <mxGeometry height="28" width="408" x="40" y="1072" as="geometry" />
+        </mxCell>
+        <mxCell id="37" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" value="Kỳ 1 target" vertex="1">
+          <mxGeometry height="28" width="408" x="460" y="1072" as="geometry" />
+        </mxCell>
+        <mxCell id="38" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" value="TODO / open" vertex="1">
+          <mxGeometry height="28" width="408" x="880" y="1072" as="geometry" />
+        </mxCell>
+        <mxCell id="39" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" value="Kỳ 2 deferred" vertex="1">
+          <mxGeometry height="28" width="408" x="1300" y="1072" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-02" name="01 - Role matrix">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="&lt;b&gt;Role matrix — System Admin khác Project Owner&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1424" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="SYSTEM_ADMIN thuộc user_db; OWNER/MEMBER thuộc board_db. Admin role tự nó không cấp quyền Project." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1420" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;System Admin&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Đã chốt&lt;/b&gt;&lt;br/&gt;• Tạo tài khoản hệ thống&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Còn mở&lt;/b&gt;&lt;br/&gt;• Quyền/API cấp, thu hồi SystemRoles&lt;br/&gt;• Bootstrap Admin đầu tiên&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Không được chỉ vì là Admin&lt;/b&gt;&lt;br/&gt;• Xem/sửa Project&lt;br/&gt;• Mời/gỡ Member&lt;br/&gt;• Tạo Board/Card/comment&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="55" y="160" width="430" height="395" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;Owner&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Owner duy nhất trong Project&lt;/b&gt;&lt;br/&gt;• Tạo Project; người tạo thành Owner&lt;br/&gt;• Mời/gỡ Member&lt;br/&gt;• Tạo Board; quản lý lifecycle&lt;br/&gt;• Tạo Column/Card, move, assign, comment&lt;br/&gt;• Không thể tự rời; có thể CANCELLED Project&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="530" y="160" width="430" height="395" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;Member&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Sau khi Accept Invitation&lt;/b&gt;&lt;br/&gt;• Tạo Column/Card, move, assign, comment&lt;br/&gt;• Tự rời Project&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Không được&lt;/b&gt;&lt;br/&gt;• Mời/gỡ người khác&lt;br/&gt;• Tạo Board hoặc quản lý lifecycle&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="160" width="430" height="395" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;b&gt;Còn mở:&lt;/b&gt; Một Account có thể vừa SYSTEM_ADMIN vừa tham gia Project hay không; bootstrap Admin đầu tiên; API cấp/thu hồi system role. Quyền Project đến từ Membership, không từ claim do client gửi." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="55" y="600" width="1390" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="390" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="740" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-03" name="02 - Account Auth and system roles">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="1157" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="869" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; POST /api/v1/auth/login {email,password}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="428" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; Route login; target xác thực token tại Gateway" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="239" as="sourcePoint" />
+            <mxPoint x="716" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; Load Account + password_hash; chỉ Account ACTIVE" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="293" as="sourcePoint" />
+            <mxPoint x="1004" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Account record / credential hash" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="347" as="sourcePoint" />
+            <mxPoint x="716" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; 200 Bearer token (claims/expiry còn mở)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="401" as="sourcePoint" />
+            <mxPoint x="140" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; GET /users/me; directory search; bulk profiles (target)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="455" as="sourcePoint" />
+            <mxPoint x="428" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Forward trusted identity; hiện header còn stub" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="509" as="sourcePoint" />
+            <mxPoint x="716" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; System Admin: POST /api/v1/admin/accounts (target)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="563" as="sourcePoint" />
+            <mxPoint x="428" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Admin route/controller chưa hoàn chỉnh" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="617" as="sourcePoint" />
+            <mxPoint x="716" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;10.&lt;/b&gt; Transaction tạo Account; client không chọn system role" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="671" as="sourcePoint" />
+            <mxPoint x="1004" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;11.&lt;/b&gt; Status/role change: auth_version + Outbox + sync job trong một transaction" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="725" as="sourcePoint" />
+            <mxPoint x="1004" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;12.&lt;/b&gt; Worker apply auth:account:{userId}; version authVersion" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="779" as="sourcePoint" />
+            <mxPoint x="1292" y="779" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;13.&lt;/b&gt; Outbox event user.status.changed / user.system-roles.changed" style="edgeStyle=none;html=1;rounded=0;strokeColor=#2e8b57;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="833" as="sourcePoint" />
+            <mxPoint x="1580" y="833" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Account/Auth/System Admin — HTTP và snapshot&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Target Kỳ 1 phân biệt runtime register/login/me với Admin provisioning và JWT/identity forwarding chưa hoàn chỉnh." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;User / Admin&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;user-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;user_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="• Runtime có POST /auth/register, POST /auth/login, GET /users/me; inbound ports chưa đủ implementation. Public self-registration không phải target Kỳ 1.&lt;br/&gt;• Target dùng SystemRoles/UserSystemRoles; SYSTEM_ADMIN chỉ quản trị Account. Provisioning payload, role routes, bootstrap Admin và multi-role policy còn mở.&lt;br/&gt;• Gateway JWT/header sanitization và cách xác minh Account ACTIVE chưa nối; user-service sở hữu snapshot, Gateway không sở hữu Authorization Snapshot." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="911" width="1640" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1109" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="1109" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1109" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="1109" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-04" name="03 - user_db ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1580" pageHeight="1190" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="10" value="1:N local FK user_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="1:N local FK role_code" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="logical Account ref (scalar)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;user-service — user_db&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1504" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Logical schema mục tiêu Kỳ 1 cộng sync/messaging JPA mappings; chưa phải versioned production migration." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1500" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;users&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Runtime + target Kỳ 1&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id UUID&lt;br/&gt;email varchar UNIQUE&lt;br/&gt;password_hash varchar NOT NULL&lt;br/&gt;full_name varchar (target nullability open)&lt;br/&gt;status varchar NOT NULL&lt;br/&gt;auth_version bigint NOT NULL (target)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="50" y="175" width="390" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;system_roles&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; role_code varchar&lt;br/&gt;description varchar&lt;br/&gt;Seed: USER, SYSTEM_ADMIN&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="540" y="175" width="330" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;user_system_roles&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK/FK&lt;/b&gt; user_id UUID → users.id&lt;br/&gt;&lt;b&gt;PK/FK&lt;/b&gt; role_code → system_roles.role_code&lt;br/&gt;granted_at timestamptz&lt;br/&gt;granted_by UUID scalar audit reference&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="540" y="425" width="390" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;account_authorization_snapshot_sync_jobs&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA seam / target Kỳ 1&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; job_id UUID&lt;br/&gt;account_id UUID scalar; auth_version bigint&lt;br/&gt;snapshot_json TEXT; status; attempt_count&lt;br/&gt;last_error; created_at; updated_at; next_attempt_at&lt;br/&gt;UNIQUE(account_id, auth_version)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="175" width="470" height="245" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;outbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared JPA mapping in user_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; event_id UUID&lt;br/&gt;event_type varchar(120); aggregate_type varchar(80)&lt;br/&gt;aggregate_id varchar(80); aggregate_version bigint&lt;br/&gt;payload TEXT; status; attempt_count&lt;br/&gt;created_at; next_attempt_at; sent_at?; last_error?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="430" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;inbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared JPA mapping in user_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; consumer_name varchar(120)&lt;br/&gt;&lt;b&gt;PK&lt;/b&gt; event_id UUID&lt;br/&gt;event_type varchar(120)&lt;br/&gt;received_at timestamptz&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="570" y="730" width="380" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;Không lưu ở đây:&lt;/b&gt; Project/Membership/Invitation, Card, Notification. Không có cross-database FK. Account deletion/tombstone/operation tables không thuộc Kỳ 1. Redis là snapshot, không phải nguồn chuẩn." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1035" width="1500" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1142" width="358" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="410" y="1142" width="358" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1142" width="358" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="1142" width="358" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-05" name="04 - board_db ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1640" pageHeight="1280" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="13" value="1:N FK project_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="1:N FK project_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="1:N FK project_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="1:N FK board_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="7" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="logical generation; no FK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="logical snapshot job" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;board-service — board_db&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1564" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Project-first target Kỳ 1: Project/Membership/Invitation/Board/Column cùng DB; project-service không tách deployable." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1560" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;projects&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1; entity/migration chưa có&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT&lt;br/&gt;name varchar; status: ACTIVE/COMPLETED/CANCELLED&lt;br/&gt;created_by_user_id UUID scalar&lt;br/&gt;created_at, updated_at timestamptz&lt;br/&gt;Owner suy ra từ Membership role=OWNER&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="45" y="175" width="390" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;project_memberships&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1; entity/migration chưa có&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK/FK&lt;/b&gt; project_id BIGINT → projects.id&lt;br/&gt;&lt;b&gt;PK&lt;/b&gt; user_id UUID scalar (no user_db FK)&lt;br/&gt;role OWNER/MEMBER; status ACTIVE/REMOVED&lt;br/&gt;joined_at; removed_at?; updated_at&lt;br/&gt;Một Owner active/Project; rejoin có generation mới&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="500" y="175" width="430" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;invitations&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1; entity/migration chưa có&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT; &lt;b&gt;FK&lt;/b&gt; project_id&lt;br/&gt;user_id UUID; invited_by_user_id UUID scalar&lt;br/&gt;status PENDING/ACCEPTED/REJECTED/CANCELLED&lt;br/&gt;created_at; updated_at; responded_at?&lt;br/&gt;Unique pending (project_id,user_id); no expiry&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="175" width="470" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;boards&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1 / runtime differs&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT; &lt;b&gt;FK&lt;/b&gt; project_id → projects.id&lt;br/&gt;name varchar(255); board_key varchar(20)&lt;br/&gt;status ACTIVE/COMPLETED/CANCELLED&lt;br/&gt;created_by_user_id UUID scalar&lt;br/&gt;UNIQUE(project_id,board_key); timestamps&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="45" y="520" width="390" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;board_columns&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Target Kỳ 1&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT; &lt;b&gt;FK&lt;/b&gt; board_id → boards.id&lt;br/&gt;name varchar(100)&lt;br/&gt;position integer CHECK &gt;= 0&lt;br/&gt;UNIQUE(board_id,position)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="500" y="520" width="390" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;project_membership_versions&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA seam exists; not integrated&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; (project_id BIGINT,user_id UUID)&lt;br/&gt;membership_version bigint (generation)&lt;br/&gt;authorization_version bigint (permission version)&lt;br/&gt;row_version bigint (optimistic lock)&lt;br/&gt;Logical reference; no deployed FK&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="500" width="470" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;project_authorization_snapshot_sync_jobs&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA seam; worker disabled&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; job_id UUID; &lt;b&gt;UNIQUE&lt;/b&gt; operation_id&lt;br/&gt;project_id BIGINT; user_id UUID scalar&lt;br/&gt;membership_version; authorization_version&lt;br/&gt;snapshot_json; status; attempt_count; last_error&lt;br/&gt;created_at; updated_at; next_attempt_at&lt;br/&gt;UNIQUE(project_id,user_id,authorization_version)&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="800" width="500" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;outbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in board_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; event_id UUID&lt;br/&gt;event_type; aggregate_type; aggregate_id&lt;br/&gt;aggregate_version; payload; status; attempt_count&lt;br/&gt;created_at; next_attempt_at; sent_at?; last_error?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="45" y="830" width="390" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;inbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in board_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; (consumer_name,event_id)&lt;br/&gt;event_type varchar(120); received_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="500" y="820" width="390" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;Runtime chênh target:&lt;/b&gt; Board-first JPA có boards.owner_id, chưa có project_id. Project/Membership/Invitation target chưa map/migrate. OWNER lưu trong Membership; không thêm projects.owner_id thứ hai." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1125" width="1560" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1232" width="373" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1232" width="373" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="810" y="1232" width="373" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1195" y="1232" width="373" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-06" name="05 - task_db ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1650" pageHeight="1210" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="11" value="1:N local FK task_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="1:N local FK card_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="4" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="logical generation coordination; no FK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="5" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="logical fence/job relation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#c89b2c;endArrow=block;endFill=1;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="7" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;task-service — task_db&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1574" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="JPA mapping cho Card/assignment/comment và cleanup seams; chưa có versioned migration hay full API wiring." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1570" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;cards&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA runtime mapping&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT&lt;br/&gt;project_id, board_id, column_id BIGINT scalar&lt;br/&gt;title varchar(500); description TEXT?&lt;br/&gt;status varchar(30)?; target semantics open&lt;br/&gt;position integer; due_date timestamptz?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="45" y="175" width="430" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;task_assignees&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA target; API tối đa một assignee&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK/FK&lt;/b&gt; task_id → cards.id&lt;br/&gt;&lt;b&gt;PK&lt;/b&gt; user_id UUID scalar&lt;br/&gt;assigned_by_user_id UUID; assigned_at&lt;br/&gt;membership_version BIGINT; is_primary boolean&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="540" y="175" width="430" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;card_comments&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA runtime mapping&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT; &lt;b&gt;FK&lt;/b&gt; card_id → cards.id&lt;br/&gt;author_id UUID scalar; content TEXT&lt;br/&gt;created_at timestamptz&lt;br/&gt;Keep content/attribution when Member leaves&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="175" width="430" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;membership_assignment_fences&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Durable generation fence&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; (project_id,user_id,membership_version)&lt;br/&gt;event_id UUID; fenced_at timestamptz&lt;br/&gt;No FK to board_db&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="45" y="535" width="430" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;member_assignment_cleanup_jobs&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Durable background job / JPA&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; job_id; unique deduplication_key; event_id&lt;br/&gt;operation_id; project_id; user_id&lt;br/&gt;membership_version; source_aggregate_version&lt;br/&gt;board_ids_json; status; last_processed_card_id?&lt;br/&gt;attempt_count; last_error; created/updated/next_attempt_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="540" y="495" width="480" height="275" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;outbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in task_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; event_id UUID&lt;br/&gt;event_type; aggregate_type; aggregate_id&lt;br/&gt;aggregate_version; payload TEXT; status&lt;br/&gt;attempt_count; created_at; next_attempt_at&lt;br/&gt;sent_at?; last_error?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="475" width="410" height="225" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;inbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in task_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; (consumer_name,event_id)&lt;br/&gt;event_type varchar(120); received_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="800" width="410" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;Cross-service IDs là scalar:&lt;/b&gt; project_id/board_id/column_id/user_id không có FK xuyên DB. Redis snapshots cung cấp authorization; Task không sở hữu snapshot. Account/Project cascade tables không thuộc Kỳ 1." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1055" width="1570" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1162" width="375.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="427.5" y="1162" width="375.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="815" y="1162" width="375.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1202.5" y="1162" width="375.5" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-07" name="06 - notification_db ERD">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1460" pageHeight="930" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="&lt;b&gt;notification-service — notification_db&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1384" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Notification thuộc Account nhận; Project/Board/Card chỉ là context nullable, không quyết định ownership." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1380" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;notifications&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;JPA runtime mapping&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; id BIGINT&lt;br/&gt;user_id UUID NOT NULL (recipient scalar)&lt;br/&gt;project_id BIGINT? (context)&lt;br/&gt;type varchar(30); title varchar(500)&lt;br/&gt;card_id BIGINT?; board_id BIGINT? (scalar)&lt;br/&gt;read boolean; created_at timestamptz?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="80" y="185" width="570" height="245" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;outbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in notification_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; event_id UUID; event_type; aggregate_type&lt;br/&gt;aggregate_id; aggregate_version; payload TEXT&lt;br/&gt;status; attempt_count; created_at; next_attempt_at&lt;br/&gt;sent_at?; last_error?&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="820" y="175" width="500" height="225" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;div style=&#39;font-size:14px;font-weight:bold;&#39;&gt;inbox_events&lt;/div&gt;&lt;div style=&#39;font-size:10px;color:#52677d;&#39;&gt;Shared mapping in notification_db&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:11px;line-height:1.35;&#39;&gt;&lt;b&gt;PK&lt;/b&gt; (consumer_name,event_id)&lt;br/&gt;event_type varchar(120); received_at&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;fontSize=11;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="820" y="500" width="500" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;b&gt;Không cross-DB FK:&lt;/b&gt; user/project/board/card IDs là scalar. Notification history không cascade theo Project/Board. Retention và Account soft-delete là Kỳ 2." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="775" width="1380" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="882" width="328" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="380" y="882" width="328" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="720" y="882" width="328" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="882" width="328" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-08" name="07 - Project Board and Column">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1319" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="1031" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="150" as="sourcePoint" />
+            <mxPoint x="470" y="1031" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="150" as="sourcePoint" />
+            <mxPoint x="800" y="1031" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="150" as="sourcePoint" />
+            <mxPoint x="1130" y="1031" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1460" y="150" as="sourcePoint" />
+            <mxPoint x="1460" y="1031" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="&lt;b&gt;01.&lt;/b&gt; GET /api/v1/projects (list own memberships)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="470" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;02.&lt;/b&gt; Route /projects/** → board-service" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="239" as="sourcePoint" />
+            <mxPoint x="800" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;03.&lt;/b&gt; Query Project + active Membership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="293" as="sourcePoint" />
+            <mxPoint x="1130" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;04.&lt;/b&gt; POST /api/v1/projects {name}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="347" as="sourcePoint" />
+            <mxPoint x="470" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;05.&lt;/b&gt; Pass authenticated identity; no ownerId from body" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="401" as="sourcePoint" />
+            <mxPoint x="800" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;06.&lt;/b&gt; One TX: Project + OWNER Membership + version + Outbox + snapshot job" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="455" as="sourcePoint" />
+            <mxPoint x="1130" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;07.&lt;/b&gt; Commit; projectId and Owner Membership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="509" as="sourcePoint" />
+            <mxPoint x="800" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;08.&lt;/b&gt; Apply Owner snapshot by authorizationVersion" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="563" as="sourcePoint" />
+            <mxPoint x="1460" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;09.&lt;/b&gt; GET /projects/{id}; GET /projects/{id}/members" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="617" as="sourcePoint" />
+            <mxPoint x="470" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;10.&lt;/b&gt; Route Project and Membership reads" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="671" as="sourcePoint" />
+            <mxPoint x="800" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;11.&lt;/b&gt; POST /projects/{id}/boards; GET boards; GET /boards/{id}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="725" as="sourcePoint" />
+            <mxPoint x="470" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;12.&lt;/b&gt; Owner creates Board; Owner/Member read" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="779" as="sourcePoint" />
+            <mxPoint x="800" y="779" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;13.&lt;/b&gt; Insert board(project_id) and board_columns" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="833" as="sourcePoint" />
+            <mxPoint x="1130" y="833" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;14.&lt;/b&gt; POST /boards/{id}/columns; PATCH /columns/order" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="887" as="sourcePoint" />
+            <mxPoint x="470" y="887" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;15.&lt;/b&gt; Column create Owner/Member; reorder permission open" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="941" as="sourcePoint" />
+            <mxPoint x="800" y="941" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;16.&lt;/b&gt; Persist name/position; board_id local FK" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="995" as="sourcePoint" />
+            <mxPoint x="1130" y="995" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Project / Board / Column — create, read, arrange&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1524" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Project, Owner Membership, Board và Column cùng board_db; System Admin-only không tự được quyền Project." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1520" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;Owner / Member&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="370" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="700" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;board_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="• Project + OWNER Membership commit atomically. Owner is derived from active Membership; target has no projects.owner_id.&lt;br/&gt;• Status values ACTIVE/COMPLETED/CANCELLED; transition routes/graph are not decided. Current BoardController is Board-first.&lt;br/&gt;• Project/Membership persistence is not implemented. Redis apply behavior for initial creation and response timing are not fully contracted." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1073" width="1520" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1271" width="363" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="415" y="1271" width="363" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="790" y="1271" width="363" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="1271" width="363" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-09" name="08 - Invitation lifecycle">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1990" pageHeight="1373" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="150" as="sourcePoint" />
+            <mxPoint x="425" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="150" as="sourcePoint" />
+            <mxPoint x="710" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="995" y="150" as="sourcePoint" />
+            <mxPoint x="995" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="150" as="sourcePoint" />
+            <mxPoint x="1280" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="150" as="sourcePoint" />
+            <mxPoint x="1565" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1850" y="150" as="sourcePoint" />
+            <mxPoint x="1850" y="1085" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;01.&lt;/b&gt; GET /api/v1/users?query=... (directory target)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="710" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;02.&lt;/b&gt; Route account search; candidate API is not runtime" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="239" as="sourcePoint" />
+            <mxPoint x="995" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;03.&lt;/b&gt; ACTIVE account candidates; privacy fields open" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="995" y="293" as="sourcePoint" />
+            <mxPoint x="140" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;04.&lt;/b&gt; POST /projects/{projectId}/invitations {userId}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="347" as="sourcePoint" />
+            <mxPoint x="710" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;05.&lt;/b&gt; Route Invitation nested under Project" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="401" as="sourcePoint" />
+            <mxPoint x="1280" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;06.&lt;/b&gt; Verify Account exists/ACTIVE (internal REST security/source open)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="455" as="sourcePoint" />
+            <mxPoint x="995" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;07.&lt;/b&gt; Insert Invitation=PENDING; prevent duplicate pending" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="509" as="sourcePoint" />
+            <mxPoint x="1565" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;08.&lt;/b&gt; GET /api/v1/projects/invitations" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="563" as="sourcePoint" />
+            <mxPoint x="710" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;09.&lt;/b&gt; Recipient derived from trusted identity; list inbox" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="617" as="sourcePoint" />
+            <mxPoint x="1280" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;10.&lt;/b&gt; POST /projects/{id}/invitations/{inviteId}/accept" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="671" as="sourcePoint" />
+            <mxPoint x="710" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;11.&lt;/b&gt; Only recipient may Accept" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="725" as="sourcePoint" />
+            <mxPoint x="1280" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;12.&lt;/b&gt; Recheck Account ACTIVE before accept (integration TODO)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="779" as="sourcePoint" />
+            <mxPoint x="995" y="779" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;13.&lt;/b&gt; One TX: ACCEPTED + MEMBER + versions + Outbox + snapshot job" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="833" as="sourcePoint" />
+            <mxPoint x="1565" y="833" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;14.&lt;/b&gt; Apply membership snapshot; authorizationVersion CAS" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="887" as="sourcePoint" />
+            <mxPoint x="1850" y="887" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;15.&lt;/b&gt; POST .../reject; Owner DELETE .../invitations/{id}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="941" as="sourcePoint" />
+            <mxPoint x="710" y="941" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;16.&lt;/b&gt; Recipient rejects; Owner cancels pending Invitation" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="995" as="sourcePoint" />
+            <mxPoint x="1280" y="995" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;17.&lt;/b&gt; Persist REJECTED/CANCELLED; do not create Membership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="1049" as="sourcePoint" />
+            <mxPoint x="1565" y="1049" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Invitation → Accept / Reject / Cancel → Membership&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1914" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Kỳ 1 only invites existing Accounts. PENDING grants no access; Accept alone creates Membership MEMBER." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1910" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;Owner&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="&lt;b&gt;Invitee&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="325" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="610" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="&lt;b&gt;user-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="895" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="&lt;b&gt;board_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1465" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1750" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="• Invitation statuses PENDING/ACCEPTED/REJECTED/CANCELLED; no expiry or EXPIRED status. External invite is Kỳ 2.&lt;br/&gt;• Accept response and activation while Redis snapshot is pending remain open. Account ACTIVE lookup is not integrated safely.&lt;br/&gt;• Membership roles and IDs live in board_db; userId is UUID scalar, not a cross-database FK." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1127" width="1910" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1325" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="512.5" y="1325" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1325" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1457.5" y="1325" width="460.5" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-10" name="09 - Card assignment comments and cursor">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="1481" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="1193" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; POST /projects/{p}/boards/{b}/cards {columnId,title,...}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="428" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; Specific Card route before broad /projects/**" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="239" as="sourcePoint" />
+            <mxPoint x="716" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; Read Account + Membership snapshots; fail closed" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="293" as="sourcePoint" />
+            <mxPoint x="1004" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Validate Board/Column belongs to Project (internal REST not secured)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="347" as="sourcePoint" />
+            <mxPoint x="1292" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; Insert cards(project_id,board_id,column_id,...)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="401" as="sourcePoint" />
+            <mxPoint x="1580" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; GET cards?columnId=&amp;limit=5&amp;cursor=... / GET Card detail" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="455" as="sourcePoint" />
+            <mxPoint x="428" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Route scoped read; detail GET missing in controller" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="509" as="sourcePoint" />
+            <mxPoint x="716" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; Authorize with current Account + Membership snapshots" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="563" as="sourcePoint" />
+            <mxPoint x="1004" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Keyset position DESC,id DESC; default 5/max 20" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="617" as="sourcePoint" />
+            <mxPoint x="1580" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;10.&lt;/b&gt; PATCH /cards/{id}/move {toColumnId,toPosition}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="671" as="sourcePoint" />
+            <mxPoint x="428" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;11.&lt;/b&gt; Authorize Member; target Column validation open" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="725" as="sourcePoint" />
+            <mxPoint x="716" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;12.&lt;/b&gt; Update Column/position; status mapping open" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="779" as="sourcePoint" />
+            <mxPoint x="1580" y="779" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;13.&lt;/b&gt; PATCH /cards/{id}/assignee {assigneeId|null}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="833" as="sourcePoint" />
+            <mxPoint x="428" y="833" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;14.&lt;/b&gt; Authorize actor; validate assignee Membership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="887" as="sourcePoint" />
+            <mxPoint x="716" y="887" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;15.&lt;/b&gt; Read assignee membershipVersion snapshot" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="941" as="sourcePoint" />
+            <mxPoint x="1004" y="941" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;16.&lt;/b&gt; Write task_assignees membership_version" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="995" as="sourcePoint" />
+            <mxPoint x="1580" y="995" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;17.&lt;/b&gt; GET/POST /cards/{id}/comments; mentioned IDs in POST" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="1049" as="sourcePoint" />
+            <mxPoint x="428" y="1049" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;18.&lt;/b&gt; Authorize Member; mentions must be Project members" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="1103" as="sourcePoint" />
+            <mxPoint x="716" y="1103" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;19.&lt;/b&gt; Read/write card_comments; retain attribution on leave" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="1157" as="sourcePoint" />
+            <mxPoint x="1580" y="1157" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Card / assignment / Comment — Project-scoped API&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Target: create/list/detail/move/assignee/comments. Detail GET, comments GET and cursor remain incomplete in runtime." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="&lt;b&gt;Owner / Member&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="&lt;b&gt;task-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="&lt;b&gt;task_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="• Cursor scope is Project/Board/Column + sort; response shape/errors open. Client dedupes cardId and shows reload banner when inconsistent.&lt;br/&gt;• Task keeps project_id/board_id/column_id as scalar references; no FK to board_db. Path projectId alone does not prove Board relation.&lt;br/&gt;• SYSTEM_ADMIN alone has no Project access. Runtime Card status exists, but target semantics are open." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1235" width="1640" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1433" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="1433" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1433" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="1433" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-11" name="10 - Membership revoke and Redis snapshot">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1990" pageHeight="1049" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="150" as="sourcePoint" />
+            <mxPoint x="425" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="150" as="sourcePoint" />
+            <mxPoint x="710" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="995" y="150" as="sourcePoint" />
+            <mxPoint x="995" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="150" as="sourcePoint" />
+            <mxPoint x="1280" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="150" as="sourcePoint" />
+            <mxPoint x="1565" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1850" y="150" as="sourcePoint" />
+            <mxPoint x="1850" y="761" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;01.&lt;/b&gt; DELETE /projects/{projectId}/members/{userId}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="425" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;02.&lt;/b&gt; Owner removes; Member may self-leave; Owner cannot self-remove" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="239" as="sourcePoint" />
+            <mxPoint x="710" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;03.&lt;/b&gt; TX: status REMOVED; authorizationVersion++; keep membershipVersion" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="293" as="sourcePoint" />
+            <mxPoint x="995" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;04.&lt;/b&gt; Same TX: Outbox + durable sync job(operationId)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="347" as="sourcePoint" />
+            <mxPoint x="995" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;05.&lt;/b&gt; Commit; Redis may still have old snapshot" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="995" y="401" as="sourcePoint" />
+            <mxPoint x="710" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;06.&lt;/b&gt; If Redis not confirmed: 202 + operationId/statusUrl" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="455" as="sourcePoint" />
+            <mxPoint x="140" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;07.&lt;/b&gt; Apply current snapshot with authVersion CAS; stale cannot overwrite" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="509" as="sourcePoint" />
+            <mxPoint x="1565" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;08.&lt;/b&gt; APPLIED / ALREADY_CURRENT / SUPERSEDED" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="563" as="sourcePoint" />
+            <mxPoint x="1280" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;09.&lt;/b&gt; Persist SYNCED/SUPERSEDED result; retry Redis errors" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="617" as="sourcePoint" />
+            <mxPoint x="995" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;10.&lt;/b&gt; Complete only after correct version applied; SUPERSEDED → reload" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="671" as="sourcePoint" />
+            <mxPoint x="140" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;11.&lt;/b&gt; Independent Outbox: member.assignments.cleanup-requested" style="edgeStyle=none;html=1;rounded=0;strokeColor=#2e8b57;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="725" as="sourcePoint" />
+            <mxPoint x="1850" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Gỡ Member / tự rời — quyền có hiệu lực tại Redis apply&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1914" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="DB + Outbox + durable snapshot job commit trước; API không đợi assignment cleanup. Pending Redis sync → 202 + operation handle." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1910" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;Owner / Member&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="325" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="610" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;board_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="895" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;Redis sync worker&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1465" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1750" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="• Revocation becomes effective when Redis applies the new snapshot; DB commit alone does not claim old authorization stopped.&lt;br/&gt;• A newer Redis authorizationVersion makes old job SUPERSEDED, not COMPLETED. Task reads Redis and fails closed on missing/invalid/unavailable snapshots.&lt;br/&gt;• Task unassign is independent and retryable; failure never restores access or delays revoke completion." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="803" width="1910" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1001" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="512.5" y="1001" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1001" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1457.5" y="1001" width="460.5" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-12" name="11 - Assignment cleanup worker">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="995" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; Publish cleanup request through Outbox; same eventId on retry" style="edgeStyle=none;html=1;rounded=0;strokeColor=#2e8b57;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="428" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; Deliver member.assignments.cleanup-requested" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="239" as="sourcePoint" />
+            <mxPoint x="716" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; TX: Inbox(consumerName,eventId) + fence + durable job" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="293" as="sourcePoint" />
+            <mxPoint x="1004" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Commit Inbox/fence/job before ACK" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="347" as="sourcePoint" />
+            <mxPoint x="716" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; ACK after durable receipt" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="401" as="sourcePoint" />
+            <mxPoint x="428" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; Lock Project/User assignment writes; process durable batches" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="455" as="sourcePoint" />
+            <mxPoint x="1004" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Delete only projectId + userId + membershipVersion + boardIds" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="509" as="sourcePoint" />
+            <mxPoint x="1004" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; Checkpoint last_processed_card_id; retry batch idempotently" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="563" as="sourcePoint" />
+            <mxPoint x="1004" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Outbox completion: new eventId; same operationId/generation/source version" style="edgeStyle=none;html=1;rounded=0;strokeColor=#2e8b57;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="617" as="sourcePoint" />
+            <mxPoint x="140" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;10.&lt;/b&gt; Record cleanup result; does not affect revoke completion" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="671" as="sourcePoint" />
+            <mxPoint x="1580" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Member rời Project — Inbox, fence, generation và cleanup nền&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Cleanup chỉ tác động assignment của membershipVersion bị revoke, tránh xóa assignment sau khi rejoin." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;task-service consumer&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;task_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;cleanup worker&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;board-service completion&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="• Duplicate eventId is skipped by Inbox. Inbox + fence + job commit in task_db before ACK.&lt;br/&gt;• membershipVersion is a membership generation, held through revoke and incremented on rejoin. sourceAggregateVersion preserves request event version.&lt;br/&gt;• Comments/attribution remain. This is not Account deletion or Project cascade." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="749" width="1640" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="947" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="947" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="947" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="947" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-13" name="12 - Outbox Inbox and RabbitMQ">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="1041" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="707" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; One TX: business mutation + outbox_events row" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="428" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; PENDING event due; keep original envelope" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="239" as="sourcePoint" />
+            <mxPoint x="716" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; Publish persistent message; mandatory=true" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="293" as="sourcePoint" />
+            <mxPoint x="1004" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Publisher Confirm + Publisher Return (not Consumer ACK)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="347" as="sourcePoint" />
+            <mxPoint x="716" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; Confirm and no Return → SENT; unknown/failure → retry" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="401" as="sourcePoint" />
+            <mxPoint x="428" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; Retry same eventId, aggregateVersion, payload; broker may have accepted" style="edgeStyle=none;html=1;rounded=0;strokeColor=#2e8b57;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="455" as="sourcePoint" />
+            <mxPoint x="1004" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Delivery may be duplicate or redelivery after lost ACK" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="509" as="sourcePoint" />
+            <mxPoint x="1292" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; TX: Inbox(consumerName,eventId) + business state or durable job" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="563" as="sourcePoint" />
+            <mxPoint x="1580" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Commit before ACK; existing Inbox key skips side effect" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="617" as="sourcePoint" />
+            <mxPoint x="1292" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;10.&lt;/b&gt; ACK only after commit; lost ACK → same event redelivered" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="671" as="sourcePoint" />
+            <mxPoint x="1004" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;RabbitMQ reliability — Outbox, Confirm/Return, Inbox, ACK&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="At-least-once delivery; eventId, aggregateVersion and operationId address different concerns." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;Producer app&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;Producer DB&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;Outbox Relay&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;Consumer&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;Consumer DB&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="• Envelope: eventId, eventType, schemaVersion, aggregateType, aggregateId, aggregateVersion, occurredAt, payload. Wire eventType is lowercase dotted.&lt;br/&gt;• eventId deduplicates one exact event per consumer. aggregateVersion detects stale/order/gaps; do not blindly discard every lower version. Retry does not increment version.&lt;br/&gt;• operationId correlates multi-event work; completion is a new eventId. New event IDs for repeat commands may need business idempotency key.&lt;br/&gt;• Queue/binding/listeners are incomplete; retry limits, DLQ, retention and alerts remain open." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="749" width="1640" height="202" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="993" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="993" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="993" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="993" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-14" name="13 - Notification lifecycle">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="1103" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="815" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; Target Outbox event; Card/mention event set not finalized" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="185" as="sourcePoint" />
+            <mxPoint x="1004" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; Target consumer; TaskEventListener is placeholder" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="239" as="sourcePoint" />
+            <mxPoint x="1292" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; One TX: Inbox(eventId) + recipient Notification row" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="293" as="sourcePoint" />
+            <mxPoint x="1580" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; GET /api/v1/notifications/me?unreadOnly=false" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="347" as="sourcePoint" />
+            <mxPoint x="428" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; Route list; identity should come from Gateway" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="401" as="sourcePoint" />
+            <mxPoint x="1292" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; Query by recipient user_id; filter unread" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="455" as="sourcePoint" />
+            <mxPoint x="1580" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Rows with optional Project/Board/Card context" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="509" as="sourcePoint" />
+            <mxPoint x="1292" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; Return only caller&#39;s account inbox" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="563" as="sourcePoint" />
+            <mxPoint x="140" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; PATCH /api/v1/notifications/{id}/read" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="617" as="sourcePoint" />
+            <mxPoint x="428" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;10.&lt;/b&gt; Route mark-read; service checks recipient ownership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="671" as="sourcePoint" />
+            <mxPoint x="1292" y="671" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;11.&lt;/b&gt; Update read=true for own notification" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="725" as="sourcePoint" />
+            <mxPoint x="1580" y="725" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;12.&lt;/b&gt; 200 Notification" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="779" as="sourcePoint" />
+            <mxPoint x="140" y="779" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Notification — Account inbox with optional Project context&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Notification belongs to recipient Account; Project/Board/Card are optional context. No Project cascade in Kỳ 1." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;Account / Client&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;domain-event producers (TBD)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;b&gt;notification-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="&lt;b&gt;notification_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="• Current GET/PATCH controller uses X-User-Id stub; inbound ports not fully wired. Internal POST is disabled by default and has no service-token enforcement.&lt;br/&gt;• TaskEventListener is placeholder; Card event names, payloads, queue bindings and notification event flow are not agreed/wired.&lt;br/&gt;• Account inbox can aggregate across Projects and system notifications without Project context." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="857" width="1640" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1055" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="1055" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="1055" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="1055" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-15" name="14 - Realtime and cursor behavior">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1720" pageHeight="941" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="150" as="sourcePoint" />
+            <mxPoint x="428" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="150" as="sourcePoint" />
+            <mxPoint x="716" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1004" y="150" as="sourcePoint" />
+            <mxPoint x="1004" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="150" as="sourcePoint" />
+            <mxPoint x="1292" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1580" y="150" as="sourcePoint" />
+            <mxPoint x="1580" y="653" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;01.&lt;/b&gt; GET cards?columnId=&amp;limit=5&amp;cursor=opaque" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="428" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;02.&lt;/b&gt; Specific Card route before broad Project route" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="239" as="sourcePoint" />
+            <mxPoint x="716" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;03.&lt;/b&gt; Current-state keyset query, scoped Project/Board/Column" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="293" as="sourcePoint" />
+            <mxPoint x="1004" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; CardPage nextCursor/hasMore (shape proposal)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#7a8793;strokeWidth=1.4;dashed=1;endArrow=open;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="347" as="sourcePoint" />
+            <mxPoint x="140" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;05.&lt;/b&gt; WebSocket connect /ws/boards/{boardId}" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="401" as="sourcePoint" />
+            <mxPoint x="428" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;06.&lt;/b&gt; Gateway has /ws/** route; Task handler not registered" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="428" y="455" as="sourcePoint" />
+            <mxPoint x="1292" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;07.&lt;/b&gt; Target card.created / card.moved / comment.added" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="716" y="509" as="sourcePoint" />
+            <mxPoint x="1292" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; Broadcast board-scoped updates" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1292" y="563" as="sourcePoint" />
+            <mxPoint x="1580" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Dedupe cardId; show reload banner on detected inconsistency" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="617" as="sourcePoint" />
+            <mxPoint x="140" y="617" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Realtime / infinite scroll — target and current stubs&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Sort position DESC,id DESC; page default 5/max 20. Cursor wire, websocket auth and stale detection details remain open." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;Web/Mobile&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;API Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="328" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;task-service REST&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="616" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;task_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="904" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;Task WebSocket handler&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1192" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;other clients&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="• CardEventAdapter currently logs stubs; BoardWebSocketConfig has no registered handler. Route presence is not end-to-end realtime.&lt;br/&gt;• Cursor should bind Project/Board/Column/sort; exact wire/errors open. Query limit+1 to determine hasMore.&lt;br/&gt;• When data changes during scrolling: dedupe, apply realtime if available, and show reload banner on detected inconsistency." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="695" width="1640" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="893" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="445" y="893" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="850" y="893" width="393" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1255" y="893" width="393" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-16" name="15 - Lifecycle and preferences open">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="&lt;b&gt;Project/Board lifecycle và Board preference — phần còn mở&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1424" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Chỉ thể hiện vocabulary và phạm vi đã biết; không tạo transition/API/database chưa duyệt." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1420" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;b&gt;ACTIVE&lt;/b&gt;&lt;br/&gt;Đang hoạt động" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=15;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="140" y="190" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;b&gt;COMPLETED&lt;/b&gt;&lt;br/&gt;Đã hoàn thành" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=15;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="600" y="190" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;b&gt;CANCELLED&lt;/b&gt;&lt;br/&gt;Đã hủy" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=15;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="190" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;b&gt;Đã chốt:&lt;/b&gt; Project.status và Board.status dùng ACTIVE / COMPLETED / CANCELLED. Owner quản lý lifecycle; status lưu ở Project và Board." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="90" y="390" width="630" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="&lt;b&gt;Chưa chốt:&lt;/b&gt; transition graph/khôi phục, thao tác sau status kết thúc, tác động Project lên Board con, endpoint. Không vẽ mũi tên vì chưa có contract." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="780" y="390" width="630" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;b&gt;Board preference chỉ từ demo:&lt;/b&gt; GET /users/me/preferences/default-boards; PUT/DELETE .../{projectId}. Service sở hữu, DB, Membership validation và cleanup chưa chốt; không thêm bảng vào ERD Kỳ 1." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="90" y="590" width="1320" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="390" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="740" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="802" width="338" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-17" name="16 - Kỳ 2 Account soft-delete direction">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1990" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="150" as="sourcePoint" />
+            <mxPoint x="140" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="5" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="150" as="sourcePoint" />
+            <mxPoint x="425" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="150" as="sourcePoint" />
+            <mxPoint x="710" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="7" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="995" y="150" as="sourcePoint" />
+            <mxPoint x="995" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="150" as="sourcePoint" />
+            <mxPoint x="1280" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1565" y="150" as="sourcePoint" />
+            <mxPoint x="1565" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="10" value="" style="edgeStyle=none;html=1;dashed=1;strokeColor=#b8c4ce;endArrow=none;startArrow=none;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1850" y="150" as="sourcePoint" />
+            <mxPoint x="1850" y="599" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;01.&lt;/b&gt; Kỳ 2: request soft-delete Account (endpoint/status chưa thiết kế)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="185" as="sourcePoint" />
+            <mxPoint x="425" y="185" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;02.&lt;/b&gt; Kỳ 2 only; no Kỳ 1 Account deletion route" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="425" y="239" as="sourcePoint" />
+            <mxPoint x="710" y="239" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;03.&lt;/b&gt; Future soft-delete/tombstone design; no Kỳ 1 schema/status" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="293" as="sourcePoint" />
+            <mxPoint x="995" y="293" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;04.&lt;/b&gt; For each owned Project: evaluate Owner succession" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="710" y="347" as="sourcePoint" />
+            <mxPoint x="1280" y="347" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;05.&lt;/b&gt; Promote eligible earliest-joined Member; keep exactly one Owner" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="401" as="sourcePoint" />
+            <mxPoint x="1565" y="401" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;06.&lt;/b&gt; No eligible successor → block Account deletion" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="455" as="sourcePoint" />
+            <mxPoint x="1565" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;07.&lt;/b&gt; Account was Member only → preserve Project; revoke Membership" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="509" as="sourcePoint" />
+            <mxPoint x="1565" y="509" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;08.&lt;/b&gt; Unassign Card in background; retain comments/attribution" style="edgeStyle=none;html=1;rounded=0;strokeColor=#b85450;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="563" as="sourcePoint" />
+            <mxPoint x="1850" y="563" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;Kỳ 2 — Account soft delete và Owner succession (direction only)&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
+          <mxGeometry x="38" y="18" width="1914" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Không thuộc runtime/hợp đồng/schema Kỳ 1; ghi chú này không định nghĩa API/event/operation contract." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="40" y="62" width="1910" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="&lt;b&gt;System Admin&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="&lt;b&gt;Gateway&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="325" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;b&gt;user-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="610" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;b&gt;user_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="895" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;b&gt;board-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="&lt;b&gt;board_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1465" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;b&gt;task-service&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
+          <mxGeometry x="1750" y="110" width="200" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="• Kỳ 2 direction: soft-delete Account, preserve historical attribution, transfer owned Project to earliest eligible Member, block if none.&lt;br/&gt;• No hard delete or physical Project cascade approved. Pending Invitation, snapshot revoke, operation tracking, event contract and retention need separate design.&lt;br/&gt;• Do not add Account deletion tables, DELETING status, cascade jobs, or endpoints to Kỳ 1 ERDs." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="641" width="1910" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="852" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="Kỳ 1 target" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
+          <mxGeometry x="512.5" y="852" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="TODO / open" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+          <mxGeometry x="985" y="852" width="460.5" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Kỳ 2 deferred" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#b85450;fillColor=#f4cccc;" vertex="1" parent="1">
+          <mxGeometry x="1457.5" y="852" width="460.5" height="28" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
