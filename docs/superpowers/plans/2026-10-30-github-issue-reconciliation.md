@@ -45,22 +45,22 @@
 
 **External GitHub issues:** #1–35.
 
-- [ ] Rewrite parent issues #1–#6 as Kỳ 1 service/integration scopes based on current docs.
-- [ ] Re-scope child issues #7–#35 so each describes one deliverable with dependencies and observable acceptance criteria.
-- [ ] Retain valid unfinished implementation work; identify decision-gated tasks without inventing decisions.
-- [ ] Remove old Board-first acceptance from target routes, remove `PR_REVIEWED` from Kỳ 1, and add Redis to local infrastructure acceptance.
+- [x] Rewrite parent issues #1–#6 as Kỳ 1 service/integration scopes based on current docs.
+- [x] Re-scope child issues #7–#35 so each describes one deliverable with dependencies and observable acceptance criteria.
+- [x] Retain valid unfinished implementation work; identify decision-gated tasks without inventing decisions.
+- [x] Remove old Board-first acceptance from target routes, remove `PR_REVIEWED` from Kỳ 1, and add Redis to local infrastructure acceptance.
 
 ### Task 3: Clarify mobile issue phase and scope
 
 **External GitHub issues:** #36–41.
 
-- [ ] Keep core authentication, Project workspace, Card workflow, Notification, and API integration work tied to the canonical Kỳ 1 contract.
-- [ ] Mark Google OAuth, refresh-token policy, Category/Tag, Subtasks, advanced search, reminders, and statistics as proposals/phase-unapproved unless the current docs approve them.
-- [ ] Preserve issue and project-board status; do not claim implementation completion.
+- [x] Keep core authentication, Project workspace, Card workflow, Notification, and API integration work tied to the canonical Kỳ 1 contract.
+- [x] Mark Google OAuth, refresh-token policy, Category/Tag, Subtasks, advanced search, reminders, and statistics as proposals/phase-unapproved unless the current docs approve them.
+- [x] Preserve issue and project-board status; do not claim implementation completion.
 
 ### Task 4: Verify local docs and remote issue updates
 
-- [ ] Read back all 41 updated issue bodies and confirm title/number/state/project status were preserved.
-- [ ] Confirm no issue was closed or moved on the project board.
-- [ ] Run `git diff --check`, inspect every modified doc/template, verify links and YAML structure, and check LF at EOF.
-- [ ] Record verification evidence and report remote/local changes separately.
+- [x] Read back all 41 updated issue bodies and confirm title/number/state were preserved; verify assignees, labels, and milestones unchanged.
+- [x] Update issue title/body only; no Project status field was sent to GitHub.
+- [x] Run `git diff --check`, inspect every modified doc/template, verify links and YAML structure, and check LF at EOF.
+- [x] Record verification evidence and report remote/local changes separately.
