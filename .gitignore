@@ -3,3 +3,6 @@ target/
 *.iml
 .env
 .DS_Store
+
+# Local plans/specs are working notes, not repository documentation.
+/docs/superpowers/

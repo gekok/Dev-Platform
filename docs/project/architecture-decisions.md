@@ -160,7 +160,7 @@ LIMIT :limitPlusOne;
 - Chấp nhận dữ liệu thay đổi trong lúc tải trang: client loại Card trùng theo `cardId` và dùng realtime event cập nhật Card đã di chuyển. Nếu phát hiện bất nhất, hiện banner đầu trang yêu cầu người dùng reload.
 - Cursor `(position DESC,id DESC)` có thứ tự toàn phần vì `id` duy nhất. `columnId` là scope để infinite-scroll riêng từng Column; server phải bind/validate cursor theo `projectId`, `boardId`, `columnId` và sort contract.
 
-Hợp đồng tham chiếu: `docs/superpowers/specs/2026-10-21-kanban-web-demo-design.md` và phần Board preference tại `web-demo/docs/superpowers/specs/2026-10-21-project-board-navigation-design.md`.
+Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preference được tham khảo từ mock trong `web-demo/`; service sở hữu, storage và kiểm tra quyền vẫn là các điểm chưa chốt.
 
 ## 6. Xác thực tại Gateway
 

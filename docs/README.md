@@ -40,9 +40,8 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 
 ## Tài liệu tham khảo và tài liệu lịch sử
 
-- `docs/superpowers/specs/2026-10-21-kanban-web-demo-design.md` mô tả React/MSW demo. Phần topology backend và phạm vi quyền trong spec đã được quyết định kiến trúc mới thay thế; phần UI/mock vẫn là tham khảo trong đúng phạm vi demo.
 - `web-demo/docs/superpowers/specs/2026-10-21-project-board-navigation-design.md` và `web-demo/src/mocks/handlers/` mô tả UX cùng mock HTTP API. Đây không phải bằng chứng backend đã implement các route/payload đó.
-- `docs/superpowers/plans/` lưu kế hoạch triển khai theo thời điểm; plan không phải nguồn quyết định kiến trúc hay báo cáo runtime nếu chưa đối chiếu code.
+- `docs/superpowers/` là nơi lưu plan/spec làm việc trên máy cá nhân và được Git ignore; không dùng các file này làm nguồn quyết định hoặc bằng chứng runtime. Quyết định đã chốt cần được ghi trong `docs/project/architecture-decisions.md`; contract và trạng thái triển khai được cập nhật ở tài liệu API/service tương ứng.
 
 ## Thứ tự đồng bộ tài liệu
 
@@ -55,5 +54,5 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 
 - README, API chung, task sheets 01–06, API/database docs của bốn service, `shared/README.md` và tài liệu Gateway được đồng bộ theo mô hình Project-first. Common API có contract draft; bốn database docs có logical schema per service. Đây là thiết kế tài liệu, không phải backend đã implement hay toàn bộ contract đã duyệt.
 - Account deletion và Project cascade được hoãn sang Kỳ 2; [ghi chú Account deletion](project/account-deletion-skeleton-guide.md) chỉ lưu quyết định định hướng, không hướng dẫn bật scaffold trong Kỳ 1.
-- React demo dùng MSW và mobile client chưa phải bằng chứng backend Project-first đã tích hợp. Các plan/spec giữ vai trò lịch sử hoặc tham khảo theo phạm vi ghi tại mục trên.
+- React demo dùng MSW và mobile client chưa phải bằng chứng backend Project-first đã tích hợp. Spec trong `web-demo/` chỉ tham khảo UX/mock; plan/spec làm việc trong `docs/superpowers/` là local-only và không thuộc bộ tài liệu trên remote.
 - Các mục còn mở gồm bootstrap System Admin đầu tiên và chính sách một Account đa vai trò; nguồn xác minh Account ACTIVE khi mời/Accept do internal REST chưa bảo mật; Invitation expiry/cancel; Project/Board transition graph; chi tiết cursor/error contract; retry/DLQ; Board preference ownership/storage. Redis snapshot apply là mốc hiệu lực thu hồi quyền; implementation seams và integration TODO được mô tả trong tài liệu service.
