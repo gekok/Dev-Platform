@@ -1,0 +1,78 @@
+name: Công việc triển khai
+description: Tạo hoặc điều chỉnh issue triển khai với phạm vi và bằng chứng nghiệm thu rõ ràng.
+title: "[service] "
+labels: []
+assignees: []
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Giai đoạn
+      description: Chỉ chọn Kỳ 2 khi phạm vi đó đã được chốt trong tài liệu kiến trúc.
+      options:
+        - Kỳ 1 — đã duyệt
+        - Kỳ 2 — đã duyệt
+        - Đề xuất/chưa duyệt
+        - Chưa xác định
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Service hoặc client phụ trách
+      placeholder: board-service
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Kết quả cần đạt
+      description: Mô tả kết quả người dùng hoặc hệ thống quan sát được.
+      placeholder: Khi nghiệm thu issue này, điều gì sẽ dùng được?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Phạm vi và phần không làm
+      description: Chọn một deliverable có thể review độc lập; nêu rõ phần ngoài phạm vi.
+      placeholder: Bao gồm ...; không bao gồm ...
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Phụ thuộc và quyết định còn mở
+      description: Liên kết issue cha/tài liệu và nêu quyết định đang chặn triển khai.
+      placeholder: "Phụ thuộc #123; quyết định ... chưa được chốt. Nếu không có, ghi 'Không có'."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Tiêu chí nghiệm thu
+      description: Mỗi checkbox là một điều kiện quan sát được; tránh mô tả hoàn thành chung chung.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] Input sai hoặc không đủ quyền nhận kết quả ...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Bằng chứng cần đính kèm
+      description: Ghi lệnh, request, log, CI hoặc ảnh/snapshot dùng để nghiệm thu.
+      placeholder: |
+        - Command/request:
+        - Expected result:
+        - Evidence link:
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Tài liệu nguồn chuẩn
+      description: Liên kết quyết định kiến trúc, API contract, tài liệu service và code runtime liên quan.
+      placeholder: docs/project/architecture-decisions.md; docs/api/kanban-api.md
+    validations:
+      required: true

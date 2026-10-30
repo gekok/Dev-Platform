@@ -1,0 +1,66 @@
+name: Báo lỗi
+description: Ghi nhận lỗi có thể tái hiện, tác động và bằng chứng.
+title: "[bug] "
+labels: []
+assignees: []
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Giai đoạn
+      description: Chọn giai đoạn của hành vi bị lỗi; dùng Chưa xác định nếu chưa rõ.
+      options:
+        - Kỳ 1
+        - Kỳ 2
+        - Chưa xác định
+    validations:
+      required: true
+  - type: input
+    id: area
+    attributes:
+      label: Service hoặc client bị ảnh hưởng
+      placeholder: task-service
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Hiện tượng và tác động
+      description: Nêu ai bị ảnh hưởng và họ đang thấy kết quả gì.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Các bước tái hiện
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Môi trường và thông tin liên quan
+      description: Ghi branch/commit, phiên bản service, ID đã làm sạch hoặc request path.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Bằng chứng
+      description: Đính kèm request/response đã làm sạch, log, ảnh hoặc CI run. Không đưa credential hay dữ liệu cá nhân vào issue.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Issue hoặc tài liệu liên quan
+      description: Liên kết issue, architecture decision, API/schema contract liên quan; nếu không có, ghi "Không có".
+    validations:
+      required: true

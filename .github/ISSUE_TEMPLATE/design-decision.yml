@@ -1,0 +1,61 @@
+name: Quyết định thiết kế
+description: Theo dõi quyết định kiến trúc, API, schema hoặc phạm vi sản phẩm còn mở.
+title: "[decision] "
+labels: []
+assignees: []
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Giai đoạn bị ảnh hưởng
+      options:
+        - Kỳ 1
+        - Kỳ 2
+        - Chưa xác định
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Người/service phụ trách chốt
+      placeholder: board-service / product owner
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Câu hỏi cần chốt
+      description: Hỏi một vấn đề mà câu trả lời sẽ thay đổi implementation hoặc contract.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Bối cảnh và ràng buộc
+      description: Liên kết quyết định hiện tại, tài liệu API/schema và service bị ảnh hưởng.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Phương án và đánh đổi
+      placeholder: |
+        - Option A — benefits / costs
+        - Option B — benefits / costs
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Đề xuất và tác động
+      description: Nêu phương án đề xuất và issue/tài liệu cần cập nhật sau khi chốt.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Bằng chứng đóng issue
+      description: Ghi quyết định đã lưu ở đâu và tài liệu/issue nào phải đồng bộ.
+      placeholder: Update architecture-decisions.md, kanban-api.md, and linked issues.
+    validations:
+      required: true

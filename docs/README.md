@@ -18,6 +18,7 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 | `docs/project/architecture-decisions.md` | Nguồn quyết định kiến trúc | Project-first; các mục được liệt kê là cần bàn tiếp chưa phải contract |
 | `docs/api/kanban-api.md` | API mục tiêu và tham chiếu API cũ | Có request/response draft theo service; mục đề xuất/còn mở chưa phải OpenAPI đã duyệt |
 | `docs/project/06-integration.md` | Kịch bản tích hợp liên service | Checklist mục tiêu, chưa phải báo cáo các flow đã chạy |
+| `docs/project/github-issue-workflow.md` | Cách tạo, phân kỳ và nghiệm thu GitHub Issue | Yêu cầu acceptance criteria quan sát được và bằng chứng trước khi Done |
 | `docs/project/account-deletion-skeleton-guide.md` | Ghi chú Account deletion/cascade | Tham khảo Kỳ 2; runtime Kỳ 1 không có luồng này |
 
 ## Tài liệu theo service

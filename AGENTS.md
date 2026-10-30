@@ -23,6 +23,10 @@
 - Keep docs with related code in the same PR. Update architecture decisions for decision changes; shared API and owning service API docs for routes/payloads; Gateway routing docs when routes change; service database docs and versioned migrations once migration tooling is selected; integration and shared docs/contracts for cross-service events or flows.
 - Update task sheets/runtime descriptions as implementation status changes. Keep proposals marked open, never describe target design as shipped, and update `docs/README.md` when document ownership or navigation changes.
 
+## GitHub Issues and Acceptance
+- Follow `docs/project/github-issue-workflow.md` and the `.github/ISSUE_TEMPLATE/` forms when creating or rescoping work.
+- State phase, service owner, scope, dependencies, observable acceptance criteria, and verification evidence. Do not move an issue to `Done` or close it without linked acceptance evidence.
+
 ## Commits and Pull Requests
 - Follow Conventional Commit prefixes in history (`feat:`, `fix:`, `docs:`, `refactor:`); keep commits focused.
 - PRs must list scope, affected services/contracts, verification results, and API/schema impacts; include screenshots for UI changes.
