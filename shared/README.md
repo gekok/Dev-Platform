@@ -19,6 +19,104 @@ service → messaging-support → event-contracts
 
 Các service khai báo dependency `messaging-support`, import `MessagingSupportConfiguration`, và scan `shared.messaging.persistence.entity` cùng repository. Vì vậy entity shared được map vào **database riêng của từng service** (`user_db`, `board_db`, `task_db`, `notification_db`). Không có schema `shared_db`.
 
+### Lộ trình đọc code
+
+1. Đọc [`EventEnvelope`](event-contracts/src/main/java/dev/platform/contracts/EventEnvelope.java), [`EventTypes`](event-contracts/src/main/java/dev/platform/contracts/EventTypes.java) và một [payload](event-contracts/src/main/java/dev/platform/contracts/event/MemberAssignmentsCleanupRequested.java) để hiểu dữ liệu trao đổi.
+2. Đọc [`MessagingSupportConfiguration`](messaging-support/src/main/java/dev/platform/shared/messaging/MessagingSupportConfiguration.java) và [`UserServiceApplication`](../services/user-service/src/main/java/dev/platform/user/UserServiceApplication.java) để xem service đăng ký library và các JPA mapping.
+3. Đọc [`OutboxEventWriter`](messaging-support/src/main/java/dev/platform/shared/messaging/OutboxEventWriter.java), [`OutboxRelay`](messaging-support/src/main/java/dev/platform/shared/messaging/OutboxRelay.java) và [`InboxEventRecorder`](messaging-support/src/main/java/dev/platform/shared/messaging/InboxEventRecorder.java).
+4. Theo dõi ví dụ [Board gửi yêu cầu cleanup và Task xử lý](#ví-dụ-đọc-code-board-yêu-cầu-cleanup-task-xử-lý) bên dưới. Chú ý đây là các mảnh code hiện có, chưa phải luồng đã nối end-to-end.
+
+## Service dùng shared trong code như thế nào?
+
+Service khai báo dependency Maven trong `pom.xml`; ví dụ [`board-service/pom.xml`](../services/board-service/pom.xml):
+
+```xml
+<dependency>
+    <groupId>dev.platform</groupId>
+    <artifactId>messaging-support</artifactId>
+    <version>${project.version}</version>
+</dependency>
+```
+
+`messaging-support` phụ thuộc `event-contracts`, vì vậy service cũng có thể import `EventEnvelope` và các payload. Đây là lời gọi thư viện trong cùng tiến trình Java, không phải HTTP request tới một shared service.
+
+Ví dụ cấu hình trong `UserServiceApplication` (rút gọn):
+
+```java
+@SpringBootApplication
+@EntityScan(basePackages = {
+        "dev.platform.user",
+        "dev.platform.shared.messaging.persistence.entity"
+})
+@EnableJpaRepositories(basePackages = {
+        "dev.platform.user",
+        "dev.platform.shared.messaging.persistence.repository"
+})
+@Import(MessagingSupportConfiguration.class)
+public class UserServiceApplication { /* ... */ }
+```
+
+`@EntityScan` và `@EnableJpaRepositories` cho Spring tìm mapping và repository shared; `@Import` đăng ký `OutboxEventWriter`, `InboxEventRecorder` và cấu hình relay. Code shared chạy trong service và sử dụng datasource của service đó. Riêng relay chỉ được tạo khi bật các cờ được nêu trong [phần cấu hình](#bậttắt-và-trạng-thái-hiện-tại).
+
+### Ví dụ đọc code: Board yêu cầu cleanup, Task xử lý
+
+**Trạng thái:** ví dụ dưới đây lần theo code đã có và điểm nối dự kiến. Recorder Board chưa chứng minh đã được gọi từ luồng cập nhật Membership; RabbitMQ queue/binding và listener Task chưa được nối. Không coi sơ đồ là bằng chứng luồng đã chạy hoàn chỉnh.
+
+```text
+board-service: ProjectAuthorizationSnapshotSyncRecorder
+    → ghi snapshot-sync job + Outbox trong transaction của recorder
+    → OutboxRelay có thể gửi event tới RabbitMQ khi được cấu hình
+    → [chưa có queue/binding + listener đưa event tới task-service]
+task-service: MemberAssignmentCleanupRecorder
+    → ghi Inbox + fence + cleanup job trong transaction
+    → MemberAssignmentCleanupWorker xử lý job và ghi Outbox completion
+```
+
+1. **Contract:** [`MemberAssignmentsCleanupRequested`](event-contracts/src/main/java/dev/platform/contracts/event/MemberAssignmentsCleanupRequested.java) chứa `operationId`, `projectId`, `userId`, `boardIds` và `membershipVersion`. [`EventEnvelope`](event-contracts/src/main/java/dev/platform/contracts/EventEnvelope.java) bọc payload cùng `eventId`, tên event, phiên bản schema, loại/ID/phiên bản aggregate và thời điểm phát sinh. `eventId` dùng nhận diện event giao lại; `aggregateVersion` không thay thế Inbox.
+
+2. **Board ghi Outbox:** [`ProjectAuthorizationSnapshotSyncRecorder.recordMembershipRemoved`](../services/board-service/src/main/java/dev/platform/board/infrastructure/snapshot/ProjectAuthorizationSnapshotSyncRecorder.java) tạo snapshot-sync job và hai event, gồm `MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED`. Method helper bọc payload vào envelope rồi gọi shared:
+
+   ```java
+   outbox.append(new EventEnvelope<>(UUID.randomUUID(), eventType, 1,
+           "PROJECT_MEMBERSHIP", aggregateId, version, now, payload));
+   ```
+
+   [`OutboxEventWriter.append`](messaging-support/src/main/java/dev/platform/shared/messaging/OutboxEventWriter.java) chuyển envelope thành JSON và lưu event `PENDING` vào `board_db.outbox_events`. Method yêu cầu transaction sẵn có (`MANDATORY`). Recorder có `@Transactional`, nhưng thay đổi Membership phải được caller nối vào cùng transaction để đạt tính nguyên tử; điều đó chưa được chứng minh chỉ bằng sự tồn tại của recorder.
+
+3. **Relay:** khi được bật và cấu hình broker đúng, [`OutboxRelay`](messaging-support/src/main/java/dev/platform/shared/messaging/OutboxRelay.java) đọc Outbox của chính service, publish tới `dev-platform.domain-events` với routing key là `eventType`, rồi kiểm tra confirm/return. `SENT` không có nghĩa consumer đã xử lý xong. Xem [Outbox](#outbox) để biết retry và giới hạn hiện tại.
+
+4. **Task nhận yêu cầu:** [`MemberAssignmentCleanupRecorder.requestMemberAssignmentCleanup`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) có code sau, nhưng chưa có Rabbit listener gọi vào:
+
+   ```java
+   if (!inbox.recordIfNew(CONSUMER_NAME, event.eventId(), event.eventType())) {
+       return;
+   }
+   // Sau đó ghi fence và cleanup job trong cùng transaction.
+   ```
+
+   Inbox phân biệt theo `(consumerName, eventId)`. Cleanup job còn có khóa nghiệp vụ theo Project, User và `membershipVersion`; fence giúp phối hợp cleanup với assignment. Xem [Inbox](#inbox) về race khi nhận trùng đồng thời. Listener tương lai phải bảo đảm ACK sau commit, xử lý retry và lỗi; shared không tự làm các bước đó.
+
+5. **Worker:** [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) có code đọc job, xóa assignment theo batch và ghi event `MEMBER_ASSIGNMENTS_CLEANED` qua `OutboxEventWriter`. Worker chỉ được tạo khi bật `dev-platform.assignment-cleanup.enabled`. Việc có worker không chứng minh cleanup hoặc completion đã chạy end-to-end.
+
+### Vai trò của từng service
+
+| Service | Chỗ đọc code | Hiện trạng cần lưu ý |
+|---|---|---|
+| User | [`AccountAuthorizationSnapshotSyncRecorder`](../services/user-service/src/main/java/dev/platform/user/infrastructure/snapshot/AccountAuthorizationSnapshotSyncRecorder.java) | Có code ghi snapshot job và Outbox khi status/role thay đổi; chưa chứng minh đã nối vào toàn bộ lifecycle Account. |
+| Board | [`ProjectAuthorizationSnapshotSyncRecorder`](../services/board-service/src/main/java/dev/platform/board/infrastructure/snapshot/ProjectAuthorizationSnapshotSyncRecorder.java) | Tạo snapshot job và event Membership/cleanup; caller phải nối mutation trong cùng transaction. |
+| Task | [`MemberAssignmentCleanupRecorder`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) và [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) | Code dùng Inbox và Outbox; listener đưa message từ RabbitMQ vào recorder chưa có. |
+| Notification | [`TaskEventListener`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/TaskEventListener.java) | Có import cấu hình shared; listener nghiệp vụ hiện còn TODO. |
+
+### Khi thêm luồng event mới
+
+1. Chốt service sở hữu nghiệp vụ, consumer, event contract và version; sửa [`EventTypes`](event-contracts/src/main/java/dev/platform/contracts/EventTypes.java), payload và tài liệu contract khi cần.
+2. Ở producer, ghi thay đổi nghiệp vụ và `outbox.append(envelope)` trong **cùng transaction**. Không gửi RabbitMQ trực tiếp thay cho Outbox nếu yêu cầu bảo đảm nguyên tử.
+3. Cấu hình và kiểm tra publisher confirm/return, exchange, queue và binding; giữ nguyên event đã lưu khi retry publish.
+4. Viết listener ở consumer, giải mã đúng contract và gọi `recordIfNew` cùng transaction với thay đổi nghiệp vụ hoặc job bền vững. Xử lý duplicate đồng thời, retry, thứ tự event và ACK sau commit theo chính sách được duyệt.
+5. Kiểm tra toàn bộ luồng, gồm rollback, publish/ACK mất, message trùng và consumer lỗi; cập nhật tài liệu service và hợp đồng liên quan. Class, queue, listener hoặc API chưa triển khai phải được ghi rõ là mục tiêu.
+
+Redis snapshot là phần riêng do service sở hữu, không do shared thực hiện; ví dụ task-service đọc qua [`RedisAuthorizationSnapshotAdapter`](../services/task-service/src/main/java/dev/platform/task/infrastructure/adapter/RedisAuthorizationSnapshotAdapter.java).
+
 ## `event-contracts`
 
 `EventEnvelope<T>` dùng các trường `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt`, `payload`. Event ID là định danh retry/dedup; aggregate version thuộc từng aggregate. Tên wire và payload tối thiểu ở [event decisions](../docs/project/architecture-decisions.md) là hợp đồng thiết kế hiện tại; các record trong module này mới là skeleton contract, chưa chứng minh serialization, publish, consume hoặc schema evolution đã tích hợp end-to-end.
