@@ -1,10 +1,9 @@
 ﻿/* Local SQL Server bootstrap for the four empty Kanban databases.
-   Run with sqlcmd -b -f 65001 or SSMS in SQLCMD mode, using a principal with DDL rights.
-   This is not a migration: it refuses to run if any target DB has user tables.
+   Run only against four empty local databases, using a principal with DDL rights.
+   For sqlcmd, use -b -f 65001. In SSMS, stop execution if any error is reported.
    Operational tables are created empty; sample credentials are local-only.
    The login needs CREATE DATABASE permission when any database is missing.
 */
-:ON ERROR EXIT
 USE master;
 GO
 IF DB_ID(N'kanban_user_db') IS NULL CREATE DATABASE kanban_user_db;
