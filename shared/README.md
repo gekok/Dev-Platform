@@ -45,7 +45,7 @@ Ví dụ cấu hình trong `UserServiceApplication` (rút gọn):
 ```java
 @SpringBootApplication
 @EntityScan(basePackages = {
-        "dev.platform.user",
+        "dev.platform.user.infrastructure.persistence.entity",
         "dev.platform.shared.messaging.persistence.entity"
 })
 @EnableJpaRepositories(basePackages = {
@@ -169,12 +169,12 @@ Các entity shared được map riêng trong DB của từng service. Mapping JP
 | `aggregate_type` | varchar(80) | not null |
 | `aggregate_id` | varchar(80) | not null |
 | `aggregate_version` | bigint | not null |
-| `payload` | TEXT | not null; JSON serialized envelope |
+| `payload` | nvarchar(max) | not null; JSON serialized envelope |
 | `status` | varchar(20) | not null; `PENDING` hoặc `SENT`; mặc định `PENDING` |
 | `attempt_count` | integer | not null; entity khởi tạo 0 |
-| `created_at`, `next_attempt_at` | timestamptz | not null; `next_attempt_at` khởi tạo bằng `created_at` |
-| `sent_at` | timestamptz | nullable |
-| `last_error` | TEXT | nullable |
+| `created_at`, `next_attempt_at` | datetimeoffset | not null; `next_attempt_at` khởi tạo bằng `created_at` |
+| `sent_at` | datetimeoffset | nullable |
+| `last_error` | nvarchar(max) | nullable |
 
 Index `idx_outbox_due(status, next_attempt_at, created_at)`. Không có FK tới aggregate/domain row.
 
@@ -185,11 +185,11 @@ Index `idx_outbox_due(status, next_attempt_at, created_at)`. Không có FK tới
 | `consumer_name` | varchar(120) | một nửa composite PK, not null |
 | `event_id` | UUID | một nửa composite PK, not null |
 | `event_type` | varchar(120) | not null |
-| `received_at` | timestamptz | not null |
+| `received_at` | datetimeoffset | not null |
 
 Không khai báo index phụ; composite primary key bảo vệ cặp consumer/event.
 
-Migrations chưa được thêm; local service config dùng Hibernate `ddl-auto=update`. Khi schema cần version/reviewable rollout, chuyển các mapping này thành migration trong từng service, không đặt migration vào `shared` vì mỗi service sở hữu DB riêng.
+Kỳ 1 chưa dùng migration; local service config dùng Hibernate `ddl-auto=none`, vì vậy không tự tạo bảng. [Script khởi tạo local](../sql/local-sqlserver-bootstrap.sql) tạo bảng Outbox/Inbox rỗng trong từng database service khi cả bốn database còn trống.
 
 ### Bật/tắt và trạng thái hiện tại
 

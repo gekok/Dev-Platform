@@ -48,7 +48,7 @@ public class Board {
     @Column(name = "board_key", nullable = false, unique = true, length = 20)
     private String key;
 
-    @Column(name = "owner_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "owner_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID ownerId;
 
     @Builder.Default

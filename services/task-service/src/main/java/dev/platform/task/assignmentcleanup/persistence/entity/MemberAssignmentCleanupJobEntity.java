@@ -40,7 +40,7 @@ public class MemberAssignmentCleanupJobEntity {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID userId;
 
     @Column(name = "membership_version", nullable = false)
@@ -49,7 +49,7 @@ public class MemberAssignmentCleanupJobEntity {
     @Column(name = "source_aggregate_version", nullable = false)
     private long sourceAggregateVersion;
 
-    @Column(name = "board_ids_json", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "board_ids_json", nullable = false, columnDefinition = "nvarchar(max)")
     private String boardIdsJson;
 
     @Enumerated(EnumType.STRING)
@@ -62,16 +62,16 @@ public class MemberAssignmentCleanupJobEntity {
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
-    @Column(name = "last_error", columnDefinition = "TEXT")
+    @Column(name = "last_error", columnDefinition = "nvarchar(max)")
     private String lastError;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "created_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "updated_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime updatedAt;
 
-    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime nextAttemptAt;
 
     public MemberAssignmentCleanupJobEntity(

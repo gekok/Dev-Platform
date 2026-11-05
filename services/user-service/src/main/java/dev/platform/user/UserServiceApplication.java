@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
 @EntityScan(basePackages = {
-        "dev.platform.user",
+        "dev.platform.user.infrastructure.persistence.entity",
         "dev.platform.shared.messaging.persistence.entity"
 })
 @EnableJpaRepositories(basePackages = {

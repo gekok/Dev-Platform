@@ -38,12 +38,12 @@ public class CardCommentEntity {
     @JoinColumn(name = "card_id", nullable = false)
     private CardEntity card;
 
-    @Column(name = "author_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "author_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID authorId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "nvarchar(max)")
     private String content;
 
-    @Column(name = "created_at", columnDefinition = "timestamptz")
+    @Column(name = "created_at", columnDefinition = "datetimeoffset")
     private OffsetDateTime createdAt;
 }

@@ -7,7 +7,7 @@
 - Each service owns its database; do not add cross-service foreign keys.
 
 ## Build, Test, and Development
-- `docker compose up -d` starts PostgreSQL/RabbitMQ; K1 snapshots need Redis at `localhost:6379`, absent from Compose.
+- `docker compose up -d` starts RabbitMQ; services use local SQL Server and K1 snapshots need Redis at `localhost:6379`, absent from Compose. See README for database setup.
 - At the root, use `mvn -DskipTests package` to build or `mvn test` to run backend tests.
 - Run a service with `cd services/<service> && mvn spring-boot:run`; Gateway uses `cd gateway && mvn spring-boot:run`.
 - Demo: `cd web-demo && npm ci && npm run dev`; checks: `npm test`, `npm run lint`, `npm run build`.

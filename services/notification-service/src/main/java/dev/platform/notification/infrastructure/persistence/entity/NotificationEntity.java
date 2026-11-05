@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Nationalized;
 
 // Bảng notifications (JPA), tách khỏi Aggregate thuần.
 @Getter
@@ -32,7 +33,7 @@ public class NotificationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID userId;
 
     @Column(name = "project_id")
@@ -42,6 +43,7 @@ public class NotificationEntity {
     @Builder.Default
     private String type = "ASSIGNED";
 
+    @Nationalized
     @Column(nullable = false, length = 500)
     private String title;
 
@@ -55,6 +57,6 @@ public class NotificationEntity {
     @Builder.Default
     private boolean read = false;
 
-    @Column(name = "created_at", columnDefinition = "timestamptz")
+    @Column(name = "created_at", columnDefinition = "datetimeoffset")
     private OffsetDateTime createdAt;
 }

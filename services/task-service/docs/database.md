@@ -1,6 +1,6 @@
 # task_db — database do task-service sở hữu
 
-**Database local:** task_db (PostgreSQL). task-service sở hữu Card, assignment và Comment. Project, Board, Column, Account và Notification thuộc service/database khác; các ID tham chiếu chéo là scalar, không có cross-database foreign key. Schema thay đổi cần migration có version; cấu hình ddl-auto=update hiện tại không thay migration.
+**Database local:** `kanban_task_db` (SQL Server). task-service sở hữu Card, assignment và Comment. Project, Board, Column, Account và Notification thuộc service/database khác; các ID tham chiếu chéo là scalar, không có cross-database foreign key. Kỳ 1 dùng script khởi tạo local cho database trống, chưa dùng migration; `ddl-auto=none` không tự tạo schema.
 
 Đọc [hướng dẫn Shared](../../../shared/README.md) trước khi nối event contracts hoặc Outbox/Inbox.
 
@@ -13,11 +13,11 @@
 | id | BIGINT, identity, PK | ID Card |
 | project_id | BIGINT, not null | Project scope dùng cho API, query và cleanup; scalar reference |
 | board_id, column_id | BIGINT, not null | Scalar reference tới board_db |
-| title | varchar(500), not null | |
-| description | TEXT, nullable | |
+| title | nvarchar(500), not null | |
+| description | nvarchar(max), nullable | |
 | status | varchar(30), nullable trong entity; mặc định builder TODO | |
 | position | integer, not null; mặc định 0 | |
-| due_date | timestamptz, nullable | |
+| due_date | datetimeoffset, nullable | |
 
 ### task_assignees
 
@@ -25,7 +25,7 @@
 |---|---|---|
 | task_id, user_id | composite PK | task_id FK nội bộ tới cards.id; user_id là scalar Account reference |
 | assigned_by_user_id | UUID, not null | Actor gán |
-| assigned_at | timestamptz, not null | |
+| assigned_at | datetimeoffset, not null | |
 | membership_version | BIGINT, not null | Generation lấy từ Project authorization snapshot |
 | is_primary | boolean, not null | Kỳ 1 vẫn hỗ trợ tối đa một assignee qua API |
 
@@ -39,7 +39,7 @@ Job bền vững riêng cho unassign nền: job_id, unique deduplication_key, un
 
 ### card_comments
 
-id BIGINT PK, card_id BIGINT not null FK nội bộ tới cards.id, author_id UUID scalar, content TEXT not null, created_at timestamptz. Không xóa Comment/attribution khi Member rời Project.
+id BIGINT PK, card_id BIGINT not null FK nội bộ tới cards.id, author_id UUID scalar, content nvarchar(max) not null, created_at datetimeoffset. Không xóa Comment/attribution khi Member rời Project.
 
 ## Redis authorization và messaging
 
@@ -49,6 +49,6 @@ outbox_events và inbox_events từ shared/messaging-support được lưu cục
 
 ## Phạm vi target và giới hạn
 
-cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities nhưng chưa có migration version. Inbound Card use case cũng chưa được nối hoàn chỉnh; việc có entity không chứng minh schema đã được deploy. Board/Column-to-Project validation vẫn là integration TODO vì internal REST chưa được bảo mật/triển khai.
+cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities và script khởi tạo local. Inbound Card use case chưa được nối hoàn chỉnh; việc có entity hoặc schema không chứng minh nghiệp vụ đã hoạt động. Board/Column-to-Project validation vẫn là integration TODO vì internal REST chưa được bảo mật/triển khai.
 
 Kỳ 1 không có cards.assignee_id, task_deletion_jobs, board_write_locks, Project cascade hay Account deletion operation. Mọi tài liệu cũ mô tả các đối tượng này là lịch sử/Kỳ 2, không phải schema hiện hành.

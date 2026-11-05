@@ -5,21 +5,22 @@ spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
-    driver-class-name: org.postgresql.Driver
-    username: devplatform
-    password: devplatform
+    url: '${USER_DB_URL:jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_user_db;encrypt=true;trustServerCertificate=true}'
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DB_DDL_AUTO:none}
     properties:
       hibernate:
         show_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        auto_quote_keyword: true
+        dialect: org.hibernate.dialect.SQLServerDialect
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

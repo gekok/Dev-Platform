@@ -1,6 +1,6 @@
 # notification_db — database do notification-service sở hữu
 
-**Database local:** notification_db (PostgreSQL). notification-service sở hữu Notification theo Account nhận. user_id, project_id, board_id, card_id là ID tham chiếu logic, không FK chéo database. Cần migration có version trước khi coi entity mapping là schema đã triển khai.
+**Database local:** `kanban_notification_db` (SQL Server). notification-service sở hữu Notification theo Account nhận. user_id, project_id, board_id, card_id là ID tham chiếu logic, không FK chéo database. Kỳ 1 dùng script khởi tạo local cho database trống, chưa dùng migration; entity mapping không chứng minh use case đã được nối đầy đủ.
 
 Đọc [Shared README](../../../shared/README.md) để hiểu event contract và mapping Outbox/Inbox.
 
@@ -12,12 +12,12 @@
 | user_id | UUID, not null | Recipient Account; không FK sang user_db |
 | project_id | BIGINT, nullable | Context Project; không quyết định recipient |
 | type | varchar(30), not null; builder mặc định ASSIGNED | Type hiện có trong API/domain cần đối chiếu event contract |
-| title | varchar(500), not null | |
+| title | nvarchar(500), not null | |
 | card_id, board_id | BIGINT, nullable | Scalar context; không FK chéo DB |
 | read | boolean, not null; mặc định false | |
-| created_at | timestamptz | Mapping hiện cho phép null |
+| created_at | datetimeoffset | Mapping hiện cho phép null |
 
-JPA khai báo index (user_id, read). Query list theo recipient và thời gian cần index phù hợp sau khi có query/schema migration; chưa coi index đề xuất là benchmarked.
+JPA khai báo index (user_id, read). Query list theo recipient và thời gian có thể cần index phù hợp sau khi có query thực tế; chưa coi index đề xuất là benchmarked.
 
 ## Outbox/Inbox và ownership
 

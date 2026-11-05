@@ -19,7 +19,7 @@ public class MembershipAssignmentFenceId implements Serializable {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID userId;
 
     @Column(name = "membership_version", nullable = false)

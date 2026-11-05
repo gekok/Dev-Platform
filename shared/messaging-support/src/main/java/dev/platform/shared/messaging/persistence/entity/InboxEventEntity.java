@@ -29,7 +29,7 @@ public class InboxEventEntity {
     @Column(name = "event_type", nullable = false, length = 120)
     private String eventType;
 
-    @Column(name = "received_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "received_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime receivedAt;
 
     public InboxEventEntity(String consumerName, UUID eventId, String eventType, OffsetDateTime receivedAt) {
