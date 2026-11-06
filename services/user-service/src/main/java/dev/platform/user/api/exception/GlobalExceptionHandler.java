@@ -39,11 +39,12 @@ public class GlobalExceptionHandler {
         return body(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request);
     }
 
-    // Lỗi xác thực JWT (thiếu header, token sai, hết hạn) -> 401 UNAUTHORIZED
+    // Lỗi xác thực JWT hoặc sai credential -> 401 UNAUTHORIZED hoặc INVALID_CREDENTIALS
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleUnauthorized(
             AuthenticationException ex, HttpServletRequest request) {
-        return body(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request);
+        String code = "Invalid email or password".equals(ex.getMessage()) ? "INVALID_CREDENTIALS" : "UNAUTHORIZED";
+        return body(HttpStatus.UNAUTHORIZED, code, ex.getMessage(), request);
     }
 
     // Lỗi trạng thái tài khoản không được phép (ví dụ: tài khoản không ACTIVE) -> 403 FORBIDDEN

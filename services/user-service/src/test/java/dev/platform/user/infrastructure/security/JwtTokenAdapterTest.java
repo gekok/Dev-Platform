@@ -164,4 +164,15 @@ class JwtTokenAdapterTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Không thể nạp hoặc khởi tạo khóa JWT từ đường dẫn cấu hình");
     }
+
+    @Test
+    @DisplayName("Ném IllegalStateException khi public key và private key không thuộc cùng một cặp (khác modulus)")
+    void shouldFailStartupWhenRsaKeysDoNotMatch() {
+        JwtTokenAdapter pair1 = new JwtTokenAdapter(3600000L);
+        JwtTokenAdapter pair2 = new JwtTokenAdapter(3600000L);
+
+        assertThatThrownBy(() -> new JwtTokenAdapter(new java.security.KeyPair(pair1.getPublicKey(), pair2.getPrivateKey()), 3600000L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("không khớp nhau");
+    }
 }

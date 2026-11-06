@@ -59,6 +59,9 @@ public class JwtTokenAdapter implements TokenPort {
         Objects.requireNonNull(keyPair, "keyPair cannot be null");
         this.publicKey = (RSAPublicKey) keyPair.getPublic();
         this.privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        if (!this.publicKey.getModulus().equals(this.privateKey.getModulus())) {
+            throw new IllegalStateException("Cặp khóa RSA public và private không khớp nhau (khác modulus)");
+        }
         this.algorithm = Algorithm.RSA256(this.publicKey, this.privateKey);
         this.expirationMillis = expirationMillis;
     }
@@ -179,7 +182,13 @@ public class JwtTokenAdapter implements TokenPort {
             byte[] pubBytes = Base64.getDecoder().decode(pubClean);
             RSAPublicKey pubKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
 
+            if (!pubKey.getModulus().equals(privKey.getModulus())) {
+                throw new IllegalStateException("Cặp khóa RSA public và private không khớp nhau (khác modulus)");
+            }
+
             return new KeyPair(pubKey, privKey);
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse RSA key pair from PEM", e);
         }

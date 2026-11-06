@@ -72,6 +72,21 @@ class UserControllerSecurityTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/auth/login: Sai email hoặc mật khẩu trả về 401 với mã INVALID_CREDENTIALS")
+    void shouldReturn401InvalidCredentialsOnLoginFailure() throws Exception {
+        when(loginPort.login(any(LoginCommand.class)))
+                .thenThrow(new dev.platform.user.domain.exception.AuthenticationException("Invalid email or password"));
+
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"alex@example.com\",\"password\":\"wrong_pass\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("Invalid email or password"));
+    }
+
+    @Test
     @DisplayName("GET /api/v1/users/me: Đi qua Security filter chain và trả 200 OK khi có Bearer token hợp lệ")
     void shouldPermitCurrentUserThroughSecurityFilterChainWithBearerToken() throws Exception {
         java.util.UUID userId = java.util.UUID.randomUUID();
@@ -96,5 +111,12 @@ class UserControllerSecurityTest {
                 .andExpect(header().doesNotExist("WWW-Authenticate"))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
                 .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"));
+    }
+
+    @Test
+    @DisplayName("Route ngoài allowlist bị chặn mặc định bởi SecurityFilterChain (denyAll)")
+    void shouldDenyUnconfiguredRoutesByDefault() throws Exception {
+        mvc.perform(get("/api/v1/users/profiles"))
+                .andExpect(status().isForbidden());
     }
 }
