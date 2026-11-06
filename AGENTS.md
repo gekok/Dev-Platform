@@ -30,6 +30,7 @@
 ## Commits and Pull Requests
 - Follow Conventional Commit prefixes in history (`feat:`, `fix:`, `docs:`, `refactor:`); keep commits focused.
 - Tiêu đề và nội dung Pull Request (PR) phải được viết bằng Tiếng Việt để cả nhóm và mentor dễ review; PR phải nêu rõ tóm tắt phạm vi, kết quả kiểm thử và liên kết `Closes #<id>`; tuyệt đối không gắn PR vào Project để tránh trùng lặp thẻ trên Kanban.
+- Mọi trao đổi, thảo luận, phản hồi review và comment giữa các thành viên trong nhóm trên GitHub (Issue, Pull Request, Commit discussions) đều bắt buộc sử dụng **Tiếng Việt**.
 
 ## Security
 - Never commit credentials; `.env` is ignored. Treat `X-User-Id` as untrusted until Gateway authentication and identity-header enforcement are implemented.
