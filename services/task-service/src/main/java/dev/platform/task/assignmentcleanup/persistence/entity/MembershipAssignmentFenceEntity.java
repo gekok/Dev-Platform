@@ -24,7 +24,7 @@ public class MembershipAssignmentFenceEntity {
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
 
-    @Column(name = "fenced_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "fenced_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime fencedAt;
 
     public MembershipAssignmentFenceEntity(MembershipAssignmentFenceId id, UUID eventId, OffsetDateTime fencedAt) {

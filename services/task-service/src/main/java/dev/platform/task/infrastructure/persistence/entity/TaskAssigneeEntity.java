@@ -30,10 +30,10 @@ public class TaskAssigneeEntity {
     @JoinColumn(name = "task_id", nullable = false)
     private CardEntity card;
 
-    @Column(name = "assigned_by_user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "assigned_by_user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID assignedByUserId;
 
-    @Column(name = "assigned_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "assigned_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime assignedAt;
 
     @Column(name = "membership_version", nullable = false)

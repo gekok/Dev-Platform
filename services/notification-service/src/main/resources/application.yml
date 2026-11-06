@@ -2,20 +2,23 @@ server:
   port: 8084
 
 spring:
+  config:
+    import: optional:file:../../.env[.properties],optional:file:.env[.properties]
   application:
     name: notification-service
   datasource:
-    url: jdbc:postgresql://localhost:5435/notification_db
-    driver-class-name: org.postgresql.Driver
-    username: devplatform
-    password: devplatform
+    url: '${NOTIFICATION_DB_URL:jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_notification_db;encrypt=true;trustServerCertificate=true}'
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DB_DDL_AUTO:none}
     properties:
       hibernate:
         show_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        auto_quote_keyword: true
+        dialect: org.hibernate.dialect.SQLServerDialect
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

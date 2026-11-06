@@ -16,7 +16,7 @@ import lombok.Setter;
 @Embeddable
 public class UserSystemRoleId implements Serializable {
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID userId;
 
     @Column(name = "role_code", nullable = false, length = 40)

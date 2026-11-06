@@ -39,7 +39,7 @@ public class OutboxEventEntity {
     @Column(name = "aggregate_version", nullable = false)
     private long aggregateVersion;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "nvarchar(max)")
     private String payload;
 
     @Enumerated(EnumType.STRING)
@@ -49,16 +49,16 @@ public class OutboxEventEntity {
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "created_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime createdAt;
 
-    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime nextAttemptAt;
 
-    @Column(name = "sent_at", columnDefinition = "timestamptz")
+    @Column(name = "sent_at", columnDefinition = "datetimeoffset")
     private OffsetDateTime sentAt;
 
-    @Column(name = "last_error", columnDefinition = "TEXT")
+    @Column(name = "last_error", columnDefinition = "nvarchar(max)")
     private String lastError;
 
     public static OutboxEventEntity pending(

@@ -19,7 +19,7 @@ public class TaskAssigneeId implements Serializable {
     @Column(name = "task_id", nullable = false)
     private Long taskId;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID userId;
 
     public TaskAssigneeId(Long taskId, UUID userId) {

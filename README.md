@@ -2,7 +2,7 @@
 
 Nền tảng quản lý công việc theo Project, phát triển theo nhiều kỳ. Kỳ 1 cung cấp workspace Kanban cho web và mobile.
 
-> **Trạng thái quan trọng:** Thiết kế backend mục tiêu hiện là Project-first. Backend trong repo vẫn chủ yếu theo API Board-first; Project/Membership chưa được triển khai. Xem [chỉ mục tài liệu](docs/README.md) để biết tài liệu nào mô tả quyết định mới, API mục tiêu và runtime hiện tại.
+> **Trạng thái quan trọng:** Thiết kế backend Kỳ 1 là Project-first. Entity Project/Membership/Invitation đã có; use case và API Project-first chưa được nối hoàn chỉnh. Xem [chỉ mục tài liệu](docs/README.md) để phân biệt thiết kế, code và runtime hiện tại.
 
 ## 1. Mô hình sản phẩm và phạm vi
 
@@ -33,7 +33,7 @@ Kỳ 2 dự kiến mở rộng năng lực Git core và Workflow. Ranh giới se
 ```text
 Dev-Platform/
 ├── pom.xml
-├── docker-compose.yml             # 4 PostgreSQL + RabbitMQ cho môi trường local
+├── docker-compose.yml             # RabbitMQ cho môi trường local
 ├── gateway/                       # cổng vào HTTP; docs nội bộ ở gateway/README.md
 ├── services/
 │   ├── user-service/              # tài khoản và xác thực
@@ -57,22 +57,28 @@ Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Colum
 1. Đọc [chỉ mục tài liệu](docs/README.md) để phân biệt quyết định mục tiêu, API mục tiêu, tài liệu runtime cũ và mock demo.
 2. `docs/project/architecture-decisions.md` là nguồn quyết định backend đã thống nhất; mục “Cần bàn tiếp” chưa phải hợp đồng.
 3. `docs/api/kanban-api.md` là bản thiết kế HTTP Project-first theo service; nội dung đánh dấu đề xuất/còn mở chưa phải OpenAPI đã duyệt. API Board-first cũ chỉ để tham khảo runtime.
-4. Task sheets 01–06 và `services/*/docs` phân biệt runtime hiện tại với ownership, API và logical database schema mục tiêu của từng service. Schema mục tiêu chưa phải migration/entity đã triển khai; `shared/README.md` và `gateway/README.md` mô tả hai module nền.
+4. Task sheets 01–06 và `services/*/docs` phân biệt runtime hiện tại với ownership, API và database schema của từng service. Entity và script khởi tạo local không đồng nghĩa use case đã hoàn chỉnh; `shared/README.md` và `gateway/README.md` mô tả hai module nền.
 
 ## 5. Mục tiêu và hiện trạng runtime
 
 **Mục tiêu kiến trúc:** Gateway xác thực và định tuyến; `board-service` là nguồn chuẩn về Project/Membership; các service còn lại sở hữu dữ liệu riêng theo ranh giới trên.
 
-**Runtime hiện tại:** `board-service` vẫn có route Board-first `/api/v1/boards` và stub `X-User-Id`; Project/Membership chưa có entity/adapter thật. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Kỳ 1 đang bổ sung skeleton Redis snapshot và assignment cleanup; những integration chưa nối end-to-end được ghi rõ trong tài liệu. Account deletion/cascade không thuộc runtime Kỳ 1.
+**Runtime hiện tại:** `board-service` vẫn khai báo route Board-first `/api/v1/boards` và stub `X-User-Id`. Project/Membership/Invitation đã có entity, nhưng use case và API Project-first chưa nối hoàn chỉnh; adapter Board-first từ chối `save` và `findByKey` vì thiếu Project context. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Kỳ 1 đang bổ sung skeleton Redis snapshot và assignment cleanup; những integration chưa nối end-to-end được ghi rõ trong tài liệu. Account deletion/cascade không thuộc runtime Kỳ 1.
 
 Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tài liệu tham khảo cho giao diện và một phần route/payload; không đồng nghĩa backend hiện tại đã cung cấp các API đó.
 
 ## 6. Chạy môi trường local
 
-Yêu cầu: Java 21, Maven và Docker.
+Yêu cầu: Java 21, Maven, SQL Server local, Redis; Docker dùng để chạy RabbitMQ. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+
+Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
+
+Ví dụ chạy script bằng PowerShell: `sqlcmd -S 'localhost\PHUC' -U sa -C -b -f 65001 -i sql/local-sqlserver-bootstrap.sql`, rồi nhập mật khẩu khi được hỏi; đổi instance và tên đăng nhập theo máy. Spring đọc `.env` cho service, nhưng file này không tự đặt biến môi trường của terminal cho `sqlcmd`. Script chỉ dành cho local, tạo bảng vận hành rỗng và chứa dữ liệu Account demo; đăng nhập chưa nối end-to-end.
+
+Các đường dẫn `.env` được tìm theo thư mục làm việc: `../../.env` và `.env` ở thư mục hiện tại, trong đó `.env` hiện tại được ưu tiên. Khi chạy từ thư mục service, tránh tạo thêm `.env` trong service nếu muốn dùng cấu hình chung; khi chạy từ root, `../../.env` có thể trỏ ra ngoài repo. Chỉ chạy từ thư mục làm việc tin cậy.
 
 ```bash
-# Dựng database và RabbitMQ cho các service
+# Dựng RabbitMQ; SQL Server và Redis chạy riêng
 docker compose up -d
 
 # Chạy từng service (mỗi lệnh trong một terminal)

@@ -29,13 +29,13 @@ public class AccountAuthorizationSnapshotSyncJobEntity {
     @Column(name = "job_id", nullable = false)
     private UUID jobId;
 
-    @Column(name = "account_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "account_id", nullable = false, columnDefinition = "uniqueidentifier")
     private UUID accountId;
 
     @Column(name = "auth_version", nullable = false)
     private long authVersion;
 
-    @Column(name = "snapshot_json", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "snapshot_json", nullable = false, columnDefinition = "nvarchar(max)")
     private String snapshotJson;
 
     @Column(nullable = false, length = 20)
@@ -44,16 +44,16 @@ public class AccountAuthorizationSnapshotSyncJobEntity {
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
-    @Column(name = "last_error", columnDefinition = "TEXT")
+    @Column(name = "last_error", columnDefinition = "nvarchar(max)")
     private String lastError;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "created_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "updated_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime updatedAt;
 
-    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "next_attempt_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime nextAttemptAt;
 
     public AccountAuthorizationSnapshotSyncJobEntity(

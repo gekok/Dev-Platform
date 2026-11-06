@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Nationalized;
 
 // Bảng cards (JPA), tách khỏi Aggregate thuần.
 @Getter
@@ -36,10 +37,11 @@ public class CardEntity {
     @Column(name = "column_id", nullable = false)
     private Long columnId;
 
+    @Nationalized
     @Column(nullable = false, length = 500)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "nvarchar(max)")
     private String description;
 
     @Column(length = 30)
@@ -50,6 +52,6 @@ public class CardEntity {
     @Builder.Default
     private int position = 0;
 
-    @Column(name = "due_date", columnDefinition = "timestamptz")
+    @Column(name = "due_date", columnDefinition = "datetimeoffset")
     private OffsetDateTime dueDate;
 }

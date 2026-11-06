@@ -1,10 +1,10 @@
 # user_db — database do user-service sở hữu
 
-**Database local:** `user_db` (PostgreSQL). Tài liệu tách mapping trong skeleton hiện tại khỏi thiết kế mục tiêu; schema triển khai vẫn cần migration có version.
+**Database local:** `kanban_user_db` (SQL Server). Tài liệu tách mapping trong skeleton hiện tại khỏi thiết kế mục tiêu; Kỳ 1 dùng script khởi tạo local cho database trống và chưa dùng migration.
 
 **Thiết kế mục tiêu Kỳ 1:** user-service sở hữu Account/Auth, trạng thái Account, `SystemRoles`/`UserSystemRoles`, `auth_version` và Account authorization snapshot-sync job. Outbox/Inbox được lưu trong `user_db`. Account deletion/operation/tombstone được hoãn sang Kỳ 2.
 
-**Ghi chú source:** skeleton còn `domain.User` (`@Deprecated`) và `UserEntity` cùng map vào `users`. Đây là tình trạng code, không phải schema mục tiêu cần giữ nguyên.
+**Ghi chú source:** skeleton còn `domain.User` (`@Deprecated`) có annotation mapping cũ; `UserServiceApplication` chỉ scan entity trong infrastructure và shared, nên `UserEntity` là mapping được sử dụng cho `users`.
 
 ## Mapping Account trong skeleton
 
@@ -15,7 +15,7 @@
 | `id` | UUID | Primary key; tạo bằng `GenerationType.UUID` |
 | `email` | varchar(255) | not null, unique |
 | `password_hash` | varchar | not null |
-| `full_name` | varchar(255) | nullable |
+| `full_name` | nvarchar(255) | nullable |
 | `status` | varchar(20) | not null; runtime enum hiện tại được đọc từ source; Kỳ 1 không dùng `DELETING` |
 
 `password_hash` không được trả trong response API. Các service khác chỉ giữ User UUID làm tham chiếu, không tạo foreign key xuyên database.
@@ -29,9 +29,9 @@
 | `system_roles` | `role_code`, `description` | `role_code` là PK; seed role `USER` và `SYSTEM_ADMIN` |
 | `user_system_roles` | `user_id`, `role_code`, `granted_at`, `granted_by` | PK `(user_id,role_code)`; FK nội bộ tới `users` và `system_roles` |
 | `users` | `auth_version` | Version tăng khi Account status hoặc SystemRoles đổi |
-| `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; chưa có migration triển khai |
+| `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; script khởi tạo local tạo bảng rỗng |
 
-Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. Bootstrap System Admin đầu tiên và API cấp/thu hồi role vẫn còn mở.
+Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. Bootstrap System Admin đầu tiên đã chốt qua Flyway SQL migration (issue #7); API cấp/thu hồi role vẫn còn mở.
 
 ## Bảng messaging dùng chung
 
@@ -85,19 +85,19 @@ erDiagram
 |---|---|---|---|
 | `users` | `id` PK; `email` unique | Không có FK liên service | `password_hash` không trả qua API; `auth_version` tăng theo đổi status/system role |
 | `system_roles` | `role_code` PK | Không có index phụ | Danh mục role hệ thống; seed `USER`, `SYSTEM_ADMIN` |
-| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; bootstrap Admin còn mở |
-| `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; chưa có migration |
+| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; bootstrap Admin qua Flyway seed (issue #7) |
+| `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; script khởi tạo local tạo bảng rỗng |
 | `outbox_events` | `event_id` PK | `idx_outbox_due(status, next_attempt_at, created_at)` | Do `shared/messaging-support` cung cấp và lưu ngay trong `user_db` |
 | `inbox_events` | Composite PK `(consumer_name, event_id)` | Không có index phụ khai báo | Một event được khử trùng theo từng consumer |
 
-Entity `users` không khai báo index ngoài unique email. Column kiểu `String` không chỉ rõ `length` dùng default của JPA/provider khi tạo schema; schema production phải được mô tả bằng migration thay vì dựa vào mặc định này.
+Entity `users` không khai báo index ngoài unique email. Column kiểu `String` không chỉ rõ `length` dùng default của JPA/provider; schema local được mô tả trong script khởi tạo.
 
 ## Database local, schema và vòng đời dữ liệu
 
-- Compose tạo `user_db` trên PostgreSQL port `5432`; service mặc định kết nối `localhost:5432/user_db`.
-- `spring.jpa.hibernate.ddl-auto=update` và `show_sql=true` là cấu hình local hiện tại. Repo chưa có migration SQL/Flyway/Liquibase; `update` không phải quy trình migration production có version.
+- SQL Server local dùng database `kanban_user_db`; cấu hình kết nối và credentials xem README ở root.
+- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=true` là cấu hình local hiện tại; `none` không tạo schema. Dùng [script khởi tạo local](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database trống. Kỳ 1 chưa dùng migration.
 - Account/status/system-role mutation, Outbox event và snapshot-sync job phải commit cùng transaction. Redis apply/retry là bước sau commit; snapshot cũ không được ghi đè version mới.
-- Kỳ 1 không có Account deletion operation, tombstone hoặc cascade completion consumer. Schema/migration/versioning vẫn cần triển khai bằng công cụ migration được chọn.
+- Kỳ 1 không có Account deletion operation, tombstone hoặc cascade completion consumer.
 
 ## Mô hình đích và phạm vi sở hữu
 
@@ -105,7 +105,7 @@ Trong thiết kế Project-first, `user_db` là nguồn dữ liệu chuẩn củ
 
 ## Schema mục tiêu Kỳ 1 — thiết kế để hoàn thiện
 
-Các bảng dưới đây mô tả dữ liệu cần có theo nghiệp vụ Kỳ 1; đây chưa phải migration/DDL đã triển khai. Những field có nhãn **đề xuất** cần chốt trước khi tạo migration. Mọi schema change khi implement phải có migration version; công cụ migration chưa được chọn.
+Các bảng dưới đây mô tả dữ liệu theo nghiệp vụ Kỳ 1. Entity và script khởi tạo local không đồng nghĩa các use case đã được nối đầy đủ. Những field có nhãn **đề xuất** cần được chốt trước khi triển khai.
 
 ### `users` (Account/Auth)
 
@@ -114,11 +114,11 @@ Các bảng dưới đây mô tả dữ liệu cần có theo nghiệp vụ Kỳ
 | `id` | UUID | PK, not null | Đã có trong skeleton; ID Account dùng xuyên service |
 | `email` | varchar | not null, unique | Unique email đã có; chuẩn hóa hoa/thường chưa chốt |
 | `password_hash` | varchar | not null | Đã có trong skeleton; tuyệt đối không trả qua API |
-| `full_name` | varchar | nullability cần chốt | Đã có trong skeleton |
+| `full_name` | nvarchar(255) | nullable trong mapping hiện tại | Đã có trong skeleton |
 | `status` | enum/string | not null | Dùng trạng thái Account Kỳ 1; không có `DELETING` |
 | `auth_version` | bigint | not null | Tăng khi status hoặc SystemRoles đổi; version trên snapshot Redis |
 
-`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. `SYSTEM_ADMIN` chỉ quản trị Account và không tự cấp Project access. Bootstrap Admin đầu tiên còn mở. Không nhận role do client tự gửi trong payload đăng ký/tạo Account.
+`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. `SYSTEM_ADMIN` chỉ quản trị Account và không tự cấp Project access, đồng thời cấm tham gia vào Project Kanban (theo quyết định #7). Bootstrap Admin đầu tiên được seed qua Flyway SQL migration. Không nhận role do client tự gửi trong payload tạo Account.
 
 Không thêm `project_id`, `project_role` hay FK sang `board_db`. Account deletion/Owner succession được hoãn sang Kỳ 2; Kỳ 1 không cascade/xóa Project khi Account thay đổi.
 
@@ -138,4 +138,4 @@ Kỳ 1 không có `account_deletion_operations`, `deleted_account_tombstones`, A
 - Directory/profile API chỉ đọc Account do user-service sở hữu; không thêm Membership/Project foreign key hay role Project vào `user_db`.
 - `auth_version` tăng khi Account status hoặc SystemRoles đổi; Redis chỉ có snapshot, không phải nguồn dữ liệu chuẩn.
 - Account deletion operation và tombstone không thuộc schema Kỳ 1; thiết kế ở tài liệu Kỳ 2 khi phạm vi được mở lại.
-- Bảng, field/index nêu trên chưa có migration; không coi JPA `ddl-auto=update` là versioning.
+- Kỳ 1 chưa dùng migration; `ddl-auto=none` không tự thay đổi schema. Script local chỉ khởi tạo database trống.

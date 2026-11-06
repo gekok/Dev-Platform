@@ -15,8 +15,8 @@
 
 ## Điều kiện trước khi chạy tích hợp
 
-- [ ] Chốt cách bootstrap System Admin đầu tiên và chính sách một Account vừa là System Admin vừa tham gia Project.
-- [ ] Chốt chính sách một Account đa vai trò. `SYSTEM_ADMIN` tự nó chỉ quản trị Account, không cấp quyền Project.
+- [x] Chốt cách bootstrap System Admin đầu tiên qua Flyway SQL migration và chính sách một Account vừa là System Admin vừa tham gia Project (đã chốt tại issue #7: cấm tham gia Project, bắt buộc dùng 2 tài khoản riêng).
+- [x] Chốt chính sách một Account đa vai trò. `SYSTEM_ADMIN` tự nó chỉ quản trị Account, không cấp quyền Project và không được tham gia Project (đã chốt tại issue #7).
 - [ ] Chốt User directory/profile API, field được lộ và cách UI compose identity, Membership, Comment author.
 - [ ] Chốt nguồn xác minh Account tồn tại/ACTIVE khi tạo hoặc Accept Invitation do internal REST chưa được bảo mật; hoàn thiện directory/profile API và field được lộ.
 - [ ] Chốt Invitation expiry/cancel/reject policy, mã lỗi nghiệp vụ, Project/Board transition graph, retry/DLQ và Board preference ownership/storage.

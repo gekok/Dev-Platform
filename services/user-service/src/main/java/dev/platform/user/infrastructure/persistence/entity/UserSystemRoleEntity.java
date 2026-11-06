@@ -35,9 +35,9 @@ public class UserSystemRoleEntity {
     @JoinColumn(name = "role_code", nullable = false)
     private SystemRoleEntity role;
 
-    @Column(name = "granted_at", nullable = false, columnDefinition = "timestamptz")
+    @Column(name = "granted_at", nullable = false, columnDefinition = "datetimeoffset")
     private OffsetDateTime grantedAt;
 
-    @Column(name = "granted_by", columnDefinition = "uuid")
+    @Column(name = "granted_by", columnDefinition = "uniqueidentifier")
     private UUID grantedBy;
 }
