@@ -2,6 +2,7 @@ package dev.platform.task.application.service;
 
 import dev.platform.task.application.command.CreateCardCommand;
 import dev.platform.task.application.port.in.CreateCardPort;
+import dev.platform.task.application.port.out.CardEventPublisherPort;
 import dev.platform.task.application.port.out.ColumnRelationshipValidator;
 import dev.platform.task.application.port.out.MoveCardStore;
 import dev.platform.task.application.port.out.SaveCardPort;
@@ -16,6 +17,7 @@ public class CreateCardService implements CreateCardPort {
     private final ColumnRelationshipValidator columns;
     private final MoveCardStore positions;
     private final SaveCardPort cards;
+    private final CardEventPublisherPort events;
 
     @Override
     @Transactional
@@ -26,8 +28,10 @@ public class CreateCardService implements CreateCardPort {
         positions.lockBoard(cmd.projectId(), cmd.boardId());
         columns.requireColumn(cmd.projectId(), cmd.boardId(), cmd.columnId());
         int position = positions.nextPosition(cmd.projectId(), cmd.boardId(), cmd.columnId());
-        return cards.save(CardAggregate.create(cmd.projectId(), cmd.boardId(), cmd.columnId(), cmd.title(),
+        CardAggregate created = cards.save(CardAggregate.create(cmd.projectId(), cmd.boardId(), cmd.columnId(), cmd.title(),
                 cmd.description(), cmd.assigneeId(), cmd.assigneeMembershipVersion(), cmd.creatorId(),
                 cmd.dueDate(), position));
+        events.cardCreated(created.getId(), created.getBoardId(), created.getColumnId());
+        return created;
     }
 }

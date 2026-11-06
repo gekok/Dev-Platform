@@ -4,7 +4,7 @@
 
 ## Issue #24 — Board WebSocket
 
-**Trạng thái:** Kiến trúc đã được chủ dự án duyệt. Chưa triển khai runtime cho tới khi Gateway identity, Board lookup và Gateway WebSocket proxy sẵn sàng.
+**Trạng thái:** Kiến trúc đã được chủ dự án duyệt. Phần task-service đã có handler, authorization lifecycle và fanout best-effort sau commit, nhưng runtime mặc định tắt. Chỉ bật sau khi Gateway identity, secured Board lookup và Gateway WebSocket proxy được xác nhận sẵn sàng.
 
 Giữ route và payload đã duyệt:
 
@@ -22,15 +22,15 @@ Gateway xác thực handshake và chuyển identity tin cậy tới Task; không
 
 Phân phối chỉ giữa các session cùng Board trong một Task instance. Event chỉ gửi sau commit của thao tác Card/Comment. Fanout best-effort: không lưu bền, không retry/replay, không bảo đảm nhận đủ hoặc thứ tự. Client refetch REST sau khi reconnect. Không gửi Card title hoặc Comment body.
 
-### Kế hoạch và điều kiện trước runtime
+### Điều kiện bật runtime và phần tích hợp còn lại
 
 1. **Gateway identity (#34):** xác thực handshake và chuyển tiếp principal tin cậy; loại bỏ identity header từ client. Chốt cách truyền identity tương thích với browser WebSocket.
 2. **Board lookup:** board-service cung cấp Board→Project lookup đã xác thực service-to-service. Không dùng Project ID từ caller làm bằng chứng và không tạo mock.
 3. **Gateway proxy (#31):** xác nhận route dùng WebSocket upstream và kiểm tra handshake/frame qua Gateway. Source hiện khai báo `/ws/**` với `http://localhost:8083`, nên chưa coi proxy WebSocket sẵn sàng.
-4. **Task runtime:** sau khi ba điều kiện trên sẵn sàng mới đăng ký handler, authorization lifecycle và local best-effort fanout theo contract ở trên.
+4. **Task runtime:** handler chỉ được đăng ký khi cả bốn cờ readiness trong `services/task-service/src/main/resources/application.yml` đều là `true`; mặc định tất cả đều `false`. Cần có adapter `BoardProjectLookupPort` truy vấn Board đã lưu. Cờ cấu hình không tự chứng minh các phụ thuộc đã sẵn sàng.
 5. **Acceptance (#35):** kiểm tra member/non-member, revoke khi đang kết nối, Board lookup/snapshot lỗi, event sau commit và reconnect/refetch qua Gateway.
 
-Không đánh dấu #24 hoàn tất chỉ dựa trên route có trong YAML hoặc unit test; cần bằng chứng tích hợp qua các phụ thuộc trên.
+Task phân phối event chỉ giữa các session trong cùng instance, sau commit và best-effort; lỗi fanout không rollback thao tác Card/Comment. Không lưu bền, retry, replay hoặc cam kết thứ tự/đủ sự kiện. Client cần refetch REST sau reconnect. Không đánh dấu #24 hoàn tất chỉ dựa trên handler đã có trong source; xác nhận qua Gateway và các phụ thuộc thuộc integration task.
 
 ## Issue #25 — Durable Task Events
 

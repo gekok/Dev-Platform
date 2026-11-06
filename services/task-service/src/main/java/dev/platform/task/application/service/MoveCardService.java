@@ -2,6 +2,7 @@ package dev.platform.task.application.service;
 
 import dev.platform.task.application.command.MoveCardCommand;
 import dev.platform.task.application.port.in.MoveCardPort;
+import dev.platform.task.application.port.out.CardEventPublisherPort;
 import dev.platform.task.application.port.out.ColumnRelationshipValidator;
 import dev.platform.task.application.port.out.MoveCardStore;
 import dev.platform.task.domain.aggregate.CardAggregate;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MoveCardService implements MoveCardPort {
     private final MoveCardStore store;
     private final ColumnRelationshipValidator columns;
+    private final CardEventPublisherPort events;
 
     @Override
     @Transactional
@@ -29,7 +31,9 @@ public class MoveCardService implements MoveCardPort {
         }
         columns.requireColumn(command.projectId(), current.getBoardId(), current.getColumnId());
         columns.requireColumn(command.projectId(), current.getBoardId(), command.toColumnId());
-        return store.reorder(command.projectId(), current.getBoardId(), command.cardId(),
+        CardAggregate moved = store.reorder(command.projectId(), current.getBoardId(), command.cardId(),
                 current.getColumnId(), command.toColumnId(), command.toPosition());
+        events.cardMoved(moved.getId(), moved.getBoardId(), moved.getColumnId(), moved.getPosition());
+        return moved;
     }
 }

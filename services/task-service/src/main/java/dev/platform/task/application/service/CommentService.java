@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import dev.platform.task.application.command.AddCommentCommand;
 import dev.platform.task.application.port.in.AddCommentPort;
+import dev.platform.task.application.port.out.CardEventPublisherPort;
 import dev.platform.task.application.port.out.CommentStore;
 import dev.platform.task.domain.aggregate.CardAggregate.CommentValue;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentService implements AddCommentPort {
     private final CommentStore comments;
     private final ProjectAuthorizationGuard authorization;
+    private final CardEventPublisherPort events;
 
     @Override
     @Transactional
@@ -27,24 +29,22 @@ public class CommentService implements AddCommentPort {
         if (cmd.content() == null || cmd.content().isBlank()) {
             throw new IllegalArgumentException("Comment content is required");
         }
-        requireCard(cmd.projectId(), cmd.cardId());
+        Long boardId = comments.requireBoardId(cmd.projectId(), cmd.cardId());
         if (cmd.mentionedUserIds() != null) {
             for (UUID userId : cmd.mentionedUserIds()) {
                 if (userId == null) throw new IllegalArgumentException("Mention user is required");
                 authorization.requireProjectMember(cmd.projectId(), userId);
             }
         }
-        return comments.save(cmd.projectId(), cmd.cardId(), cmd.authorId(), cmd.content());
+        CommentValue comment = comments.save(cmd.projectId(), cmd.cardId(), cmd.authorId(), cmd.content());
+        events.commentAdded(cmd.cardId(), boardId, comment.id());
+        return comment;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CommentValue> getComments(Long projectId, Long cardId) {
-        requireCard(projectId, cardId);
+        comments.requireBoardId(projectId, cardId);
         return comments.findAll(projectId, cardId);
-    }
-
-    private void requireCard(Long projectId, Long cardId) {
-        if (!comments.cardExists(projectId, cardId)) throw new CardNotFoundException();
     }
 }

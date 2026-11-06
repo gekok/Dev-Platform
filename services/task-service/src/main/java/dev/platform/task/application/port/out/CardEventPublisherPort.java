@@ -7,8 +7,8 @@ public interface CardEventPublisherPort {
     void cardCreated(Long cardId, Long boardId, Long columnId);
 
     // Bắn event card.moved về cột + vị trí mới.
-    void cardMoved(Long cardId, Long toColumnId, int toPosition);
+    void cardMoved(Long cardId, Long boardId, Long toColumnId, int toPosition);
 
     // Bắn event comment.added cho thẻ.
-    void commentAdded(Long cardId, Long commentId);
+    void commentAdded(Long cardId, Long boardId, Long commentId);
 }

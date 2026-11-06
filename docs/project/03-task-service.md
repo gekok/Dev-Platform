@@ -7,7 +7,7 @@
 ## Runtime đã đối chiếu
 
 - **CardController** khai báo Project-scoped create/list/detail Card, move, assign và đọc/tạo Comment; detail GET lọc theo persisted `project_id`. List dùng keyset cursor per Column, nhưng cursor wire/error/stale contract còn tạm thời. PATCH assign và POST create có `assigneeId` fail-closed mặc định; chỉ bật sau khi Gateway xác thực danh tính, ghi đè `X-User-Id` và chặn truy cập trực tiếp.
-- WebSocket chỉ còn config placeholder; `BoardWebSocketConfig` chưa đăng ký handler và `CardEventAdapter` chỉ log stub, chưa phát frame. Kiến trúc #24 đã duyệt nhưng runtime chờ Gateway identity, secured Board lookup và Gateway WS proxy.
+- WebSocket #24 có service-side handler, authorization lifecycle và fanout best-effort sau commit. Runtime mặc định tắt; chỉ đăng ký khi Gateway identity, adapter Board→Project đã lưu, Gateway WS proxy và cờ bật runtime đều sẵn sàng. Chưa xác nhận qua Gateway; phần kiểm tra tích hợp thuộc task khác.
 - Card mapping có **project_id**/**board_id**/**column_id**; assignment target là `task_assignees` với `membership_version`. Redis authorization guard/reader parse cả `membershipVersion` lẫn `authorizationVersion`; cleanup fence/job/worker dùng generation cho assignment và giữ source aggregate version cho completion.
 - Use case Card/Comment đã có implementation trong source; chưa xác nhận E2E với Gateway, Redis và adapter Board/Column thật. Board/Column validation mặc định fail closed; mock allowlist chỉ dành local cho create/move. Consumer event cleanup #22 chỉ đăng ký khi có bật riêng cờ `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY`; cờ mặc định false tới khi integration task cấu hình bounded retry/backoff và DLQ. Broker redelivery/retry policy và versioned DB migrations còn mở. Cleanup scheduler mặc định tắt. Account/Project cascade scaffold đã được gỡ.
 
@@ -22,10 +22,11 @@
 - [ ] Chốt cursor wire/error contract và stale-cursor behavior của #20; wire hiện tại chỉ là implementation tạm thời.
 - [ ] Giữ Board/Column→Project validation như seam tích hợp; không tin `projectId` do client gửi làm bằng chứng quan hệ khi internal REST chưa bảo mật.
 - [ ] Khi nối consumer domain-event, dùng `eventId`/Inbox để chống redelivery và đọc `aggregateVersion` sẵn có từ envelope. Chốt cách xử lý stale/gap theo từng contract; không thêm Card version column trừ khi event contract được duyệt yêu cầu.
-- [ ] Chỉ triển khai runtime #24 sau khi Gateway identity propagation (#34), Board-to-Project lookup có bảo mật và Gateway WebSocket proxy (#31) sẵn sàng; giữ route/message đã duyệt, local best-effort fanout và authorization lifecycle.
+- [x] Chuẩn bị handler #24 sau readiness gate: giữ route/message đã duyệt, tra Board→Project từ port, kiểm tra membership ở handshake/định kỳ/trước gửi, phát sau commit và fanout best-effort trong cùng Task instance. Runtime mặc định tắt.
+- [ ] Task tích hợp xác nhận Gateway identity propagation (#34), secured Board-to-Project lookup, Gateway WebSocket proxy (#31), cấu hình readiness và acceptance qua Gateway trước khi bật runtime.
 - [ ] Chưa thêm Card/Comment producer cho #25 cho tới khi duyệt event catalog, recipient semantics và contract với Notification; tái sử dụng shared Outbox/Inbox, không thêm schema/version Card nếu chưa có yêu cầu đã duyệt.
 - [ ] Khi pagination phát hiện dữ liệu bất nhất, client hiện banner đầu trang yêu cầu reload theo quyết định đã thống nhất.
-- [x] Rà soát API/database docs: ghi rõ #24 là kiến trúc được duyệt, chưa có runtime; không đề xuất thêm Card `aggregate_version`.
+- [x] Rà soát API/database docs: mô tả #24 có implementation phía Task nhưng runtime mặc định tắt; không đề xuất thêm Card `aggregate_version`.
 
 ## Tiêu chí nghiệm thu khi triển khai
 

@@ -18,7 +18,7 @@ CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGu
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
 | GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần |
 
-### WebSocket Board (#24) — kiến trúc duyệt, runtime chờ tích hợp
+### WebSocket Board (#24) — service-side runtime có readiness gate
 
 Contract mục tiêu giữ route và payload đã duyệt:
 
@@ -32,7 +32,9 @@ WS /ws/boards/{boardId}
 {"event":"comment.added","cardId":100,"commentId":900}
 ```
 
-Runtime chỉ triển khai sau khi Gateway identity, trusted Board→Project lookup và Gateway WebSocket proxy sẵn sàng. Khi bật, Task xác minh membership ở handshake, định kỳ và trước khi gửi; fanout chỉ cùng Task instance, sau commit, best-effort, không persistence/retry/replay/order guarantee. Client refetch REST sau reconnect. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
+Task đăng ký `WS /ws/boards/{boardId}` và handler chỉ khi `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED`, `TASK_BOARD_PROJECT_LOOKUP_READY`, `TASK_GATEWAY_WEBSOCKET_PROXY_READY` và `TASK_BOARD_WEBSOCKET_ENABLED` đều là `true`. Cả bốn mặc định là `false`; cần đăng ký adapter `BoardProjectLookupPort` dùng Board đã lưu trước khi bật. Cờ readiness là cấu hình triển khai, không phải bằng chứng Gateway/Board đã tích hợp.
+
+Handshake yêu cầu identity `X-User-Id` do Gateway tin cậy chuyển tiếp; Task tự tra Board→Project và kiểm tra Account/membership trong snapshot. Session được kiểm tra lại định kỳ và ngay trước mỗi lần gửi; lookup hoặc snapshot lỗi đóng session. Event được phát sau transaction commit và chỉ fanout tới session cùng Board trong cùng Task instance. Đây là best-effort: không persistence/retry/replay hoặc bảo đảm nhận đủ/thứ tự; client refetch REST sau reconnect. Payload giữ nguyên event names và fields đã duyệt, không gồm Card title hay Comment body. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
 
 X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED. Các đường gán (PATCH assignee và POST có `assigneeId`) kiểm tra cờ trusted Gateway identity trước guard và từ chối mặc định, không dùng UUID client gửi làm actor.
 

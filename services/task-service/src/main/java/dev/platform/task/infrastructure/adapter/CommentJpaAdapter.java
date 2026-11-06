@@ -20,8 +20,10 @@ public class CommentJpaAdapter implements CommentStore {
     private final CardCommentJpaRepository comments;
 
     @Override
-    public boolean cardExists(Long projectId, Long cardId) {
-        return cards.findByIdAndProjectId(cardId, projectId).isPresent();
+    public Long requireBoardId(Long projectId, Long cardId) {
+        return cards.findByIdAndProjectId(cardId, projectId)
+                .map(card -> card.getBoardId())
+                .orElseThrow(CardNotFoundException::new);
     }
 
     @Override
