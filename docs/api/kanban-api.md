@@ -50,8 +50,8 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 - Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
 - API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Cặp `(position,id)` đã tạo thứ tự toàn phần vì `id` là duy nhất. Wire proposal cho infinite-scroll riêng từng Column yêu cầu `columnId` và cursor ràng buộc với `boardId` + `columnId` + sort; đây là scope API/UI cần duyệt, không phải điều kiện toán học của cursor.
 - Gateway là ranh giới xác thực mục tiêu. Identity phải được suy ra từ access token hợp lệ; Gateway loại bỏ/ghi đè identity header do client gửi trước khi chuyển tiếp. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
-- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. `SYSTEM_ADMIN` tự nó không cấp quyền Project; theo quyết định #7, tài khoản System Admin bị cấm tham gia Project (bắt buộc dùng Account riêng).
-- Quyết định #7 đã chốt bootstrap System Admin đầu tiên qua Flyway SQL migration và chỉ System Admin tạo Account (không mở đăng ký tự do). API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
+- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. Account mang `SYSTEM_ADMIN` không được tạo hoặc tham gia Project; cá nhân cần làm việc trong Project dùng Account nghiệp vụ không mang role này.
+- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Route/payload provisioning qua Admin còn mở. API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -70,7 +70,7 @@ Phần này bổ sung payload/response và quyền theo service để làm nền
 
 ### `user-service`: Auth và System Admin
 
-Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; `SYSTEM_ADMIN` chỉ cho phép quản trị Account, không cấp quyền Project và bị cấm tham gia Project (theo quyết định #7). Bootstrap Admin đầu tiên được seed qua Flyway SQL migration. Kỳ 1 không triển khai Account deletion.
+Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; Account mang `SYSTEM_ADMIN` chỉ được quản trị Account, không được làm Owner/Member trong Project (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Kỳ 1 không triển khai Account deletion.
 
 | Method | Route mục tiêu | Request | Thành công | Quyền/trạng thái |
 |---|---|---|---|---|
@@ -89,7 +89,7 @@ Tạo/quản trị Account qua System Admin thuộc nghiệp vụ quản trị h
 | Method | Route mục tiêu | Request/Query | Thành công | Quyền chính |
 |---|---|---|---|---|
 | `GET` | `/api/v1/projects` | Không body | `200 ProjectSummary[]` | Member/Owner thấy Project mình tham gia |
-| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }`; không nhận `ownerId`/`userId` của actor | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ `ACTIVE`, danh tính do Gateway xác thực; System Admin-only không có quyền Project; quyền dùng Project của Account đa vai trò còn mở |
+| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }`; không nhận `ownerId`/`userId` của actor | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ `ACTIVE`, danh tính do Gateway xác thực; Account mang `SYSTEM_ADMIN` bị từ chối; dùng Account nghiệp vụ không mang role này để làm Project |
 | `GET` | `/api/v1/projects/{projectId}` | Path ID | `200 ProjectDetail` | Member/Owner |
 | `GET` | `/api/v1/projects/{projectId}/members` | Path ID | `200 MemberSummary[]` | Member/Owner |
 | `POST` | `/api/v1/projects/{projectId}/invitations` | `{ "userId": "uuid" }` | `201 Invitation` có `status: PENDING` | Owner; tài khoản đã tồn tại |
