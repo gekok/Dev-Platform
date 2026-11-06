@@ -8,7 +8,7 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 `POST /api/v1/auth/register` khai báo đăng ký công khai, `POST /api/v1/auth/login` khai báo đăng nhập, `GET /api/v1/users/me` khai báo lấy hồ sơ. Đây là các route được `UserController` ánh xạ; route declaration không chứng minh use case đã chạy hoàn chỉnh.
 
-- `/auth/register` nhận `email`, `password`, `fullName` và gọi `RegisterUserPort`. Theo quyết định #7, route này bị bãi bỏ/deprecated, không mở đăng ký tự do; chỉ System Admin mới có quyền tạo Account (`POST /api/v1/admin/accounts`).
+- Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, không thuộc target Kỳ 1; không mở public self-registration. Chính sách đã chốt là chỉ System Admin được tạo Account; API Admin mục tiêu chưa có controller.
 - `/auth/login` gọi `LoginUserPort`; hiện chưa có implementation của port này.
 - `/users/me` hiện dùng `X-User-Id` để lấy Account; `Authorization` được đọc nhưng JWT chưa được parse.
 - Repo chưa có controller Admin tạo Account. Chính sách đã chốt tại #7: chỉ System Admin mới tạo Account, loại bỏ public registration.
@@ -16,10 +16,10 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 ## Thiết kế mục tiêu đã thống nhất
 
 - System Admin quản lý vòng đời Account; Admin không có quyền nghiệp vụ trong Project.
-- `SYSTEM_ADMIN` là quyền hệ thống, không phải Project role. Quyết định #7 đã chốt: Account mang quyền `SYSTEM_ADMIN` không được tạo hoặc tham gia vào Project Kanban (bắt buộc tách riêng tài khoản nếu muốn làm việc trên Project).
+- `SYSTEM_ADMIN` là quyền hệ thống, không phải Project role. Account mang role này không được tạo Project hoặc làm Owner/Member. Nếu cùng một cá nhân cần tham gia Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`.
 - Owner duy nhất của Project không bị biến thành “admin hệ thống”. Account được mời chỉ thành Member sau khi chấp nhận Invitation.
 - Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account nên API directory/profile mục tiêu thuộc service này. Hai route dưới đây là đề xuất, chưa có controller.
-- Schema mục tiêu lưu system role bằng `SystemRoles` và quan hệ `UserSystemRoles`. Theo quyết định #7, tài khoản System Admin đầu tiên được bootstrap qua Flyway SQL migration (seed dữ liệu trong `user_db`).
+- Schema mục tiêu lưu system role bằng `SystemRoles` và quan hệ `UserSystemRoles`. SQL bootstrap local seed Account System Admin mẫu và role tương ứng trong `user_db`; Kỳ 1 không dùng Flyway. Cách bootstrap cho môi trường triển khai có thể được thiết kế sau Kỳ 2.
 - Khi Account status hoặc system role đổi, tăng `auth_version`, ghi Outbox event và durable snapshot-sync job cùng transaction trong user_db.
 - user-service sở hữu Account authentication snapshot và retry apply vào Redis theo version. Snapshot version cũ không được ghi đè version mới.
 - Account deletion, `DELETING`, deletion operation và tombstone không thuộc Kỳ 1; giữ soft delete/Owner succession cho Kỳ 2.
@@ -27,9 +27,9 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 ## Chưa triển khai hoặc cần chốt
 
 - Login, provisioning Account qua Admin và phát token chưa đủ để coi Auth hoàn chỉnh.
-- Entity/repository `SystemRoles`/`UserSystemRoles` và Account snapshot recorder/Redis worker đã có skeleton; use case/API quản lý role và Flyway migration bootstrap System Admin cần triển khai.
+- Entity/repository `SystemRoles`/`UserSystemRoles` và Account snapshot recorder/Redis worker đã có skeleton; use case/API tạo Account qua Admin và quản lý role cần triển khai. SQL bootstrap local đã có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
 - Recorder chưa được nối vào các luồng tạo/thay đổi Account để ghi snapshot job cùng transaction; Redis worker chỉ chạy khi bật property. Vì vậy Account snapshot sync chưa hoạt động end-to-end. Gateway auth và Directory/profile controller cũng chưa có.
-- Quyết định #7 đã chốt bootstrap Admin qua Flyway migration, chính sách cấm multi-role trong Project và chỉ Admin tạo Account. Directory privacy và Account validation từ board-service vẫn còn mở.
+- Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project, chỉ System Admin tạo Account và không public self-registration. Nếu cùng một cá nhân cần làm việc trong Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`. Directory privacy và Account validation từ board-service vẫn còn mở.
 - Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 
 ## Nguồn code
@@ -107,7 +107,7 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 User-service sở hữu Account/Auth và system role. Các route dưới đây là bản thiết kế, không phải controller runtime:
 
-`POST /api/v1/auth/register` hiện có trong mapping runtime, nhưng public self-registration chưa được chốt làm Kỳ 1 target. Route tạo Account qua System Admin cũng còn mở; không suy ra nghiệp vụ target từ controller cũ.
+`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Route/payload và cách cấp credential cho API Admin vẫn còn mở; không suy ra chi tiết contract từ controller cũ.
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
@@ -147,6 +147,6 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 
 Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, System Admin role storage/cấp-thu hồi và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
 
-`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. Bootstrap System Admin đầu tiên qua Flyway migration và cấm tài khoản Admin tham gia Project đã chốt tại #7; route cấp/thu hồi role còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
+`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route cấp/thu hồi role, Admin account API contract và credential provisioning còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 
 Contract chung và field proposal nằm tại [Kanban API](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế); các API hiện có trong controller và khả năng khởi chạy vẫn được mô tả riêng ở phần runtime phía trên.
