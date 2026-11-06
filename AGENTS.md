@@ -29,7 +29,7 @@
 
 ## Commits and Pull Requests
 - Follow Conventional Commit prefixes in history (`feat:`, `fix:`, `docs:`, `refactor:`); keep commits focused.
-- PRs must list scope, affected services/contracts, verification results, and API/schema impacts; include screenshots for UI changes.
+- Tiêu đề và nội dung Pull Request (PR) phải được viết bằng Tiếng Việt để cả nhóm và mentor dễ review; PR phải nêu rõ tóm tắt phạm vi, kết quả kiểm thử và liên kết `Closes #<id>`; tuyệt đối không gắn PR vào Project để tránh trùng lặp thẻ trên Kanban.
 
 ## Security
 - Never commit credentials; `.env` is ignored. Treat `X-User-Id` as untrusted until Gateway authentication and identity-header enforcement are implemented.
