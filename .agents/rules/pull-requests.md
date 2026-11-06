@@ -1,6 +1,6 @@
 # Quy tắc tạo Pull Request (PR)
 
-- **Ngôn ngữ:** Tiêu đề và toàn bộ nội dung mô tả Pull Request (PR) phải được viết bằng **Tiếng Việt** để cả nhóm và mentor dễ dàng đọc hiểu, review và nghiệm thu.
+- **Ngôn ngữ:** Tiêu đề, toàn bộ nội dung mô tả Pull Request (PR) và mọi trao đổi, comment, phản hồi review giữa các thành viên trong nhóm trên GitHub đều bắt buộc phải được viết bằng **Tiếng Việt** để cả nhóm và mentor dễ dàng đọc hiểu, review và nghiệm thu.
 - **Tiền tố:** Vẫn giữ nguyên tiền tố Conventional Commit theo chuẩn: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`.
 - **Cấu trúc nội dung PR:**
   - `## Tóm tắt thay đổi` (Mô tả các tính năng/sửa đổi đã thực hiện)
