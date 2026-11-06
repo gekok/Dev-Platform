@@ -43,6 +43,8 @@ dev-platform:
       confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
     consumers:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
+      member-assignment-cleanup:
+        queue: ${MEMBER_ASSIGNMENT_CLEANUP_QUEUE:task-service.member-assignment-cleanup}
   assignment-cleanup:
     enabled: ${MEMBER_ASSIGNMENT_CLEANUP_ENABLED:false}
     fixed-delay-ms: ${MEMBER_ASSIGNMENT_CLEANUP_FIXED_DELAY_MS:1000}

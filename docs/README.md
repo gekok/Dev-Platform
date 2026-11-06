@@ -33,7 +33,7 @@ Trang này phân biệt tài liệu thiết kế mục tiêu với tài liệu m
 |---|---|---|---|
 | `user-service` | [API và ownership](../services/user-service/docs/api.md) | [API hiện tại và route mục tiêu](../services/user-service/docs/api.md) | [user_db](../services/user-service/docs/database.md) |
 | `board-service` | [API và ownership](../services/board-service/docs/api.md) | [Board-first runtime / Project-first target](../services/board-service/docs/api.md) | [board_db và target ERD](../services/board-service/docs/database.md) |
-| `task-service` | [API và ownership](../services/task-service/docs/api.md) | [Card API và WebSocket status](../services/task-service/docs/api.md) | [task_db và target ownership](../services/task-service/docs/database.md) |
+| `task-service` | [API và ownership](../services/task-service/docs/api.md) | [Card API và WebSocket status](../services/task-service/docs/api.md); [kế hoạch realtime/event #24/#25](../services/task-service/docs/realtime-events-proposal.md) | [task_db và target ownership](../services/task-service/docs/database.md) |
 | `notification-service` | [API và ownership](../services/notification-service/docs/api.md) | [Client/internal API](../services/notification-service/docs/api.md) | [notification_db](../services/notification-service/docs/database.md) |
 | `shared` | [Module roles, config và local usage](../shared/README.md) | [Event contracts / Outbox / Inbox](../shared/README.md) | Mapping được lưu trong DB riêng của từng service |
 | `gateway` | [Gateway README](../gateway/README.md) | [Routing reference](../gateway/docs/routing.md) | Không sở hữu DB |

@@ -1,6 +1,6 @@
 # Tích hợp Kỳ 1 theo Project-first
 
-**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Task controller đã có Project-scoped routes, Redis guard và assignment-cleanup seams; Project/Membership mutation, Gateway authentication, Rabbit listener wiring và DB migrations chưa được nối end-to-end.
+**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Task controller đã có Project-scoped routes, Redis guard và assignment-cleanup consumer source; Project/Membership mutation, Gateway authentication, broker delivery/ACK và DB migrations chưa được nghiệm thu end-to-end.
 
 **Nguồn chuẩn:** [architecture decisions](architecture-decisions.md), [API Kỳ 1](../api/kanban-api.md), [chỉ mục tài liệu](../README.md).
 
@@ -24,6 +24,7 @@
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
 - [ ] Gateway có JWT auth/identity forwarding an toàn; bỏ/ghi đè `X-User-Id` do client gửi và không tin role/actor ID trong request body/header.
+- [ ] Trước khi bật #24: hoàn tất Gateway identity propagation, secured Board-to-Project lookup và WebSocket proxy; kiểm thử revoke khi socket đang mở.
 - [ ] Task authorization guard đọc Account/Project snapshots từ Redis trên mọi Card/Comment route có bảo vệ.
 - [ ] Membership cleanup worker, Inbox transaction, fence và Outbox completion được nối; cleanup không chặn revoke completion.
 
@@ -43,7 +44,7 @@
 ### 2. Card, Comment, realtime và Notification
 
 - [ ] Card route mang `projectId`, Task lưu `cards.project_id` và đối chiếu project path với Card khi đọc/sửa. Kiểm tra Board/Column thuộc Project vẫn là integration TODO vì internal REST chưa được bảo mật.
-- [ ] Move Card cập nhật thứ tự; realtime event đồng bộ client.
+- [ ] Move Card cập nhật thứ tự; #24 giữ nguyên route/payload đã duyệt nhưng runtime chưa triển khai trước khi Gateway identity, Board lookup và WS proxy sẵn sàng.
 - [ ] Comment/mention giữ đúng author và phạm vi Project.
 - [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Wire proposal per-Column yêu cầu columnId và cursor gắn Board/Column/sort; khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.
 - [ ] Notification list/read chỉ trả dữ liệu của Account tương ứng.
@@ -55,6 +56,8 @@
 Kỳ 1 không có Account deletion, `DELETING` status hay cascade Project. Kỳ 2 sẽ thiết kế soft delete, Owner succession và cách theo dõi operation riêng.
 
 ### 4. Độ tin cậy event
+
+Issue #25 chưa duyệt producer Card/Comment. Shared `EventEnvelope.aggregateVersion`, Outbox `aggregate_version`, `OutboxEventWriter`, `OutboxRelay` và `InboxEventRecorder` đã có. Task có consumer cho event cleanup Membership đã duyệt thuộc #22; consumer mặc định tắt và broker redelivery/ACK chưa được nghiệm thu. Producer Outbox completion của cleanup #22 là luồng riêng. Chốt Event catalog/recipient/Notification contract trước; không tạo Card/Comment event type hay producer cho #25. Không có thay đổi schema Task được xác định nếu chỉ tái sử dụng mapping shared hiện có. Các tiêu chí generic dưới đây chỉ áp dụng sau khi event flow tương ứng được duyệt.
 
 - [ ] Producer commit business state và Outbox cùng transaction.
 - [ ] Relay đánh dấu SENT khi có Publisher Confirm và không có Publisher Return; khi chưa xác định publish outcome, retry cùng eventId, aggregateVersion, payload.

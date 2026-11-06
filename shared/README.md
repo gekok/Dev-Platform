@@ -60,13 +60,13 @@ public class UserServiceApplication { /* ... */ }
 
 ### Ví dụ đọc code: Board yêu cầu cleanup, Task xử lý
 
-**Trạng thái:** ví dụ dưới đây lần theo code đã có và điểm nối dự kiến. Recorder Board chưa chứng minh đã được gọi từ luồng cập nhật Membership; RabbitMQ queue/binding và listener Task chưa được nối. Không coi sơ đồ là bằng chứng luồng đã chạy hoàn chỉnh.
+**Trạng thái:** ví dụ dưới đây lần theo code đã có và điểm nối dự kiến. Recorder Board chưa chứng minh đã được gọi từ luồng cập nhật Membership; Task có queue/binding/listener cho event cleanup đã duyệt nhưng consumer mặc định tắt và chưa có broker E2E. Không coi sơ đồ là bằng chứng luồng đã chạy hoàn chỉnh.
 
 ```text
 board-service: ProjectAuthorizationSnapshotSyncRecorder
     → ghi snapshot-sync job + Outbox trong transaction của recorder
     → OutboxRelay có thể gửi event tới RabbitMQ khi được cấu hình
-    → [chưa có queue/binding + listener đưa event tới task-service]
+    → RabbitMQ route event tới queue cleanup của task-service khi consumer được bật
 task-service: MemberAssignmentCleanupRecorder
     → ghi Inbox + fence + cleanup job trong transaction
     → MemberAssignmentCleanupWorker xử lý job và ghi Outbox completion
@@ -85,7 +85,7 @@ task-service: MemberAssignmentCleanupRecorder
 
 3. **Relay:** khi được bật và cấu hình broker đúng, [`OutboxRelay`](messaging-support/src/main/java/dev/platform/shared/messaging/OutboxRelay.java) đọc Outbox của chính service, publish tới `dev-platform.domain-events` với routing key là `eventType`, rồi kiểm tra confirm/return. `SENT` không có nghĩa consumer đã xử lý xong. Xem [Outbox](#outbox) để biết retry và giới hạn hiện tại.
 
-4. **Task nhận yêu cầu:** [`MemberAssignmentCleanupRecorder.requestMemberAssignmentCleanup`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) có code sau, nhưng chưa có Rabbit listener gọi vào:
+4. **Task nhận yêu cầu:** [`MemberAssignmentCleanupListener`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupListener.java) bind durable queue theo routing key đã duyệt. Listener giải mã envelope, kiểm tra contract, gọi [`MemberAssignmentCleanupRecorder.requestMemberAssignmentCleanup`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) rồi manual ACK sau khi recorder transaction commit. Consumer mặc định tắt. Khi xử lý lỗi hiện NACK/requeue vô hạn; retry/backoff/DLQ chưa được chốt.
 
    ```java
    if (!inbox.recordIfNew(CONSUMER_NAME, event.eventId(), event.eventType())) {
@@ -94,7 +94,7 @@ task-service: MemberAssignmentCleanupRecorder
    // Sau đó ghi fence và cleanup job trong cùng transaction.
    ```
 
-   Inbox phân biệt theo `(consumerName, eventId)`. Cleanup job còn có khóa nghiệp vụ theo Project, User và `membershipVersion`; fence giúp phối hợp cleanup với assignment. Xem [Inbox](#inbox) về race khi nhận trùng đồng thời. Listener tương lai phải bảo đảm ACK sau commit, xử lý retry và lỗi; shared không tự làm các bước đó.
+   Inbox phân biệt theo `(consumerName, eventId)`. Cleanup job còn có khóa nghiệp vụ theo Project, User và `membershipVersion`; fence giúp phối hợp cleanup với assignment. Nếu ACK lỗi/mất sau commit, RabbitMQ có thể giao lại; Inbox làm delivery lặp idempotent. Listener hiện chưa có bounded retry hoặc DLQ.
 
 5. **Worker:** [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) có code đọc job, xóa assignment theo batch và ghi event `MEMBER_ASSIGNMENTS_CLEANED` qua `OutboxEventWriter`. Worker chỉ được tạo khi bật `dev-platform.assignment-cleanup.enabled`. Việc có worker không chứng minh cleanup hoặc completion đã chạy end-to-end.
 
@@ -104,7 +104,7 @@ task-service: MemberAssignmentCleanupRecorder
 |---|---|---|
 | User | [`AccountAuthorizationSnapshotSyncRecorder`](../services/user-service/src/main/java/dev/platform/user/infrastructure/snapshot/AccountAuthorizationSnapshotSyncRecorder.java) | Có code ghi snapshot job và Outbox khi status/role thay đổi; chưa chứng minh đã nối vào toàn bộ lifecycle Account. |
 | Board | [`ProjectAuthorizationSnapshotSyncRecorder`](../services/board-service/src/main/java/dev/platform/board/infrastructure/snapshot/ProjectAuthorizationSnapshotSyncRecorder.java) | Tạo snapshot job và event Membership/cleanup; caller phải nối mutation trong cùng transaction. |
-| Task | [`MemberAssignmentCleanupRecorder`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) và [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) | Code dùng Inbox và Outbox; listener đưa message từ RabbitMQ vào recorder chưa có. |
+| Task | [`MemberAssignmentCleanupListener`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupListener.java), [`MemberAssignmentCleanupRecorder`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) và [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) | Consumer có durable queue, contract validation, Inbox transaction và manual ACK sau commit; mặc định tắt; broker redelivery, retry/DLQ policy và E2E chưa được xác minh. |
 | Notification | [`TaskEventListener`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/TaskEventListener.java) | Có import cấu hình shared; listener nghiệp vụ hiện còn TODO. |
 
 ### Khi thêm luồng event mới
@@ -132,7 +132,7 @@ Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Mod
 | `member.assignments.cleanup-requested` | `operationId`, `projectId`, `userId`, `boardIds`, `membershipVersion` |
 | `member.assignments.cleaned` | `operationId`, `projectId`, `userId`, `membershipVersion` |
 
-Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume trong runtime; queue/binding, listener, Inbox transaction và ACK vẫn là phần tích hợp riêng.
+Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume trong runtime; cần xác minh riêng từng producer/consumer, Inbox transaction và ACK. Consumer cleanup Membership của Task đã có source; các event flow khác vẫn cần cấu hình và nghiệm thu.
 
 Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership, Outbox và snapshot-sync job trước. Quyền chỉ bị thu hồi khi snapshot mới được apply vào Redis; nếu còn pending, API trả `202` cùng operation handle. Event này chỉ khởi chạy unassign nền, không phải tín hiệu thu hồi quyền. Cleanup mang `membershipVersion` và chỉ được bỏ assignment đúng generation đã revoke.
 
@@ -205,9 +205,9 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
 ```
 
-Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. `MESSAGING_CONSUMERS_ENABLED` hiện chưa được dùng bởi consumer implementation nào. Code hiện khai báo durable Topic Exchange nhưng chưa có queue/binding hoặc `@RabbitListener`; chỉ bật hai cờ Relay không tạo được luồng event tới consumer, và message không route sẽ được retry.
+Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. Consumer cleanup Task chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`; cấu hình queue mặc định là `task-service.member-assignment-cleanup`. Binding chỉ nhận event `member.assignments.cleanup-requested`; các event Card/Comment của #25 chưa được duyệt hoặc đăng ký. Retry hiện requeue vô hạn, chưa có DLQ/backoff; chốt policy trước production.
 
-Không bật messaging như thể cascade đã hoạt động. Trước khi thử end-to-end cần thêm queue/binding, consumer, Inbox + job transaction, ACK policy và completion publisher theo quyết định chung.
+Không bật messaging như thể toàn bộ integration đã hoạt động. Trước khi nghiệm thu end-to-end cần kiểm tra producer Outbox Membership, broker routing, consumer ACK/redelivery, cleanup worker và completion publisher cùng retry/DLQ policy.
 
 ## Chạy và dùng local
 

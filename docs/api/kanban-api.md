@@ -517,15 +517,19 @@ Response `200 OK`: thông báo sau khi đổi `read` thành `true`.
 
 ### Real-time
 
+Issue #24 architecture approved on 2026-11-06. This is the approved target contract; Task runtime must wait until Gateway identity, trusted Board lookup, and Gateway WebSocket proxy are ready.
+
 Web React giữ một kênh sống (WebSocket) theo bảng:
 
 ```text
 WS /ws/boards/{boardId}
 ```
 
-Header: `Authorization: Bearer <jwt>`.
+Header contract hiện ghi `Authorization: Bearer <jwt>`; Gateway phải xác thực handshake và chuyển identity tin cậy tới Task. Task không tin `X-User-Id` hay `projectId` do client gửi. Task resolve Board→Project từ nguồn persisted đáng tin cậy, rồi kiểm tra Account và Project membership qua snapshot ở lúc handshake, định kỳ khi socket mở và ngay trước mỗi lần gửi. Nếu không xác minh được identity, Board relation hoặc snapshot, Task từ chối handshake/đóng socket. Runtime chưa được bật trước khi các phụ thuộc này sẵn sàng. Cần xác nhận cách browser WebSocket cung cấp credential và cách Gateway chuyển identity trước khi tích hợp.
 
-Event server bắn xuống:
+Fanout chỉ tới các session cùng Board trong Task instance hiện tại. Event được gửi sau khi transaction Card/Comment commit; send/queue lỗi có thể làm rơi event nhưng không đổi kết quả HTTP đã commit. WebSocket không lưu bền, không retry/replay và không bảo đảm thứ tự hay nhận đủ. Khi reconnect, client refetch REST. Event không chứa title hoặc Comment body. Đây là semantics cho WebSocket #24, không phải RabbitMQ catalog của #25.
+
+Event server gửi xuống:
 
 ```json
 { "event": "card.moved", "cardId": 100, "toColumnId": 11, "toPosition": 0 }
@@ -538,6 +542,8 @@ Event server bắn xuống:
 ```json
 { "event": "comment.added", "cardId": 100, "commentId": 900 }
 ```
+
+Gateway auth runtime, Board-to-Project adapter an toàn và proxy WebSocket qua Gateway chưa sẵn sàng; Task handler hiện chưa được đăng ký.
 
 Mobile Flutter không giữ socket suốt. Nhận việc gán và mention qua đẩy
 (push FCM). Bấm vào tin mới mở app và gọi API lấy chi tiết.

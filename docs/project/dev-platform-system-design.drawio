@@ -1537,7 +1537,7 @@
         <mxCell id="25" value="&lt;b&gt;Consumer DB&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
           <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
         </mxCell>
-        <mxCell id="26" value="• Envelope: eventId, eventType, schemaVersion, aggregateType, aggregateId, aggregateVersion, occurredAt, payload. Wire eventType is lowercase dotted.&lt;br/&gt;• eventId deduplicates one exact event per consumer. aggregateVersion detects stale/order/gaps; do not blindly discard every lower version. Retry does not increment version.&lt;br/&gt;• operationId correlates multi-event work; completion is a new eventId. New event IDs for repeat commands may need business idempotency key.&lt;br/&gt;• Queue/binding/listeners are incomplete; retry limits, DLQ, retention and alerts remain open." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+        <mxCell id="26" value="• Envelope: eventId, eventType, schemaVersion, aggregateType, aggregateId, aggregateVersion, occurredAt, payload. Wire eventType is lowercase dotted.&lt;br/&gt;• eventId deduplicates one exact event per consumer. aggregateVersion detects stale/order/gaps; do not blindly discard every lower version. Retry does not increment version.&lt;br/&gt;• operationId correlates multi-event work; completion is a new eventId. New event IDs for repeat commands may need business idempotency key.&lt;br/&gt;• Task membership-cleanup consumer source exists behind a feature flag; other queues/listeners and E2E wiring remain open. Retry limits, DLQ, retention and alerts remain open." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
           <mxGeometry x="40" y="749" width="1640" height="202" as="geometry" />
         </mxCell>
         <mxCell id="27" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
@@ -1692,7 +1692,7 @@
         <mxCell id="27" value="&lt;b&gt;notification_db&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
           <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
         </mxCell>
-        <mxCell id="28" value="• Current GET/PATCH controller uses X-User-Id stub; inbound ports not fully wired. Internal POST is disabled by default and has no service-token enforcement.&lt;br/&gt;• TaskEventListener is placeholder; Card event names, payloads, queue bindings and notification event flow are not agreed/wired.&lt;br/&gt;• Account inbox can aggregate across Projects and system notifications without Project context." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+        <mxCell id="28" value="• Current GET/PATCH controller uses X-User-Id stub; inbound ports not fully wired. Internal POST is disabled by default and has no service-token enforcement.&lt;br/&gt;• TaskEventListener is placeholder; durable Card/Comment event catalog, payload, recipient semantics, queue bindings and Notification flow (#25) are not agreed/wired. #24 WebSocket has its own approved ephemeral payloads.&lt;br/&gt;• Account inbox can aggregate across Projects and system notifications without Project context." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
           <mxGeometry x="40" y="857" width="1640" height="156" as="geometry" />
         </mxCell>
         <mxCell id="29" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
@@ -1793,7 +1793,7 @@
             <mxPoint x="1292" y="509" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; Broadcast board-scoped updates" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; After-commit best-effort fanout in one Task instance" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="1292" y="563" as="sourcePoint" />
             <mxPoint x="1580" y="563" as="targetPoint" />
@@ -1808,7 +1808,7 @@
         <mxCell id="2" value="&lt;b&gt;Realtime / infinite scroll — target and current stubs&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
           <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Sort position DESC,id DESC; page default 5/max 20. Cursor wire, websocket auth and stale detection details remain open." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+        <mxCell id="3" value="Sort position DESC,id DESC; page default 5/max 20. Cursor/stale handling remain open. #24 authorization lifecycle is approved; runtime waits for Gateway identity, secure Board lookup and WS proxy." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
         </mxCell>
         <mxCell id="19" value="&lt;b&gt;Web/Mobile&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
@@ -1829,7 +1829,7 @@
         <mxCell id="24" value="&lt;b&gt;other clients&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
           <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
         </mxCell>
-        <mxCell id="25" value="• CardEventAdapter currently logs stubs; BoardWebSocketConfig has no registered handler. Route presence is not end-to-end realtime.&lt;br/&gt;• Cursor should bind Project/Board/Column/sort; exact wire/errors open. Query limit+1 to determine hasMore.&lt;br/&gt;• When data changes during scrolling: dedupe, apply realtime if available, and show reload banner on detected inconsistency." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+        <mxCell id="25" value="• #24 architecture approved: keep route/event names/payload; runtime waits for Gateway identity, secured Board lookup and WS proxy. Local fanout is after-commit best-effort; no delivery/order guarantee.&lt;br/&gt;• CardEventAdapter currently logs stubs; BoardWebSocketConfig has no registered handler. Route presence is not end-to-end realtime.&lt;br/&gt;• Cursor should bind Project/Board/Column/sort; exact wire/errors open. Query limit+1 to determine hasMore.&lt;br/&gt;• When data changes during scrolling: dedupe and show reload banner on detected inconsistency." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
           <mxGeometry x="40" y="695" width="1640" height="156" as="geometry" />
         </mxCell>
         <mxCell id="26" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">

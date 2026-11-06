@@ -6,16 +6,32 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list Card, đọc/tạo Comment và thuật toán move đã có use case; gán có fallback trả lỗi 503. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
+CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list Card, move, gán và đọc/tạo Comment đã có use case. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
 | POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 với nguồn xác minh Column; mặc định 503 |
 | GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId?, limit?, cursor? | 200 `{items, nextCursor}` |
 | PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi thành công; 503 CARD_OPERATION_UNAVAILABLE khi chưa có nguồn xác minh Column |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 CARD_OPERATION_UNAVAILABLE sau khi kiểm tra quyền với fallback hiện tại |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 200 CardResponse; assignee không hợp lệ hoặc generation đã có fence trả 403 |
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
 | GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần |
+
+### WebSocket Board (#24) — kiến trúc duyệt, runtime chờ tích hợp
+
+Contract mục tiêu giữ route và payload đã duyệt:
+
+```text
+WS /ws/boards/{boardId}
+```
+
+```json
+{"event":"card.moved","cardId":100,"toColumnId":11,"toPosition":0}
+{"event":"card.created","cardId":101,"columnId":10}
+{"event":"comment.added","cardId":100,"commentId":900}
+```
+
+Runtime chỉ triển khai sau khi Gateway identity, trusted Board→Project lookup và Gateway WebSocket proxy sẵn sàng. Khi bật, Task xác minh membership ở handshake, định kỳ và trước khi gửi; fanout chỉ cùng Task instance, sau commit, best-effort, không persistence/retry/replay/order guarantee. Client refetch REST sau reconnect. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
 
 X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED.
 
@@ -47,21 +63,25 @@ Contract chung còn có GET /api/v1/projects/{projectId}/cards/{cardId} để đ
 
 Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Internal REST đang hoãn vì chưa có bảo mật service-to-service, nên không được xem riêng projectId do caller gửi là bằng chứng cho quan hệ Board–Project. Đây là integration TODO trước khi bật luồng end-to-end.
 
-Move yêu cầu `toPosition`, dùng chỉ số hiển thị bắt đầu từ 0 theo thứ tự position DESC/id DESC, sau khi gỡ Card khỏi vị trí cũ. Tạo Card từ chối title rỗng hoặc dài quá 500 ký tự sau khi trim. Thuật toán khóa theo Project/Board bằng SQL Server application lock và cập nhật cả hai Column trong transaction; mọi đường ghi position phải dùng cùng khóa trước khi bật tích hợp. Chưa kiểm tra đồng thời trên SQL Server hoặc tích hợp adapter Column; không phát event chưa được duyệt.
+Move yêu cầu `toPosition`, dùng chỉ số hiển thị bắt đầu từ 0 theo thứ tự position DESC/id DESC, sau khi gỡ Card khỏi vị trí cũ. Tạo Card từ chối title rỗng hoặc dài quá 500 ký tự sau khi trim. Thuật toán khóa theo Project/Board bằng SQL Server application lock và cập nhật cả hai Column trong transaction; mọi đường ghi position phải dùng cùng khóa trước khi bật tích hợp. Chưa kiểm tra đồng thời trên SQL Server hoặc tích hợp adapter Column; không phát durable event chưa được duyệt.
 
 Kiểm tra local với SQL Server thật: `mvn -pl services/task-service -am '-Dtask.sqlserver.integration=true' test`. Bộ kiểm tra gồm tạo Card với Column mock rồi rollback, từ chối ghi khi không có validator và hai transaction cạnh tranh cùng khóa Board. Kiểm tra khóa không thay thế kiểm tra hai request move đồng thời hoặc tích hợp Column thật. Test SQL Server chỉ chạy khi bật property trên và dùng cấu hình datasource local; test tạo Card rollback nhưng SQL Server vẫn có thể tăng giá trị identity.
 
 ### Mock Column cho local
 
+Profile này chỉ hỗ trợ phát triển local cho Card create/move; nó không chứng minh Board/Column thuộc Project thật và không đáp ứng trusted Board lookup cho WebSocket #24.
+
 Implementation giả lập trong package `dev.platform.task.mock` chỉ bật khi profile `mock` được chọn rõ ràng. Cấu hình `task.mock.columns` là danh sách `projectId:boardId:columnId` phân cách bằng dấu phẩy, ví dụ chạy từ thư mục task-service với `mvn spring-boot:run '-Dspring-boot.run.profiles=mock' '-Dspring-boot.run.arguments=--task.mock.columns=1:2:3,1:2:4'`. Danh sách rỗng hoặc quan hệ không được liệt kê bị từ chối. Không bật profile này trong môi trường triển khai. Mock chỉ thay xác minh quan hệ Column; guard Redis và việc ghi SQL Server vẫn hoạt động như cấu hình hiện có. Kết quả mock không chứng minh quan hệ Board/Column thật. Interface nằm trong application port của task-service để adapter thật triển khai sau này; cấu hình fail closed tạm thời nằm cùng mock.
 
-Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Các inbound port khác vẫn chưa hoàn chỉnh, nên chưa xác nhận service chạy end-to-end.
+Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Cursor hiện tại là wire tạm thời; contract lỗi và stale-cursor chưa được chốt. Detail GET một Card chưa có trong controller. Các use case Card/Comment có implementation trong source, nhưng chưa xác nhận E2E qua Gateway, Redis và adapter Board/Column thật.
 
 ## Cleanup assignment của Membership
 
 Khi board-service thu hồi Membership, request envelope mang `aggregateVersion=authorizationVersion`; payload mang projectId, userId, boardIds, operationId, membershipVersion. Task ghi Inbox, generation fence và job bền vững (gồm source aggregate version) trong một transaction trước ACK; worker chỉ gỡ assignment cùng Project/User/membershipVersion và gửi completion qua Outbox với source aggregate version. Cleanup là tác vụ nền độc lập, không giữ quyền truy cập lại và không chặn operation revoke hoàn tất.
 
-Consumer listener/ACK wiring và migration chưa được nối; scheduler cleanup mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
+Assignment khóa Project/User trước khi khóa Card, lưu membership generation của assignee và từ chối generation đã có fence. Worker rollback batch khi xử lý hoặc ghi completion thất bại; lịch retry được ghi trong transaction riêng sau rollback. Source snapshot hiện không có cơ chế xác minh độ mới độc lập; stale snapshot và listener/ACK qua broker chưa được xác minh end-to-end.
+
+Task listener cho event cleanup đã có durable queue/routing binding và ACK thủ công sau khi recorder transaction commit; cả messaging và consumer đều mặc định tắt. Lỗi hiện requeue không giới hạn; retry/backoff/DLQ và broker redelivery chưa được nghiệm thu. Versioned migration chưa có, cleanup scheduler mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
 
 ## Lỗi source hiện có
 
