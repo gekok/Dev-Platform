@@ -14,7 +14,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class LoginUserServiceTest {
@@ -62,20 +65,22 @@ class LoginUserServiceTest {
     }
 
     @Test
-    @DisplayName("Từ chối khi email không tồn tại trong hệ thống")
-    void shouldThrowExceptionWhenEmailNotFound() {
+    @DisplayName("Từ chối khi email không tồn tại nhưng vẫn chạy BCrypt giả để chống timing attack")
+    void shouldThrowExceptionWhenEmailNotFoundAndExecuteDummyHashCheck() {
         LoginCommand command = new LoginCommand("notfound@example.com", "any_password");
         when(users.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> loginService.login(command))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid email or password");
+
+        // Khẳng định passwordEncoder vẫn được gọi để triệt tiêu chênh lệch thời gian xử lý
+        verify(passwordEncoder).matches(eq("any_password"), anyString());
     }
 
     @Test
     @DisplayName("Từ chối khi tài khoản không ở trạng thái ACTIVE")
     void shouldThrowExceptionWhenAccountIsNotActive() {
-        // Tạo user có status null (không ACTIVE)
         UserAggregate inactiveUser = UserAggregate.rehydrate(
                 UUID.randomUUID(), "inactive@example.com", "hashed_pass", "Inactive User", null, 1L);
         LoginCommand command = new LoginCommand("inactive@example.com", "plain_pass");
