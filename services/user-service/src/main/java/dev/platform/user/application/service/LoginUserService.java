@@ -7,6 +7,7 @@ import dev.platform.user.application.port.out.SaveUserPort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.AccountStatus;
 import dev.platform.user.domain.aggregate.UserAggregate;
+import dev.platform.user.domain.exception.AuthenticationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -45,11 +46,11 @@ public class LoginUserService implements LoginUserPort {
         // để thời gian phản hồi của 2 nhánh (sai email vs sai mật khẩu) là tương đương nhau.
         if (user == null) {
             passwordEncoder.matches(command.password(), DUMMY_BCRYPT_HASH);
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new AuthenticationException("Invalid email or password");
         }
 
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new AuthenticationException("Invalid email or password");
         }
 
         if (user.getStatus() != AccountStatus.ACTIVE) {

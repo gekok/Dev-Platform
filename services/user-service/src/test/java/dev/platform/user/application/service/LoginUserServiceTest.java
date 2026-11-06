@@ -5,6 +5,7 @@ import dev.platform.user.application.port.out.PasswordEncoderPort;
 import dev.platform.user.application.port.out.SaveUserPort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
+import dev.platform.user.domain.exception.AuthenticationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +61,7 @@ class LoginUserServiceTest {
         when(passwordEncoder.matches("wrong_pass", "hashed_pass")).thenReturn(false);
 
         assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid email or password");
     }
 
@@ -71,7 +72,7 @@ class LoginUserServiceTest {
         when(users.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("Invalid email or password");
 
         // Khẳng định passwordEncoder vẫn được gọi để triệt tiêu chênh lệch thời gian xử lý
