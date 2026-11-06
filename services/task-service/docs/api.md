@@ -12,8 +12,8 @@ CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGu
 |---|---|---|---|
 | POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 với nguồn xác minh Column; mặc định 503 |
 | GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId?, limit?, cursor? | 200 `{items, nextCursor}` |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 503 CARD_OPERATION_UNAVAILABLE khi chưa có nguồn xác minh Column |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 200 CardResponse |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi thành công; 503 CARD_OPERATION_UNAVAILABLE khi chưa có nguồn xác minh Column |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 CARD_OPERATION_UNAVAILABLE sau khi kiểm tra quyền với fallback hiện tại |
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
 | GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần |
 
