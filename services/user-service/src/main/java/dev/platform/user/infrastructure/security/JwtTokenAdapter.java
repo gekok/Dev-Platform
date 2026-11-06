@@ -97,37 +97,44 @@ public class JwtTokenAdapter implements TokenPort {
     }
 
     private static KeyPair resolveKeyPair(String privateKeyPem, String publicKeyPem, String keyFilePath) {
-        // 1. Nếu cấu hình PEM trực tiếp qua biến môi trường / properties
-        if (privateKeyPem != null && !privateKeyPem.isBlank() && publicKeyPem != null && !publicKeyPem.isBlank()) {
+        // 1. Môi trường deploy cấu hình PEM trực tiếp: bắt buộc đủ cặp và hợp lệ
+        boolean hasPem = (privateKeyPem != null && !privateKeyPem.isBlank())
+                || (publicKeyPem != null && !publicKeyPem.isBlank());
+        if (hasPem) {
+            if (privateKeyPem == null || privateKeyPem.isBlank() || publicKeyPem == null || publicKeyPem.isBlank()) {
+                throw new IllegalStateException("Cả app.jwt.private-key và app.jwt.public-key phải được cấu hình đồng thời");
+            }
             return parsePemKeyPair(privateKeyPem, publicKeyPem);
         }
 
-        // 2. Nếu có file lưu khóa từ lần chạy trước -> đọc lại để giữ khóa ổn định qua các lần restart
-        String targetPath = (keyFilePath != null && !keyFilePath.isBlank()) ? keyFilePath : DEFAULT_DEV_KEY_FILE;
+        // 2. Cấu hình đường dẫn file lưu khóa
+        boolean isExplicitFile = (keyFilePath != null && !keyFilePath.isBlank());
+        String targetPath = isExplicitFile ? keyFilePath : DEFAULT_DEV_KEY_FILE;
         try {
             Path path = Paths.get(targetPath);
-            if (Files.exists(path)) {
+            if (Files.exists(path) && Files.size(path) > 0) {
                 String content = Files.readString(path);
                 String[] parts = content.split("---KEY-SPLIT---");
                 if (parts.length == 2) {
                     return parsePemKeyPair(parts[0], parts[1]);
                 }
+                throw new IllegalStateException("Định dạng file khóa không hợp lệ: " + targetPath);
             }
 
-            // Chưa có file -> Sinh cặp khóa mới và ghi vào file để dùng lại trong dev
+            // File chưa tồn tại hoặc rỗng -> sinh cặp khóa mới và ghi vào file
             KeyPair keyPair = generateRsaKeyPair();
-            try {
-                if (path.getParent() != null) {
-                    Files.createDirectories(path.getParent());
-                }
-                String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-                String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-                Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
-            } catch (Exception ignored) {
-                // Tiếp tục với in-memory key nếu không có quyền ghi file
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
             }
+            String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+            String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+            Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
             return keyPair;
         } catch (Exception e) {
+            // Môi trường deploy hoặc khi chỉ định file cụ thể: fail-fast, không fallback về in-memory key tạm
+            if (isExplicitFile) {
+                throw new IllegalStateException("Không thể nạp hoặc khởi tạo khóa JWT từ đường dẫn cấu hình: " + targetPath, e);
+            }
             return generateRsaKeyPair();
         }
     }

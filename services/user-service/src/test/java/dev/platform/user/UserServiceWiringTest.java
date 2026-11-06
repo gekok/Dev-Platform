@@ -7,9 +7,11 @@ import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.application.service.LoginUserService;
 import dev.platform.user.infrastructure.security.BcryptPasswordAdapter;
 import dev.platform.user.infrastructure.security.JwtTokenAdapter;
+import dev.platform.user.infrastructure.security.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.security.web.SecurityFilterChain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -21,6 +23,7 @@ class UserServiceWiringTest {
                     JwtTokenAdapter.class,
                     BcryptPasswordAdapter.class,
                     LoginUserService.class,
+                    SecurityConfig.class,
                     UserController.class)
             .withBean(SaveUserPort.class, () -> mock(SaveUserPort.class));
 
@@ -33,6 +36,7 @@ class UserServiceWiringTest {
             assertThat(context).hasSingleBean(TokenPort.class);
             assertThat(context).hasSingleBean(LoginUserService.class);
             assertThat(context).hasSingleBean(PasswordEncoderPort.class);
+            assertThat(context).hasSingleBean(SecurityFilterChain.class);
             assertThat(context).hasSingleBean(UserController.class);
 
             JwtTokenAdapter adapter = context.getBean(JwtTokenAdapter.class);
