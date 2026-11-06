@@ -23,9 +23,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LoginUserService implements LoginUserPort {
 
-    // Chuỗi hash BCrypt chuẩn dùng để thực thi kiểm tra giả, chống tấn công timing side-channel khi email không tồn tại
+    // Chuỗi hash BCrypt chuẩn cost 12 đồng bộ với dữ liệu mẫu SQL seed ($2b$12$), dùng để thực thi kiểm tra giả, chống timing attack khi email không tồn tại
     private static final String DUMMY_BCRYPT_HASH =
-            "$2a$10$7EqJtq98hPqEX7fNZaODoOFn9730D95A/e0Z3W1A2C3E4G5H6I7J8";
+            "$2a$12$BqfnOOfzIFaiMsWqu2MAk.lferAigH2XTucXueq8o2WQ6jDVwFm9W";
 
     private final SaveUserPort users;
     private final PasswordEncoderPort passwordEncoder;
