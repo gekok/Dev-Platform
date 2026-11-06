@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import dev.platform.task.api.dto.AddCommentRequest;
 import dev.platform.task.api.dto.AssignCardRequest;
+import dev.platform.task.api.dto.CardDetailResponse;
 import dev.platform.task.api.dto.CardResponse;
 import dev.platform.task.api.dto.CommentResponse;
 import dev.platform.task.api.dto.CreateCardRequest;
@@ -29,6 +30,7 @@ import dev.platform.task.application.exception.CardOperationUnavailableException
 import dev.platform.task.application.port.in.AddCommentPort;
 import dev.platform.task.application.port.in.AssignCardPort;
 import dev.platform.task.application.port.in.CreateCardPort;
+import dev.platform.task.application.port.in.GetCardPort;
 import dev.platform.task.application.port.in.GetCardsPort;
 import dev.platform.task.application.port.in.MoveCardPort;
 import dev.platform.task.application.service.ProjectAuthorizationGuard;
@@ -49,6 +51,7 @@ public class CardController {
 
     private final CreateCardPort createCardPort;
     private final GetCardsPort getCardsPort;
+    private final GetCardPort getCardPort;
     private final MoveCardPort moveCardPort;
     private final AssignCardPort assignCardPort;
     private final AddCommentPort addCommentPort;
@@ -81,7 +84,7 @@ public class CardController {
     public ResponseEntity<CardPage> listCards(
             @PathVariable("projectId") Long projectId,
             @PathVariable("boardId") Long boardId,
-            @RequestParam(value = "columnId", required = false) Long columnId,
+            @RequestParam("columnId") Long columnId,
             @RequestParam(value = "limit", defaultValue = "5") int limit,
             @RequestParam(value = "cursor", required = false) String cursor,
             @RequestHeader(value = "X-User-Id") UUID userId) {
@@ -98,6 +101,15 @@ public class CardController {
     }
 
     public record CardPage(List<CardResponse> items, String nextCursor) {}
+
+    @GetMapping("/api/v1/projects/{projectId}/cards/{cardId}")
+    public ResponseEntity<CardDetailResponse> getCard(
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("cardId") Long cardId,
+            @RequestHeader(value = "X-User-Id") UUID userId) {
+        authorizationGuard.requireProjectMember(projectId, userId);
+        return ResponseEntity.ok(CardDetailResponse.from(getCardPort.getById(projectId, cardId)));
+    }
 
     // Kéo thẻ qua cột (3.3).
     @PatchMapping("/api/v1/projects/{projectId}/cards/{cardId}/move")

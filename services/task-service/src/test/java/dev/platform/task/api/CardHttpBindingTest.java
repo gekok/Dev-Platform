@@ -20,8 +20,9 @@ class CardHttpBindingTest {
     void listBindsPathAndQueryParameters() throws Exception {
         GetCardsPort reader = mock(GetCardsPort.class);
         when(reader.getByBoard(7L, 8L, 9L, null, null, 3)).thenReturn(List.of());
-        CardController controller = new CardController(mock(CreateCardPort.class), reader, mock(MoveCardPort.class),
-                mock(AssignCardPort.class), mock(AddCommentPort.class), mock(ProjectAuthorizationGuard.class));
+        CardController controller = new CardController(mock(CreateCardPort.class), reader, mock(GetCardPort.class),
+                mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class),
+                mock(ProjectAuthorizationGuard.class));
         var mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         mvc.perform(get("/api/v1/projects/7/boards/8/cards")

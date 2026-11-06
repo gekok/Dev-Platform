@@ -6,12 +6,13 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list Card, move, gán và đọc/tạo Comment đã có use case. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Mọi đường gán Card (PATCH assignee hoặc POST create có `assigneeId`) mặc định fail-closed và trả 503 `CARD_OPERATION_UNAVAILABLE` trước khi đọc danh tính từ `X-User-Id`; chỉ bật khi Gateway xác thực người dùng, ghi đè header và chặn truy cập trực tiếp tới task-service. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
+CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list/đọc chi tiết Card, move, gán và đọc/tạo Comment đã có use case. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Mọi đường gán Card (PATCH assignee hoặc POST create có `assigneeId`) mặc định fail-closed và trả 503 `CARD_OPERATION_UNAVAILABLE` trước khi đọc danh tính từ `X-User-Id`; chỉ bật khi Gateway xác thực người dùng, ghi đè header và chặn truy cập trực tiếp tới task-service. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
 | POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 khi validator Column sẵn sàng; 503 CARD_OPERATION_UNAVAILABLE nếu chưa có validator hoặc request có assigneeId khi trusted identity chưa bật |
-| GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId?, limit?, cursor? | 200 `{items, nextCursor}` |
+| GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId required, limit?, cursor? | 200 `{items, nextCursor}` |
+| GET | /api/v1/projects/{projectId}/cards/{cardId} | X-User-Id | 200 CardDetailResponse; 404 nếu Card không tồn tại trong Project |
 | PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi thành công; 503 CARD_OPERATION_UNAVAILABLE khi chưa có nguồn xác minh Column |
 | PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 `CARD_OPERATION_UNAVAILABLE` khi trusted Gateway identity chưa bật; sau khi tích hợp, 200 CardResponse hoặc 403 nếu assignee không hợp lệ/generation đã có fence |
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
@@ -59,7 +60,7 @@ Khi được phép và lưu thành công, response `201` có dạng `{"id":42,"p
 
 ## Contract mục tiêu và phần chưa có trong source
 
-Contract chung còn có GET /api/v1/projects/{projectId}/cards/{cardId} để đọc một Card. Route này chưa được khai báo trong controller hiện tại. Mọi route Card phải giữ projectId trong URL để giới hạn đọc/ghi theo cards.project_id; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
+GET `/api/v1/projects/{projectId}/cards/{cardId}` đã được khai báo qua inbound port; persistence query đồng thời lọc theo `project_id`, nên Card sai Project trả `404 CARD_NOT_FOUND`. Response chi tiết gồm `description` và `dueDate` ngoài các field Card cơ bản. Mọi route Card giữ projectId trong URL để giới hạn đọc/ghi theo `cards.project_id`; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
 
 Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Internal REST đang hoãn vì chưa có bảo mật service-to-service, nên không được xem riêng projectId do caller gửi là bằng chứng cho quan hệ Board–Project. Đây là integration TODO trước khi bật luồng end-to-end.
 
@@ -73,7 +74,7 @@ Profile này chỉ hỗ trợ phát triển local cho Card create/move; nó khô
 
 Implementation giả lập trong package `dev.platform.task.mock` chỉ bật khi profile `mock` được chọn rõ ràng. Cấu hình `task.mock.columns` là danh sách `projectId:boardId:columnId` phân cách bằng dấu phẩy, ví dụ chạy từ thư mục task-service với `mvn spring-boot:run '-Dspring-boot.run.profiles=mock' '-Dspring-boot.run.arguments=--task.mock.columns=1:2:3,1:2:4'`. Danh sách rỗng hoặc quan hệ không được liệt kê bị từ chối. Không bật profile này trong môi trường triển khai. Mock chỉ thay xác minh quan hệ Column; guard Redis và việc ghi SQL Server vẫn hoạt động như cấu hình hiện có. Kết quả mock không chứng minh quan hệ Board/Column thật. Interface nằm trong application port của task-service để adapter thật triển khai sau này; cấu hình fail closed tạm thời nằm cùng mock.
 
-Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Cursor hiện tại là wire tạm thời; contract lỗi và stale-cursor chưa được chốt. Detail GET một Card chưa có trong controller. Các use case Card/Comment có implementation trong source, nhưng chưa xác nhận E2E qua Gateway, Redis và adapter Board/Column thật.
+Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Cursor hiện tại là wire tạm thời; contract lỗi và stale-cursor chưa được chốt. Card detail GET scope theo Project đã có trong source. Các use case Card/Comment có implementation trong source, nhưng chưa xác nhận E2E qua Gateway, Redis và adapter Board/Column thật.
 
 ## Cleanup assignment của Membership
 

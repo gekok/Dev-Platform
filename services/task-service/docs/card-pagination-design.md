@@ -10,7 +10,7 @@ Thực hiện GET Card trong phạm vi Project và Board, hỗ trợ phân trang
 
 ## Thiết kế
 
-- GET route hiện tại nhận `columnId` tùy chọn, `limit` mặc định 5 trong khoảng 1–20 và `cursor` tùy chọn. Trả `{items, nextCursor}`; `nextCursor` là null ở trang cuối.
+- GET route nhận `columnId` bắt buộc để phân trang riêng từng Column, `limit` mặc định 5 trong khoảng 1–20 và `cursor` tùy chọn. Trả `{items, nextCursor}`; `nextCursor` là null ở trang cuối.
 - Cursor opaque Base64 URL chứa phiên bản, projectId, boardId, columnId (có thể null), tên thứ tự `position_desc_id_desc`, position và id. Giới hạn kích thước và kiểm tra nghiêm ngặt định dạng, scope và giá trị; sai trả 400 `BAD_REQUEST` theo handler hiện có. Cursor không phải bằng chứng phân quyền.
 - Query lọc projectId và boardId persisted, thêm columnId khi được cung cấp; `ORDER BY position DESC, id DESC`, trang tiếp lọc `position < lastPosition OR (position = lastPosition AND id < lastId)`. Lấy limit + 1 và tạo cursor từ phần tử cuối được trả. Không dùng offset. Card thay đổi vị trí giữa các trang có thể gây lặp hoặc thiếu; client dedupe và reload khi cần.
 - Triển khai inbound port đọc bằng service/application port và adapter persistence; giữ mapping assignee theo lô. Redis guard hiện có tiếp tục fail closed. POST sau guard trả 503 với mã riêng cho dependency chưa sẵn sàng, không tin dữ liệu route làm bằng chứng quan hệ.

@@ -21,6 +21,9 @@ public class CommentService implements AddCommentPort {
     @Override
     @Transactional
     public CommentValue addComment(AddCommentCommand cmd) {
+        if (cmd == null || cmd.projectId() == null || cmd.cardId() == null || cmd.authorId() == null) {
+            throw new IllegalArgumentException("Project, card and author are required");
+        }
         if (cmd.content() == null || cmd.content().isBlank()) {
             throw new IllegalArgumentException("Comment content is required");
         }

@@ -19,7 +19,8 @@ class CardControllerTest {
         GetCardsPort reader = mock(GetCardsPort.class);
         ProjectAuthorizationGuard guard = mock(ProjectAuthorizationGuard.class);
         CardController controller = new CardController(mock(CreateCardPort.class), reader,
-                mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class), guard);
+                mock(GetCardPort.class), mock(MoveCardPort.class), mock(AssignCardPort.class),
+                mock(AddCommentPort.class), guard);
         CardAggregate first = new CardAggregate(); first.setId(7L); first.setPosition(3);
         CardAggregate extra = new CardAggregate(); extra.setId(6L); extra.setPosition(3);
         when(reader.getByBoard(1L, 2L, 3L, null, null, 2)).thenReturn(List.of(first, extra));
@@ -34,8 +35,9 @@ class CardControllerTest {
     @Test
     void createFailsClosed() {
         CreateCardPort writer = mock(CreateCardPort.class);
-        CardController controller = new CardController(writer, mock(GetCardsPort.class), mock(MoveCardPort.class),
-                mock(AssignCardPort.class), mock(AddCommentPort.class), mock(ProjectAuthorizationGuard.class));
+        CardController controller = new CardController(writer, mock(GetCardsPort.class), mock(GetCardPort.class),
+                mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class),
+                mock(ProjectAuthorizationGuard.class));
         when(writer.create(any())).thenThrow(new CardOperationUnavailableException());
         assertThrows(CardOperationUnavailableException.class,
                 () -> controller.createCard(1L, 2L, new CreateCardRequest(3L, "Card", null, null, null), UUID.randomUUID()));
