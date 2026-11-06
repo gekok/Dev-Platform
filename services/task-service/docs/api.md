@@ -6,14 +6,14 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list Card, move, gán và đọc/tạo Comment đã có use case. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
+CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Tạo/list Card, move, gán và đọc/tạo Comment đã có use case. Tạo/move mặc định trả 503 do chưa có nguồn xác minh Column thật. Mọi đường gán Card (PATCH assignee hoặc POST create có `assigneeId`) mặc định fail-closed và trả 503 `CARD_OPERATION_UNAVAILABLE` trước khi đọc danh tính từ `X-User-Id`; chỉ bật khi Gateway xác thực người dùng, ghi đè header và chặn truy cập trực tiếp tới task-service. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
-| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 với nguồn xác minh Column; mặc định 503 |
+| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 khi validator Column sẵn sàng; 503 CARD_OPERATION_UNAVAILABLE nếu chưa có validator hoặc request có assigneeId khi trusted identity chưa bật |
 | GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId?, limit?, cursor? | 200 `{items, nextCursor}` |
 | PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi thành công; 503 CARD_OPERATION_UNAVAILABLE khi chưa có nguồn xác minh Column |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 200 CardResponse; assignee không hợp lệ hoặc generation đã có fence trả 403 |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 `CARD_OPERATION_UNAVAILABLE` khi trusted Gateway identity chưa bật; sau khi tích hợp, 200 CardResponse hoặc 403 nếu assignee không hợp lệ/generation đã có fence |
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
 | GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần |
 
@@ -33,7 +33,7 @@ WS /ws/boards/{boardId}
 
 Runtime chỉ triển khai sau khi Gateway identity, trusted Board→Project lookup và Gateway WebSocket proxy sẵn sàng. Khi bật, Task xác minh membership ở handshake, định kỳ và trước khi gửi; fanout chỉ cùng Task instance, sau commit, best-effort, không persistence/retry/replay/order guarantee. Client refetch REST sau reconnect. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
 
-X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED.
+X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED. Các đường gán (PATCH assignee và POST có `assigneeId`) kiểm tra cờ trusted Gateway identity trước guard và từ chối mặc định, không dùng UUID client gửi làm actor.
 
 CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List dùng keyset theo position DESC, id DESC; limit mặc định 5, khoảng hợp lệ 1–20. Cursor tạm thời ràng buộc project, board, column và sort; sai scope hoặc định dạng trả 400 BAD_REQUEST. `nextCursor` null là trang cuối. Đây là wire tạm thời, chưa phải contract đã duyệt.
 
@@ -81,7 +81,7 @@ Khi board-service thu hồi Membership, request envelope mang `aggregateVersion=
 
 Assignment khóa Project/User trước khi khóa Card, lưu membership generation của assignee và từ chối generation đã có fence. Worker rollback batch khi xử lý hoặc ghi completion thất bại; lịch retry được ghi trong transaction riêng sau rollback. Source snapshot hiện không có cơ chế xác minh độ mới độc lập; stale snapshot và listener/ACK qua broker chưa được xác minh end-to-end.
 
-Task listener cho event cleanup đã có durable queue/routing binding và ACK thủ công sau khi recorder transaction commit; cả messaging và consumer đều mặc định tắt. Lỗi hiện requeue không giới hạn; retry/backoff/DLQ và broker redelivery chưa được nghiệm thu. Versioned migration chưa có, cleanup scheduler mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
+Task listener cho event cleanup đã có durable queue/routing binding và ACK thủ công sau khi recorder transaction commit. Listener chỉ được đăng ký khi messaging, consumer và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều bật; cờ này mặc định false. Chỉ bật sau khi queue có bounded retry/backoff và DLQ phù hợp với hành vi NACK/requeue. Hiện chưa có broker retry/DLQ policy trong task-service và consumer phải giữ tắt; broker redelivery chưa được nghiệm thu. Versioned migration chưa có, cleanup scheduler mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
 
 ## Lỗi source hiện có
 
@@ -91,6 +91,7 @@ Task listener cho event cleanup đã có durable queue/routing binding và ACK t
 | Không có quyền Project | 403 | PROJECT_ACCESS_DENIED |
 | Không đọc/giải mã được snapshot | 503 | AUTHORIZATION_SNAPSHOT_UNAVAILABLE |
 | Use case Card chưa triển khai | 503 | CARD_OPERATION_UNAVAILABLE |
+| Gán Card khi trusted Gateway identity chưa bật | 503 | CARD_OPERATION_UNAVAILABLE |
 | Card không tồn tại trong Project | 404 | CARD_NOT_FOUND |
 
 Bảng trên mô tả code và mapping hiện có; chưa có bằng chứng các thao tác đã chạy end-to-end với Gateway, Redis và adapter Column thật.

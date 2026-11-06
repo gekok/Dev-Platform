@@ -25,8 +25,13 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "dev-platform.messaging.enabled", havingValue = "true")
-@ConditionalOnProperty(name = "dev-platform.messaging.consumers.enabled", havingValue = "true")
+@ConditionalOnProperty(
+        name = {
+                "dev-platform.messaging.enabled",
+                "dev-platform.messaging.consumers.enabled",
+                "dev-platform.messaging.consumers.member-assignment-cleanup.retry-dlq-ready"
+        },
+        havingValue = "true")
 public class MemberAssignmentCleanupListener {
 
     private static final TypeReference<EventEnvelope<MemberAssignmentsCleanupRequested>> EVENT_TYPE =

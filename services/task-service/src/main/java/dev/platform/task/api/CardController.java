@@ -3,6 +3,7 @@ package dev.platform.task.api;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ import dev.platform.task.application.command.AddCommentCommand;
 import dev.platform.task.application.command.AssignCardCommand;
 import dev.platform.task.application.command.CreateCardCommand;
 import dev.platform.task.application.command.MoveCardCommand;
+import dev.platform.task.application.exception.CardOperationUnavailableException;
 import dev.platform.task.application.port.in.AddCommentPort;
 import dev.platform.task.application.port.in.AssignCardPort;
 import dev.platform.task.application.port.in.CreateCardPort;
@@ -52,6 +54,9 @@ public class CardController {
     private final AddCommentPort addCommentPort;
     private final ProjectAuthorizationGuard authorizationGuard;
 
+    @Value("${dev-platform.security.trusted-gateway-identity.enabled:false}")
+    private boolean trustedGatewayIdentityEnabled;
+
     // Tạo thẻ (3.1).
     @PostMapping("/api/v1/projects/{projectId}/boards/{boardId}/cards")
     public ResponseEntity<CardResponse> createCard(
@@ -60,6 +65,9 @@ public class CardController {
             @RequestBody CreateCardRequest request,
             // TODO Gateway phải ghi đè header này từ principal đã xác thực.
             @RequestHeader(value = "X-User-Id") UUID userId) {
+        if (request.assigneeId() != null && !trustedGatewayIdentityEnabled) {
+            throw new CardOperationUnavailableException();
+        }
         authorizationGuard.requireProjectMember(projectId, userId);
         Long assigneeMembershipVersion = request.assigneeId() == null ? null
                 : authorizationGuard.requireActiveAssigneeMembership(projectId, request.assigneeId());
@@ -115,6 +123,9 @@ public class CardController {
             @PathVariable("cardId") Long cardId,
             @RequestBody AssignCardRequest request,
             @RequestHeader(value = "X-User-Id") UUID actorId) {
+        if (!trustedGatewayIdentityEnabled) {
+            throw new CardOperationUnavailableException();
+        }
         authorizationGuard.requireProjectMember(projectId, actorId);
         Long assigneeMembershipVersion = request.assigneeId() == null ? null
                 : authorizationGuard.requireActiveAssigneeMembership(projectId, request.assigneeId());

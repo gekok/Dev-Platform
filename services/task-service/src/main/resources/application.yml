@@ -34,6 +34,9 @@ spring:
       mandatory: true
 
 dev-platform:
+  security:
+    trusted-gateway-identity:
+      enabled: ${TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED:false}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:
@@ -45,6 +48,7 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
       member-assignment-cleanup:
         queue: ${MEMBER_ASSIGNMENT_CLEANUP_QUEUE:task-service.member-assignment-cleanup}
+        retry-dlq-ready: ${MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY:false}
   assignment-cleanup:
     enabled: ${MEMBER_ASSIGNMENT_CLEANUP_ENABLED:false}
     fixed-delay-ms: ${MEMBER_ASSIGNMENT_CLEANUP_FIXED_DELAY_MS:1000}

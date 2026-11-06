@@ -74,6 +74,8 @@ Issue #25 chưa duyệt producer Card/Comment. Shared `EventEnvelope.aggregateVe
 - [ ] Mỗi service chỉ sửa dữ liệu do mình sở hữu.
 - [ ] Membership revoke không báo hoàn tất trước Redis apply; assignment cleanup tiếp tục retry riêng và không làm sống lại quyền.
 - [ ] Đối chiếu HTTP/event/error/status với tài liệu chung và docs service.
+- [ ] Chỉ bật `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED` sau khi Gateway xác thực JWT, ghi đè `X-User-Id` từ principal và chặn truy cập trực tiếp tới task-service; kiểm tra actor giả mạo bị từ chối.
+- [ ] Chỉ bật `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` sau khi queue có bounded retry/backoff và DLQ tương thích với NACK/requeue; kiểm tra poison message không quay vòng vô hạn.
 - [ ] Chạy end-to-end với DB/RabbitMQ, lưu response/log/event/DB evidence cho happy path và lỗi.
 
 ## Chưa thuộc lần tích hợp Kỳ 1

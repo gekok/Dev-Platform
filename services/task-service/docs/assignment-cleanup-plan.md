@@ -24,13 +24,13 @@
 
 ## Task 1: Assignment theo Project
 
-**Files:** `application/port/out/SaveCardPort.java`, `infrastructure/adapter/SaveCardAdapter.java`, `application/service/AssignCardService.java`, tests trong `src/test`. Fallback `UnavailableCardOperations` đã được gỡ.
+**Files:** `application/port/out/SaveCardPort.java`, `infrastructure/adapter/SaveCardAdapter.java`, `application/service/AssignCardService.java`, `application/service/UnavailableAssignCardService.java`, tests trong `src/test`.
 
 **Interfaces:** Thêm `Optional<CardAggregate> findForUpdate(Long projectId, Long cardId)` vào SaveCardPort; implement bằng `lockByIdAndProjectId`, map assignment hiện tại. `AssignCardService` implement `AssignCardPort.assign(AssignCardCommand)` trong transaction, 404 nếu không thấy Card, gọi `CardAggregate.assign(...)` và `save` khi thay đổi.
 
 - [x] Thêm kiểm tra unit cho assign, unassign, idempotency, rejoin và Card ngoài Project; kiểm tra SQL Server cho membership generation và fence. Snapshot Redis không được xác minh E2E trong task-service test.
-- [x] Implement port, adapter và service; bỏ fallback cho AssignCardPort. Lấy lock Project/User trước khi khóa Card để tránh ghi đè position cũ.
-- [ ] Chưa kiểm chứng đồng thời assignment/move hoặc khả năng phát hiện snapshot ACTIVE cũ nhưng hợp lệ về cấu trúc. API/docs ghi rõ Gateway/Redis và nguồn version hiện hành chưa được kiểm chứng E2E.
+- [x] Implement port, adapter và service; chỉ bật `AssignCardService` khi `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED=true`. Mặc định PATCH assignee và POST create có `assigneeId` bị từ chối trước authorization guard; fallback trả 503. Lấy lock Project/User trước khi khóa Card để tránh ghi đè position cũ.
+- [ ] Chưa kiểm chứng đồng thời assignment/move hoặc khả năng phát hiện snapshot ACTIVE cũ nhưng hợp lệ về cấu trúc. Chỉ bật cờ sau khi Gateway xác thực principal, ghi đè `X-User-Id` và chặn truy cập trực tiếp tới task-service; kiểm thử tích hợp thuộc task integration.
 
 ## Task 2: Cleanup rollback và retry
 
@@ -41,7 +41,8 @@
 - [x] Thêm unit cho thiếu fence và thứ tự rollback/retry; thêm SQL Server integration chứng minh Outbox lỗi sau delete rollback assignment, giữ Comment và lưu retry ở transaction sau. SQL Server test generation kiểm tra query cleanup giới hạn đúng version.
 - [x] Implement transaction boundary và locking; giữ Outbox completion cùng transaction batch thành công.
 - [x] Nối durable queue/routing key của event cleanup đã có trong catalog; listener dùng manual ACK sau khi recorder transaction commit và Inbox dedupe khi redelivery.
-- [ ] Chưa kiểm chứng broker redelivery/ACK end-to-end hoặc nhiều worker cạnh tranh. Consumer mặc định tắt; lỗi hiện requeue vô hạn, cần chốt retry/backoff/DLQ trước khi bật production.
+- [x] Consumer chỉ đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều bật; cờ cuối mặc định false.
+- [ ] Chưa kiểm chứng broker redelivery/ACK end-to-end hoặc nhiều worker cạnh tranh. Giữ consumer tắt cho tới khi integration task cấu hình bounded retry/backoff và DLQ tương thích với NACK/requeue.
 
 ## Verification evidence
 
