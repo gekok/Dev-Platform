@@ -1,19 +1,20 @@
-package dev.platform.task.mock;
+package dev.platform.task.infrastructure.config;
 
 import dev.platform.task.application.exception.CardOperationUnavailableException;
 import dev.platform.task.application.port.out.ColumnRelationshipValidator;
-
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
+/** Fails closed until a trusted Board/Column relationship adapter is provided. */
 @Configuration(proxyBeanMethods = false)
-@Profile("!mock")
-public class ColumnValidationConfiguration {
+public class ColumnRelationshipValidatorConfiguration {
+
     @Bean
     @ConditionalOnMissingBean(ColumnRelationshipValidator.class)
-    ColumnRelationshipValidator unavailableColumnValidator() {
-        return (projectId, boardId, columnId) -> { throw new CardOperationUnavailableException(); };
+    ColumnRelationshipValidator unavailableColumnRelationshipValidator() {
+        return (projectId, boardId, columnId) -> {
+            throw new CardOperationUnavailableException();
+        };
     }
 }

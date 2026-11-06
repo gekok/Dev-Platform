@@ -34,6 +34,9 @@ public class CommentService implements AddCommentPort {
         if (cmd == null || cmd.projectId() == null || cmd.cardId() == null || cmd.authorId() == null) {
             throw new IllegalArgumentException("Project, card and author are required");
         }
+        if (!trustedGatewayIdentityEnabled) {
+            throw new CardOperationUnavailableException();
+        }
         if (cmd.content() == null || cmd.content().isBlank()) {
             throw new IllegalArgumentException("Comment content is required");
         }
@@ -44,9 +47,6 @@ public class CommentService implements AddCommentPort {
                 if (userId == null) throw new IllegalArgumentException("Mention user is required");
                 distinctMentionIds.add(userId);
             }
-        }
-        if (!distinctMentionIds.isEmpty() && !trustedGatewayIdentityEnabled) {
-            throw new CardOperationUnavailableException();
         }
         List<UUID> recipients = new ArrayList<>();
         for (UUID userId : distinctMentionIds) {

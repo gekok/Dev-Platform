@@ -9,6 +9,7 @@ import dev.platform.task.application.command.AssignCardCommand;
 import dev.platform.task.application.exception.CardNotFoundException;
 import dev.platform.task.application.port.out.AssignmentLockPort;
 import dev.platform.task.application.port.out.SaveCardPort;
+import dev.platform.task.application.port.out.TaskNotificationEventPort;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +23,7 @@ class AssignCardServiceTest {
         var card = new CardAggregate();
         when(cards.findForUpdate(1L, 2L)).thenReturn(Optional.of(card));
         when(cards.save(card)).thenReturn(card);
-        var service = new AssignCardService(cards, lock);
+        var service = service(cards, lock);
         var result = service.assign(new AssignCardCommand(1L, 2L, user, 4L, actor));
         assertEquals(user, result.getAssigneeId());
         assertEquals(4L, result.getAssigneeMembershipVersion());
@@ -36,7 +37,7 @@ class AssignCardServiceTest {
     void rejectsCardOutsideProject() {
         var cards = mock(SaveCardPort.class);
         when(cards.findForUpdate(1L, 2L)).thenReturn(Optional.empty());
-        var service = new AssignCardService(cards, mock(AssignmentLockPort.class));
+        var service = service(cards, mock(AssignmentLockPort.class));
         assertThrows(CardNotFoundException.class,
                 () -> service.assign(new AssignCardCommand(1L, 2L, null, null, UUID.randomUUID())));
         verify(cards, never()).save(any());
@@ -51,7 +52,7 @@ class AssignCardServiceTest {
         card.setAssigneeMembershipVersion(1L);
         when(cards.findForUpdate(1L, 2L)).thenReturn(Optional.of(card));
         when(cards.save(card)).thenReturn(card);
-        var service = new AssignCardService(cards, mock(AssignmentLockPort.class));
+        var service = service(cards, mock(AssignmentLockPort.class));
         var result = service.assign(new AssignCardCommand(1L, 2L, user, 2L, UUID.randomUUID()));
         assertEquals(2L, result.getAssigneeMembershipVersion());
         verify(cards).save(card);
@@ -65,7 +66,7 @@ class AssignCardServiceTest {
         card.setAssigneeId(user);
         card.setAssigneeMembershipVersion(2L);
         when(cards.findForUpdate(1L, 2L)).thenReturn(Optional.of(card));
-        var service = new AssignCardService(cards, mock(AssignmentLockPort.class));
+        var service = service(cards, mock(AssignmentLockPort.class));
         assertSame(card, service.assign(new AssignCardCommand(1L, 2L, user, 2L, UUID.randomUUID())));
         verify(cards, never()).save(any());
     }
@@ -78,9 +79,13 @@ class AssignCardServiceTest {
         card.setAssigneeMembershipVersion(2L);
         when(cards.findForUpdate(1L, 2L)).thenReturn(Optional.of(card));
         when(cards.save(card)).thenReturn(card);
-        var service = new AssignCardService(cards, mock(AssignmentLockPort.class));
+        var service = service(cards, mock(AssignmentLockPort.class));
         var result = service.assign(new AssignCardCommand(1L, 2L, null, null, UUID.randomUUID()));
         assertNull(result.getAssigneeId());
         assertNull(result.getAssigneeMembershipVersion());
+    }
+
+    private static AssignCardService service(SaveCardPort cards, AssignmentLockPort lock) {
+        return new AssignCardService(cards, lock, mock(TaskNotificationEventPort.class));
     }
 }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import dev.platform.task.api.exception.GlobalExceptionHandler;
 import dev.platform.task.application.port.in.*;
@@ -23,6 +24,7 @@ class CardHttpBindingTest {
         CardController controller = new CardController(mock(CreateCardPort.class), reader, mock(GetCardPort.class),
                 mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class),
                 mock(ProjectAuthorizationGuard.class));
+        ReflectionTestUtils.setField(controller, "trustedGatewayIdentityEnabled", true);
         var mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         mvc.perform(get("/api/v1/projects/7/boards/8/cards")

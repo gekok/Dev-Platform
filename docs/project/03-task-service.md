@@ -6,10 +6,10 @@
 
 ## Runtime đã đối chiếu
 
-- **CardController** khai báo Project-scoped create/list/detail Card, move, assign và đọc/tạo Comment; detail GET lọc theo persisted `project_id`. List dùng keyset cursor per Column, nhưng cursor wire/error/stale contract còn tạm thời. PATCH assign và POST create có `assigneeId` fail-closed mặc định; chỉ bật sau khi Gateway xác thực danh tính, ghi đè `X-User-Id` và chặn truy cập trực tiếp.
+- **CardController** khai báo Project-scoped create/list/detail Card, move, assign và đọc/tạo Comment; detail GET lọc theo persisted `project_id`. List dùng keyset cursor per Column, nhưng cursor wire/error/stale contract còn tạm thời. Mọi REST route fail-closed trước guard nếu trusted Gateway identity chưa bật; chỉ tin `X-User-Id` sau khi Gateway xác thực, ghi đè header và chặn truy cập trực tiếp.
 - WebSocket #24 có service-side handler, authorization lifecycle và fanout best-effort sau commit. Runtime mặc định tắt; chỉ đăng ký khi Gateway identity, adapter Board→Project đã lưu, Gateway WS proxy và cờ bật runtime đều sẵn sàng. Chưa xác nhận qua Gateway; phần kiểm tra tích hợp thuộc task khác.
 - Card mapping có **project_id**/**board_id**/**column_id**; assignment target là `task_assignees` với `membership_version`. Redis authorization guard/reader parse cả `membershipVersion` lẫn `authorizationVersion`; cleanup fence/job/worker dùng generation cho assignment và giữ source aggregate version cho completion.
-- Use case Card/Comment đã có implementation trong source; chưa xác nhận E2E với Gateway, Redis và adapter Board/Column thật. Board/Column validation mặc định fail closed; mock allowlist chỉ dành local cho create/move. Consumer event cleanup #22 chỉ đăng ký khi có bật riêng cờ `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY`; cờ mặc định false tới khi integration task cấu hình bounded retry/backoff và DLQ. Broker redelivery/retry policy và versioned DB migrations còn mở. Cleanup scheduler mặc định tắt. Account/Project cascade scaffold đã được gỡ.
+- Use case Card/Comment đã có implementation trong source; chưa xác nhận E2E với Gateway, Redis và adapter Board/Column thật. Không còn mock allowlist/profile cho Board/Column; adapter mặc định trong infrastructure fail-closed. Consumer event cleanup #22 chỉ đăng ký khi có bật riêng cờ `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY`; cờ mặc định false tới khi integration task cấu hình bounded retry/backoff và DLQ. Broker redelivery/retry policy và versioned DB migrations còn mở. Cleanup scheduler mặc định tắt. Account/Project cascade scaffold đã được gỡ.
 
 ## Việc cần làm
 
