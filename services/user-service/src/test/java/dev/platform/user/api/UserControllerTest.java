@@ -166,6 +166,22 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/auth/public-key: Trả về Public Key RSA256 ở định dạng PEM cho Gateway xác thực")
+    void shouldReturnPublicKeyPem() throws Exception {
+        dev.platform.user.infrastructure.security.JwtTokenAdapter realAdapter =
+                new dev.platform.user.infrastructure.security.JwtTokenAdapter(3600000L);
+        UserController customController = new UserController(registerPort, loginPort, mePort, realAdapter);
+        MockMvc customMvc = MockMvcBuilders.standaloneSetup(customController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        customMvc.perform(get("/api/v1/auth/public-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.algorithm").value("RSA256"))
+                .andExpect(jsonPath("$.publicKey").value(org.hamcrest.Matchers.containsString("BEGIN PUBLIC KEY")));
+    }
+
+    @Test
     @DisplayName("POST /api/v1/auth/register: Trả 400 OPERATION_NOT_SUPPORTED do đã bị bãi bỏ theo quyết định #7")
     void shouldReturn400ForDeprecatedRegister() throws Exception {
         mvc.perform(post("/api/v1/auth/register")

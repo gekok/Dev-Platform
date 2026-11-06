@@ -11,6 +11,7 @@ import dev.platform.user.application.port.in.LoginUserPort;
 import dev.platform.user.application.port.in.RegisterUserPort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.exception.AuthenticationException;
+import dev.platform.user.infrastructure.security.JwtTokenAdapter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.UUID;
 
 // Biên REST Auth/User: nhận DTO, gọi port in, không nhận userId do client tự gửi.
@@ -37,8 +39,8 @@ public class UserController {
     public UserController(
             @Autowired(required = false) RegisterUserPort registerPort,
             LoginUserPort loginPort,
-            GetCurrentUserPort mePort,
-            TokenPort tokenPort) {
+            @Autowired(required = false) GetCurrentUserPort mePort,
+            @Autowired(required = false) TokenPort tokenPort) {
         this.registerPort = registerPort;
         this.loginPort = loginPort;
         this.mePort = mePort;
@@ -62,14 +64,37 @@ public class UserController {
         return ResponseEntity.ok(TokenResponse.of(token));
     }
 
+    /**
+     * Endpoint công khai cung cấp Public Key RSA256 cho Gateway và các consumers để xác thực token.
+     */
+    @GetMapping("/auth/public-key")
+    public ResponseEntity<Map<String, String>> getPublicKey() {
+        if (tokenPort instanceof JwtTokenAdapter jwtAdapter) {
+            return ResponseEntity.ok(Map.of(
+                    "algorithm", "RSA256",
+                    "publicKey", jwtAdapter.getPublicKeyPem()
+            ));
+        }
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
     @GetMapping("/users/me")
     public ResponseEntity<UserResponse> me(
-            @RequestHeader(value = "Authorization", required = false) String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = "X-User-Id", required = false) String xUserId) {
+        if (mePort == null) {
+            throw new UnsupportedOperationException("GetCurrentUserPort is not implemented yet in this version");
+        }
+
+        UUID userId;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            String token = authorization.substring(7).trim();
+            userId = tokenPort.parseAndValidate(token);
+        } else {
+            // Khi không có Bearer token hợp lệ, từ chối theo contract bảo mật
             throw new AuthenticationException("Missing or invalid Authorization header");
         }
-        String token = authorization.substring(7).trim();
-        UUID userId = tokenPort.parseAndValidate(token);
+
         UserResponse body = UserResponse.from(mePort.me(userId));
         return ResponseEntity.ok(body);
     }
