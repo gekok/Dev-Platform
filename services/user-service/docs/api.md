@@ -6,12 +6,14 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Controller hiện có
 
-`POST /api/v1/auth/register` khai báo đăng ký công khai, `POST /api/v1/auth/login` khai báo đăng nhập, `GET /api/v1/users/me` khai báo lấy hồ sơ. Đây là các route được `UserController` ánh xạ; route declaration không chứng minh use case đã chạy hoàn chỉnh.
+`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, và `PUT /api/v1/admin/users/{userId}/roles` cập nhật vai trò hệ thống.
 
-- Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, không thuộc target Kỳ 1; không mở public self-registration. Chính sách đã chốt là chỉ System Admin được tạo Account; API Admin mục tiêu chưa có controller.
+- Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, đã bị bãi bỏ theo quyết định #7; ném `OPERATION_NOT_SUPPORTED`. Chính sách đã chốt là chỉ System Admin mới tạo Account.
 - `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
 - `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
-- Repo chưa có controller Admin tạo Account. Chính sách đã chốt tại #7: chỉ System Admin mới tạo Account, loại bỏ public registration.
+- `/admin/accounts`, `/admin/users/{userId}/status`, `/admin/users/{userId}/roles` được quản trị bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và Snapshot sync job trong cùng transaction.
+- `/users` và `/users/profiles` phục vụ Project Owner tìm kiếm thành viên và Frontend render tên hiển thị của Card/Member mà không làm lộ email hay dữ liệu nhạy cảm.
+
 
 ## Thiết kế mục tiêu đã thống nhất
 
@@ -42,10 +44,15 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 
 | Method | Path | Header/params | Request | Success |
 |---|---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Không đọc identity header | `RegisterRequest` | `201`, `UserResponse` |
+| `POST` | `/api/v1/auth/register` | Không đọc identity header | `RegisterRequest` | `400`, `OPERATION_NOT_SUPPORTED` (Đã bãi bỏ) |
 | `POST` | `/api/v1/auth/login` | Không đọc identity header | `LoginRequest` | `200`, `TokenResponse` |
 | `GET` | `/api/v1/auth/public-key` | Không đọc identity header | Không có body | `200`, `{ "algorithm": "RSA256", "publicKey": "..." }` |
 | `GET` | `/api/v1/users/me` | `Authorization: Bearer <jwt>` | Không có body | `200`, `UserResponse` |
+| `GET` | `/api/v1/users` | `Authorization: Bearer <jwt>`, query, limit | Không có body | `200`, `UserCandidateResponse[]` |
+| `GET` | `/api/v1/users/profiles` | `Authorization: Bearer <jwt>`, ids | Không có body | `200`, `UserProfileResponse[]` |
+| `POST` | `/api/v1/admin/accounts` | `Authorization: Bearer <admin_jwt>` | `AdminCreateAccountRequest` | `201`, `UserResponse` |
+| `PATCH` | `/api/v1/admin/users/{userId}/status` | `Authorization: Bearer <admin_jwt>` | `ChangeUserStatusRequest` | `200`, `{ "userId": "...", "status": "..." }` |
+| `PUT` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | `UpdateUserRolesRequest` | `200`, `{ "userId": "...", "roles": [...] }` |
 
 ### Đăng ký
 
