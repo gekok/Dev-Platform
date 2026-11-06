@@ -44,7 +44,8 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/register` | Không đọc identity header | `RegisterRequest` | `201`, `UserResponse` |
 | `POST` | `/api/v1/auth/login` | Không đọc identity header | `LoginRequest` | `200`, `TokenResponse` |
-| `GET` | `/api/v1/users/me` | `X-User-Id: UUID`; `Authorization` optional nhưng chưa parse | Không có body | `200`, `UserResponse` |
+| `GET` | `/api/v1/auth/public-key` | Không đọc identity header | Không có body | `200`, `{ "algorithm": "RSA256", "publicKey": "..." }` |
+| `GET` | `/api/v1/users/me` | `Authorization: Bearer <jwt>` | Không có body | `200`, `UserResponse` |
 
 ### Đăng ký
 
@@ -92,6 +93,8 @@ Response `TokenResponse` có `accessToken` (string) và `tokenType` (string, hi�
 Controller xác thực danh tính trực tiếp từ header `Authorization: Bearer <token>`. Adapter `JwtTokenAdapter` xác thực tính hợp lệ của chữ ký RSA256, hạn sử dụng và trích xuất subject `UUID`. Client không thể truyền header hoặc parameter giả mạo để thay đổi tài khoản được đọc.
 
 Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), status thành công là `200 OK`. Không trả về mật khẩu, hash hay dữ liệu nhạy cảm.
+
+*Ghi chú về ranh giới xác thực:* Theo quyết định kiến trúc (`architecture-decisions.md` mục 6), API Gateway sẽ là ranh giới xác thực chính và forward identity context tin cậy cho service phía sau. Việc `UserController.me()` tự xác thực Bearer token qua RSA256 hiện tại là giải pháp phòng vệ tạm thời khi service còn truy cập trực tiếp độc lập mà chưa có Gateway bảo vệ (Issue #34). Endpoint `GET /api/v1/auth/public-key` cung cấp Public Key cho Gateway để Gateway thực hiện xác thực tập trung.
 
 ### Error mapping và khả năng khởi chạy
 

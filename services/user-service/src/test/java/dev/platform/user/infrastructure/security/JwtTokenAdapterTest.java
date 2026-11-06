@@ -144,4 +144,24 @@ class JwtTokenAdapterTest {
             Files.deleteIfExists(tempKeyFile);
         }
     }
+
+    @Test
+    @DisplayName("Ném IllegalStateException khi cấu hình PEM thiếu hoặc sai định dạng trên môi trường deploy")
+    void shouldFailStartupWhenConfiguredPemIsInvalid() {
+        assertThatThrownBy(() -> new JwtTokenAdapter(3600000L, "invalid-priv", "", ""))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("phải được cấu hình đồng thời");
+
+        assertThatThrownBy(() -> new JwtTokenAdapter(3600000L, "invalid-priv", "invalid-pub", ""))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to parse RSA key pair from PEM");
+    }
+
+    @Test
+    @DisplayName("Ném IllegalStateException khi cấu hình key-file deploy không tồn tại hoặc sai định dạng")
+    void shouldFailStartupWhenConfiguredKeyFileCannotBeRead() {
+        assertThatThrownBy(() -> new JwtTokenAdapter(3600000L, "", "", "/non/existent/path/jwt.key"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Không thể nạp hoặc khởi tạo khóa JWT từ đường dẫn cấu hình");
+    }
 }
