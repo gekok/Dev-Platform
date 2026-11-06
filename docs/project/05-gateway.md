@@ -28,7 +28,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 ## Việc cần làm
 
 - [ ] Chốt JWT issuer/signature/expiry, nguồn role claim System Admin, Account status/revocation freshness và identity forwarding contract; không tin role/identity do client gửi.
-- [x] Đồng bộ với user-service cách bootstrap System Admin đầu tiên qua Flyway và chính sách cấm Account Admin tham gia Project theo quyết định #7 (bắt buộc tách riêng tài khoản).
+- [x] Đồng bộ với user-service chính sách issue #7: chỉ System Admin tạo Account, không public self-registration; Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Người cần làm việc trong Project dùng Account nghiệp vụ không mang role này. SQL bootstrap local seed Admin mẫu; Kỳ 1 không dùng Flyway.
 - [ ] Route `/api/v1/projects/invitations` và Project resources tới board-service; không đặt inbox Invitation trong namespace `/users`.
 - [ ] Đặt Card route cụ thể `/api/v1/projects/*/boards/*/cards/**` và `/api/v1/projects/*/cards/**` tới task-service trước route board-service `/api/v1/projects/**,/api/v1/boards/**`.
 - [ ] Route User directory/profile tới user-service; route notification và WebSocket tiếp tục tới service tương ứng.
