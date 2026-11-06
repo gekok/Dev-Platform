@@ -8,6 +8,8 @@ public final class EventTypes {
     public static final String MEMBERSHIP_REMOVED = "project.membership.removed";
     public static final String MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED = "member.assignments.cleanup-requested";
     public static final String MEMBER_ASSIGNMENTS_CLEANED = "member.assignments.cleaned";
+    public static final String CARD_ASSIGNED = "card.assigned";
+    public static final String COMMENT_MENTIONED = "comment.mentioned";
 
     private EventTypes() {
     }

@@ -2,7 +2,7 @@
 
 ## Mục tiêu và phạm vi
 
-Cho phép thành viên Project tạo và đọc Comment của Card thuộc Project. Giữ nguyên author và nội dung khi membership bị thu hồi. Không triển khai cascade xóa Comment, không phát Notification khi event contract chưa được duyệt, không gọi internal REST chưa bảo mật.
+Cho phép thành viên Project tạo và đọc Comment của Card thuộc Project. Giữ nguyên author và nội dung khi membership bị thu hồi. Không triển khai cascade xóa Comment hoặc gọi internal REST chưa bảo mật.
 
 ## Phương án
 
@@ -12,10 +12,10 @@ Cho phép thành viên Project tạo và đọc Comment của Card thuộc Proje
 
 - POST và GET `/api/v1/projects/{projectId}/cards/{cardId}/comments` kiểm tra actor là member qua `ProjectAuthorizationGuard`, sau đó xác minh Card có `project_id` khớp route. Card không tồn tại hoặc sai Project trả cùng một lỗi 404, không tiết lộ Card ngoài Project.
 - Identity lấy từ `X-User-Id` như controller hiện có; không nhận author trong body. Header hiện chưa đáng tin nếu gọi trực tiếp hoặc Gateway chưa ghi đè, vì vậy không tuyên bố yêu cầu authenticated identity đã được nghiệm thu cho tới khi #29 hoàn thành.
-- POST từ chối content null hoặc chỉ whitespace, lưu content, author UUID, timestamp và Card trong transaction. `mentionedUserIds` null được coi là rỗng; từ chối phần tử null và kiểm tra từng UUID là Account và membership ACTIVE qua snapshot. Snapshot thiếu, hỏng hoặc Redis lỗi trả 503; membership không active bị từ chối. Mention là input kiểm tra, không lưu hoặc phát thông báo khi contract còn mở.
+- POST từ chối content null hoặc chỉ whitespace, lưu content, author UUID, timestamp và Card trong transaction. `mentionedUserIds` null được coi là rỗng; từ chối phần tử null và kiểm tra từng UUID có Account ACTIVE cùng Project Membership ACTIVE qua snapshot. Snapshot thiếu, hỏng hoặc Redis lỗi trả 503; membership không active bị từ chối. Khi trusted Gateway identity sẵn sàng, recipient IDs được khử trùng lặp, tác giả bị loại và `comment.mentioned` ghi vào Outbox cùng transaction; Mention IDs không được lưu riêng và Comment body không đi vào event.
 - GET trả danh sách Comment theo id tăng dần trong đúng Project/Card; response gồm id, cardId, authorId, content, createdAt. Không thêm phân trang mới khi contract chưa quy định.
 - Controller gọi application ports; application service dùng output port cho persistence; JPA adapter thực hiện query có ràng buộc projectId và cardId. Không làm thay đổi cleanup assignment hoặc xóa Comment.
-- Không bắn event WebSocket/Notification chưa được duyệt. Không thêm migration trong Kỳ 1. Cập nhật API/database docs trong task-service, phân biệt code với tích hợp thật.
+- WebSocket `comment.added` của #24 vẫn best-effort và tách biệt với durable Notification intent `comment.mentioned` của #25. Không thêm migration trong Kỳ 1. Cập nhật API/database docs trong task-service, phân biệt code với tích hợp thật.
 
 ## Kiểm tra và giới hạn
 

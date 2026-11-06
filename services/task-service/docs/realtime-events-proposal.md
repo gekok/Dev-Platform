@@ -34,50 +34,66 @@ Task phân phối event chỉ giữa các session trong cùng instance, sau comm
 
 ## Issue #25 — Durable Task Events
 
-**Trạng thái:** Chưa duyệt producer Card/Comment. Không thêm Card/Comment event type cho #25 hoặc thay đổi schema. Producer Outbox completion của assignment cleanup #22 là luồng riêng đã có trong code.
+**Quyết định:** Task producer và contract payload đã được triển khai theo Outbox + RabbitMQ + Inbox hiện có. Producer ghi vào Outbox trong transaction Card/Comment; Notification consumer, broker acceptance và E2E delivery vẫn thuộc task tích hợp riêng. Việc có producer code không khẳng định event đã được publish hoặc consume.
 
-Giữ hướng Outbox + RabbitMQ + Inbox, tái sử dụng `shared/messaging-support`:
+#### Catalog và recipient rules
 
-- `EventEnvelope<T>` đã có field `aggregateVersion`.
-- `outbox_events.aggregate_version` đã có trong JPA mapping và local bootstrap SQL; `OutboxEventWriter` lưu giá trị từ envelope. Không cần thêm field vào envelope hoặc cột chung vào Outbox.
-- Shared `InboxEventRecorder` và `OutboxRelay` có trong source; không tạo relay/Inbox riêng cho Task. Việc có class/mapping không chứng minh RabbitMQ wiring, ACK/retry hay luồng Notification đã chạy E2E.
-- `EventTypes` hiện chưa có Card/Comment event type; event assignment-cleanup completion hiện có thuộc #22, không phải #25.
-- `CardEntity`/bảng `cards` hiện không có version field riêng. Đây không phải lý do để thêm cột khi contract chưa yêu cầu version state trên Card.
-
-Không đề xuất thêm `cards.aggregate_version` ở thời điểm này. Dùng field `aggregateVersion` đã có trong envelope theo contract chung. Chỉ cần thống nhất cách tạo giá trị per-aggregate nếu Notification contract thực sự yêu cầu ordering/gap detection theo Card; nếu không có yêu cầu đó, không thêm state vào Card chỉ để lấp field generic.
-
-### Các quyết định còn phải chốt trước khi triển khai
-
-1. Event catalog, payload và schema version với Notification và owner của #29.
-2. Recipient semantics: ai nhận từng sự kiện, nguồn xác định recipient, và hành vi khi assignment/mention thay đổi.
-3. Notification integration contract: routing/binding, Inbox, ACK/retry và các yêu cầu ordering thực sự cần. Dùng `eventId`/Inbox cho duplicate; dùng field `aggregateVersion` đã có theo contract được chốt.
-
-Trước acceptance, đối chiếu `outbox_events`/`inbox_events` trong SQL Server `kanban_task_db` với [local bootstrap SQL](../../../sql/local-sqlserver-bootstrap.sql). Script đã tạo `outbox_events.aggregate_version` và `inbox_events`; đây chưa phải versioned migration và `ddl-auto=none` không cập nhật database đã tồn tại. Với hạ tầng shared hiện tại, chưa xác định schema change hoặc migration mới nào cần cho #25.
-
-Sau khi contract được duyệt, Task mới nối producer vào transaction nghiệp vụ bằng `OutboxEventWriter.append()`. Kiểm tra rollback cùng Outbox, retry giữ nguyên event, consumer Inbox trước ACK và recipient thực tế. Không phát Notification-facing event từ WebSocket; các message #24 vẫn là ephemeral, riêng biệt.
-
-### Rà soát hợp đồng Task–Notification (đề xuất, chưa được duyệt)
-
-Các dữ kiện đang có trong source/tài liệu:
-
-- `EventTypes` chưa khai báo Card/Comment event. `TaskEventListener` phía Notification chỉ còn TODO cho assignment và mention.
-- `NotificationAggregate.TypeValue` có `ASSIGNED`, `MENTIONED`, `MOVED`, nhưng enum không xác định khi nào phát, ai nhận hoặc nội dung Notification. `MOVED` không xuất hiện trong TODO hiện tại của listener.
-- Phần Board-first cũ trong Kanban API ghi rằng assignment mới báo người được gán nhưng không báo actor; `mentionedUserIds` nhận thông báo mention. Phần này chỉ là tham khảo runtime cũ, không phải event contract Project-first đã duyệt.
-- Task hiện kiểm tra `mentionedUserIds` nhưng không lưu mention. Comment row giữ author/content; việc có lưu lịch sử mention hay không vẫn chưa được quyết định.
-
-Để review với owner Notification, phương án nhỏ nhất có thể là:
-
-| Candidate wire event | Phát khi | Recipient đề xuất | Payload tối thiểu đề xuất |
+| Wire event | Khi phát | Recipient | Payload trong `EventEnvelope.payload` |
 |---|---|---|---|
-| `card.assigned` | Card được tạo với assignee hoặc assignee thực sự đổi sang một user; không phát khi bỏ gán hay request không làm thay đổi assignment | Assignee mới; không gửi cho actor theo ghi chú API Board-first cũ | `projectId`, `boardId`, `cardId`, `assigneeId`, `assignedByUserId`, `membershipVersion` |
-| `comment.mentioned` | Comment commit thành công và có danh sách mention đã validate | Mỗi `mentionedUserId` duy nhất; chính sách tự mention cần duyệt | `projectId`, `boardId`, `cardId`, `commentId`, `authorId`, `mentionedUserIds` |
+| `card.assigned` | Tạo Card với assignee khác actor hoặc đổi assignee sang user khác. Không phát khi unassign, tự gán, request không đổi recipient hoặc chỉ đổi membership generation. | Assignee mới; không gửi cho actor. | `projectId`, `boardId`, `cardId`, `recipientUserId` |
+| `comment.mentioned` | Sau khi Comment và Outbox cùng commit, nếu còn recipient sau xác minh. Chỉ dùng `mentionedUserIds` tường minh từ request. | Recipient IDs duy nhất đã xác minh có Account ACTIVE và Project Membership ACTIVE; loại tác giả. Danh sách được đóng băng tại thời điểm ghi Comment. | `projectId`, `boardId`, `cardId`, `commentId`, `recipientUserIds` |
 
-Không đưa `card.moved` vào catalog đề xuất ban đầu: giá trị `MOVED` trong enum chưa có producer/consumer rule hoặc recipient đã duyệt. Cũng cần quyết định liệu event mention chỉ mang ID, hay Notification cần thêm Card title/comment excerpt để tạo `title`; không nên gửi nguyên comment body nếu không có nhu cầu đã duyệt.
+Notification ánh xạ `card.assigned` thành `ASSIGNED` và `comment.mentioned` thành `MENTIONED`, tạo một Notification cho mỗi recipient. Notification tự tạo title từ event type/context. Không phát `MOVED`; Task không gửi actor ID, membership version, Card title hoặc Comment body. Mention không được lưu thành bảng/lịch sử riêng.
 
-**Version và schema đề xuất:** các notification intent này là sự kiện độc lập; Notification chỉ cần dedup bằng `(consumerName,eventId)` và không cần thứ tự/gap detection theo Card. Nếu owner đồng ý, dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`; không thêm `cards.aggregate_version`. Đây là một cách gán semantics cho field bắt buộc trong `EventEnvelope`, cần được xác nhận trước producer. Nếu cần thứ tự theo Card thay vào đó, phải chọn version state bền vững và migration áp dụng cho mọi đường ghi Card; không lấy `membershipVersion`, `position` hoặc `commentId` làm Card version.
+Ví dụ payload thực tế trong envelope:
 
-Với phương án event-intent, không cần thay đổi schema Task: `EventEnvelope.aggregateVersion`, `outbox_events.aggregate_version` và `inbox_events` đã có trong shared mapping/bootstrap SQL. Repo chưa chọn versioned migration tool và chưa có bằng chứng schema vật lý của mọi DB khớp bootstrap; nếu cần thêm bảng/cột, việc chọn migration và rollout phải được quyết định riêng trước khi code producer.
+```json
+{
+  "eventId": "d063e5a4-2d39-486e-a722-52b5f721a74e",
+  "eventType": "card.assigned",
+  "schemaVersion": 1,
+  "aggregateType": "TASK_NOTIFICATION_INTENT",
+  "aggregateId": "d063e5a4-2d39-486e-a722-52b5f721a74e",
+  "aggregateVersion": 1,
+  "occurredAt": "2026-11-07T10:30:00Z",
+  "payload": {
+    "projectId": 1,
+    "boardId": 2,
+    "cardId": 42,
+    "recipientUserId": "2d79f300-b673-4e15-a184-7ee3b58d67df"
+  }
+}
+```
 
-Notification nên consume RabbitMQ, ghi Inbox và toàn bộ Notification cho event trong cùng transaction, rồi ACK sau commit. Task không gọi `POST /internal/v1/notifications`: endpoint hiện không có service-to-service authentication và bị tắt mặc định. Queue/binding, consumer name, title generation, mention self-notification và retry/DLQ policy vẫn cần Notification/integration owner chốt. Shared Outbox Relay hiện retry mỗi 5 giây nhưng chưa có attempt limit hoặc DLQ; đây cũng là giới hạn vận hành cần chốt trước khi bật delivery.
+```json
+{
+  "eventId": "51fc560e-f027-4dc3-b1ae-2d020810cde3",
+  "eventType": "comment.mentioned",
+  "schemaVersion": 1,
+  "aggregateType": "TASK_NOTIFICATION_INTENT",
+  "aggregateId": "51fc560e-f027-4dc3-b1ae-2d020810cde3",
+  "aggregateVersion": 1,
+  "occurredAt": "2026-11-07T10:31:00Z",
+  "payload": {
+    "projectId": 1,
+    "boardId": 2,
+    "cardId": 42,
+    "commentId": 900,
+    "recipientUserIds": ["2d79f300-b673-4e15-a184-7ee3b58d67df"]
+  }
+}
+```
 
-Phần này là tài liệu review để đóng các quyết định của #25, chưa phải `EventTypes`, schema/payload contract hay source runtime được duyệt.
+#### Envelope, schema và transaction
+
+- Cả hai payload có `schemaVersion=1`.
+- Dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`. Mỗi event là một intent độc lập; không có thứ tự hoặc gap detection theo Card. Consumer dedup theo `(consumerName,eventId)`.
+- `EventEnvelope.aggregateVersion`, `outbox_events.aggregate_version`, `inbox_events`, `OutboxEventWriter` và `OutboxRelay` đã có. Không thêm `cards.aggregate_version`, cột Outbox hoặc migration theo contract này.
+- `OutboxEventWriter.append()` yêu cầu transaction đang mở; lỗi serialize/ghi Outbox làm rollback thay đổi Card/Comment. Retry relay giữ nguyên event envelope và ID.
+- Producer assignment vẫn bị gate bởi trusted Gateway identity. Comment có mention bị từ chối với 503 khi trusted identity chưa bật; không ghi Comment/Outbox trong trường hợp đó. `X-User-Id` không được xem là identity đáng tin cậy trước khi Gateway hardening hoàn tất.
+
+#### Ranh giới tích hợp và bằng chứng còn thiếu
+
+Task không gọi internal Notification REST. Consumer cần ghi Inbox và mọi Notification tạo ra trong cùng transaction, rồi ACK sau commit. Consumer, queue/binding, retry/DLQ, xác minh schema SQL Server vật lý và kiểm tra publish/consume/rollback/redelivery thuộc task tích hợp. Messaging và Outbox relay mặc định tắt; shared relay hiện retry mỗi 5 giây nhưng chưa có giới hạn lần thử hoặc DLQ. Không bật delivery production trước khi task tích hợp chốt các chính sách này.
+
+Bootstrap SQL tạo sẵn `outbox_events.aggregate_version` và `inbox_events` cho database rỗng; `ddl-auto=none` không cập nhật database hiện hữu. Đối chiếu schema vật lý theo [database docs](database.md) trước khi bật relay. #24 WebSocket vẫn là kênh ephemeral, tách biệt khỏi các event bền vững này.

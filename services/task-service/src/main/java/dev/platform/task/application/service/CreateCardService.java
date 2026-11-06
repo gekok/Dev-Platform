@@ -6,6 +6,7 @@ import dev.platform.task.application.port.out.CardEventPublisherPort;
 import dev.platform.task.application.port.out.ColumnRelationshipValidator;
 import dev.platform.task.application.port.out.MoveCardStore;
 import dev.platform.task.application.port.out.SaveCardPort;
+import dev.platform.task.application.port.out.TaskNotificationEventPort;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class CreateCardService implements CreateCardPort {
     private final MoveCardStore positions;
     private final SaveCardPort cards;
     private final CardEventPublisherPort events;
+    private final TaskNotificationEventPort notificationEvents;
 
     @Override
     @Transactional
@@ -31,6 +33,10 @@ public class CreateCardService implements CreateCardPort {
         CardAggregate created = cards.save(CardAggregate.create(cmd.projectId(), cmd.boardId(), cmd.columnId(), cmd.title(),
                 cmd.description(), cmd.assigneeId(), cmd.assigneeMembershipVersion(), cmd.creatorId(),
                 cmd.dueDate(), position));
+        if (created.getAssigneeId() != null && !created.getAssigneeId().equals(cmd.creatorId())) {
+            notificationEvents.cardAssigned(
+                    created.getProjectId(), created.getBoardId(), created.getId(), created.getAssigneeId());
+        }
         events.cardCreated(created.getId(), created.getBoardId(), created.getColumnId());
         return created;
     }

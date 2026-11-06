@@ -19,7 +19,7 @@
 | position | integer, not null; mặc định 0 | |
 | due_date | datetimeoffset, nullable | |
 
-`CardEntity` hiện không có cột/field `aggregateVersion` hoặc optimistic-lock version. Không thêm version riêng cho Card theo quyết định #24/#25 hiện tại; #25 chưa duyệt và chưa có contract yêu cầu lưu version trên Card.
+`CardEntity` hiện không có cột/field `aggregateVersion` hoặc optimistic-lock version. Notification intent #25 dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`; không cần version state trên Card và không thêm cột.
 
 Tạo Card và move dùng transaction và SQL Server `sp_getapplock` với scope Project/Board để serialize các lần ghi position qua hai use case này. Mọi đường ghi position khác phải cùng tuân thủ khóa trước khi bật move; chưa xác nhận kiểm tra đồng thời với SQL Server.
 
@@ -47,7 +47,7 @@ Job bền vững riêng cho unassign nền: job_id, unique deduplication_key, un
 
 id BIGINT PK, card_id BIGINT not null FK nội bộ tới cards.id, author_id UUID scalar, content nvarchar(max) not null, created_at datetimeoffset. Không xóa Comment/attribution khi Member rời Project.
 
-Use case Comment đọc theo Card và Project của Card, ghi author từ identity context hiện tại và thời gian UTC; mention chỉ được kiểm tra, chưa lưu hoặc phát notification. Chưa có bằng chứng nghiệm thu tích hợp Gateway/Redis.
+Use case Comment đọc theo Card và Project của Card, ghi author từ identity context hiện tại và thời gian UTC. `mentionedUserIds` được kiểm tra bằng Project authorization snapshot; recipient IDs riêng biệt, trừ tác giả, được ghi trong payload Outbox `comment.mentioned` cùng transaction Comment. Task không có bảng lưu mention/history; nội dung Comment không được đưa vào event. Mention yêu cầu trusted Gateway identity, mặc định fail closed. Chưa có bằng chứng nghiệm thu tích hợp Gateway/Redis.
 
 ## Redis authorization và messaging
 
@@ -75,7 +75,7 @@ Kỳ vọng theo source/bootstrap: có `outbox_events.aggregate_version`; `cards
 
 Outbox/Inbox là messaging dùng chung; không có Account/Project deletion job hay Board write-lock table trong schema Kỳ 1.
 
-Issue #24 không tạo bảng/cột: WebSocket là kênh ephemeral và kiến trúc đã duyệt, nhưng runtime chờ Gateway identity, Board lookup và Gateway proxy. Issue #25 chưa duyệt producer Card/Comment; Outbox completion của assignment cleanup #22 vẫn là luồng riêng. Chưa xác định migration mới nào cần nếu chỉ tái sử dụng schema shared hiện có; không thêm `cards.aggregate_version` nếu Notification contract chưa yêu cầu version state riêng cho Card.
+Issue #24 không tạo bảng/cột: WebSocket là kênh ephemeral và kiến trúc đã duyệt, nhưng runtime chờ Gateway identity, Board lookup và Gateway proxy. Issue #25 dùng shared Outbox cho `card.assigned` và `comment.mentioned`; Outbox completion của assignment cleanup #22 vẫn là luồng riêng. Không cần schema/migration mới theo event-intent contract, và không thêm `cards.aggregate_version`. Vì `ddl-auto=none`, phải xác minh database SQL Server hiện tại có bảng/cột Outbox theo bootstrap trước khi bật relay; việc có mapping hoặc bootstrap không chứng minh database vật lý đã khớp.
 
 ## Phạm vi target và giới hạn
 

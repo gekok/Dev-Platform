@@ -5,11 +5,14 @@ import dev.platform.task.application.exception.CardNotFoundException;
 import dev.platform.task.application.port.in.AssignCardPort;
 import dev.platform.task.application.port.out.AssignmentLockPort;
 import dev.platform.task.application.port.out.SaveCardPort;
+import dev.platform.task.application.port.out.TaskNotificationEventPort;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @ConditionalOnProperty(
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AssignCardService implements AssignCardPort {
     private final SaveCardPort cards;
     private final AssignmentLockPort assignmentLock;
+    private final TaskNotificationEventPort notificationEvents;
 
     @Override
     @Transactional
@@ -34,9 +38,17 @@ public class AssignCardService implements AssignCardPort {
         }
         CardAggregate card = cards.findForUpdate(cmd.projectId(), cmd.cardId())
                 .orElseThrow(CardNotFoundException::new);
+        UUID previousAssigneeId = card.getAssigneeId();
         if (!card.assign(cmd.assigneeId(), cmd.assigneeMembershipVersion(), cmd.actorId())) {
             return card;
         }
-        return cards.save(card);
+        CardAggregate updated = cards.save(card);
+        if (updated.getAssigneeId() != null
+                && !updated.getAssigneeId().equals(previousAssigneeId)
+                && !updated.getAssigneeId().equals(cmd.actorId())) {
+            notificationEvents.cardAssigned(
+                    updated.getProjectId(), updated.getBoardId(), updated.getId(), updated.getAssigneeId());
+        }
+        return updated;
     }
 }

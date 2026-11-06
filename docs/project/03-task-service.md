@@ -24,7 +24,7 @@
 - [ ] Khi nối consumer domain-event, dùng `eventId`/Inbox để chống redelivery và đọc `aggregateVersion` sẵn có từ envelope. Chốt cách xử lý stale/gap theo từng contract; không thêm Card version column trừ khi event contract được duyệt yêu cầu.
 - [x] Chuẩn bị handler #24 sau readiness gate: giữ route/message đã duyệt, tra Board→Project từ port, kiểm tra membership ở handshake/định kỳ/trước gửi, phát sau commit và fanout best-effort trong cùng Task instance. Runtime mặc định tắt.
 - [ ] Task tích hợp xác nhận Gateway identity propagation (#34), secured Board-to-Project lookup, Gateway WebSocket proxy (#31), cấu hình readiness và acceptance qua Gateway trước khi bật runtime.
-- [ ] Chưa thêm Card/Comment producer cho #25 cho tới khi duyệt event catalog, recipient semantics và contract với Notification; tái sử dụng shared Outbox/Inbox, không thêm schema/version Card nếu chưa có yêu cầu đã duyệt.
+- [x] Thêm producer Outbox #25 cho `card.assigned` và `comment.mentioned`; ghi cùng transaction nghiệp vụ, dùng `TASK_NOTIFICATION_INTENT`/`eventId`/`aggregateVersion=1`, không thêm schema hoặc Card version. Recipient rules và payload được ghi trong architecture/API docs; Notification consumer, broker ACK/retry/DLQ và E2E thuộc task tích hợp.
 - [ ] Khi pagination phát hiện dữ liệu bất nhất, client hiện banner đầu trang yêu cầu reload theo quyết định đã thống nhất.
 - [x] Rà soát API/database docs: mô tả #24 có implementation phía Task nhưng runtime mặc định tắt; không đề xuất thêm Card `aggregate_version`.
 

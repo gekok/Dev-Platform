@@ -131,8 +131,10 @@ Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Mod
 | `project.membership.removed` | `projectId`, `userId`, `membershipVersion` |
 | `member.assignments.cleanup-requested` | `operationId`, `projectId`, `userId`, `boardIds`, `membershipVersion` |
 | `member.assignments.cleaned` | `operationId`, `projectId`, `userId`, `membershipVersion` |
+| `card.assigned` | `projectId`, `boardId`, `cardId`, `recipientUserId` |
+| `comment.mentioned` | `projectId`, `boardId`, `cardId`, `commentId`, `recipientUserIds` |
 
-Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume trong runtime; cần xác minh riêng từng producer/consumer, Inbox transaction và ACK. Consumer cleanup Membership của Task đã có source; các event flow khác vẫn cần cấu hình và nghiệm thu.
+Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume end-to-end; cần xác minh riêng từng producer/consumer, Inbox transaction và ACK. Task có producer Outbox cho hai Notification intent `card.assigned` và `comment.mentioned`; Notification consumer và broker acceptance vẫn thuộc task tích hợp.
 
 Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership, Outbox và snapshot-sync job trước. Quyền chỉ bị thu hồi khi snapshot mới được apply vào Redis; nếu còn pending, API trả `202` cùng operation handle. Event này chỉ khởi chạy unassign nền, không phải tín hiệu thu hồi quyền. Cleanup mang `membershipVersion` và chỉ được bỏ assignment đúng generation đã revoke.
 
@@ -205,7 +207,7 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
 ```
 
-Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. Consumer cleanup Task chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`; cấu hình queue mặc định là `task-service.member-assignment-cleanup`. Binding chỉ nhận event `member.assignments.cleanup-requested`; các event Card/Comment của #25 chưa được duyệt hoặc đăng ký. Retry hiện requeue vô hạn, chưa có DLQ/backoff; chốt policy trước production.
+Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. Consumer cleanup Task chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`; cấu hình queue mặc định là `task-service.member-assignment-cleanup`. Binding cleanup chỉ nhận event `member.assignments.cleanup-requested`; Notification consumer chưa được đăng ký cho `card.assigned`/`comment.mentioned`. Retry consumer cleanup hiện requeue vô hạn, chưa có DLQ/backoff; chốt policy trước production.
 
 Không bật messaging như thể toàn bộ integration đã hoạt động. Trước khi nghiệm thu end-to-end cần kiểm tra producer Outbox Membership, broker routing, consumer ACK/redelivery, cleanup worker và completion publisher cùng retry/DLQ policy.
 
@@ -230,6 +232,6 @@ docker compose up -d rabbitmq
 - At-least-once delivery; Outbox retry có thể publish lặp cùng `eventId` nếu confirm bị mất.
 - Consumer cần Inbox theo `(consumerName, eventId)` và xử lý idempotent; không dùng `aggregateVersion` thay dedup.
 - Redis Authentication/Authorization Snapshot vẫn thuộc kiến trúc mục tiêu Kỳ 1; schema/key, TTL, consumer cập nhật snapshot và cách xử lý gap/stale event chưa được chốt. `shared/` hiện không triển khai Redis cache.
-- Account/Project deletion và Notification cascade không thuộc Kỳ 1. Chỉ Member assignment cleanup là tác vụ cleanup được giữ trong event-contracts Kỳ 1.
+- Account/Project deletion và Notification cascade không thuộc Kỳ 1. Event contracts Kỳ 1 gồm Membership, assignment cleanup và hai Notification intent của Task; không có Card state stream hoặc `MOVED` notification event.
 - Schema evolution, retry/DLQ, queue names/bindings và consumer ordering chưa được chốt đầy đủ.
 - Các class hiện có là nền dùng chung, không chứng minh cascade Account/Project đã chạy end-to-end.

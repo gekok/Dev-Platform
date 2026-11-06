@@ -57,7 +57,7 @@ Kỳ 1 không có Account deletion, `DELETING` status hay cascade Project. Kỳ 
 
 ### 4. Độ tin cậy event
 
-Issue #25 chưa duyệt producer Card/Comment. Shared `EventEnvelope.aggregateVersion`, Outbox `aggregate_version`, `OutboxEventWriter`, `OutboxRelay` và `InboxEventRecorder` đã có. Task có consumer cho event cleanup Membership đã duyệt thuộc #22; consumer mặc định tắt và broker redelivery/ACK chưa được nghiệm thu. Producer Outbox completion của cleanup #22 là luồng riêng. Chốt Event catalog/recipient/Notification contract trước; không tạo Card/Comment event type hay producer cho #25. Không có thay đổi schema Task được xác định nếu chỉ tái sử dụng mapping shared hiện có. Các tiêu chí generic dưới đây chỉ áp dụng sau khi event flow tương ứng được duyệt.
+Task producer #25 ghi `card.assigned` và `comment.mentioned` vào shared Outbox cùng transaction với Card/Comment; recipient rules, payload và `aggregateVersion=1` event-intent semantics đã được chốt trong architecture decisions. Không cần thêm Card version hoặc schema/migration theo contract này. Consumer Notification, broker routing/Inbox/ACK, retry/DLQ và end-to-end delivery chưa được tích hợp; consumer cleanup #22 là flow riêng. Các tiêu chí generic dưới đây còn là acceptance của task tích hợp, không phải bằng chứng producer đã giao được event qua RabbitMQ.
 
 - [ ] Producer commit business state và Outbox cùng transaction.
 - [ ] Relay đánh dấu SENT khi có Publisher Confirm và không có Publisher Return; khi chưa xác định publish outcome, retry cùng eventId, aggregateVersion, payload.
