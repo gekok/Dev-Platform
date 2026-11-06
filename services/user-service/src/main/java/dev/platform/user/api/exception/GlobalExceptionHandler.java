@@ -1,5 +1,6 @@
 package dev.platform.user.api.exception;
 
+import dev.platform.user.domain.exception.AuthenticationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,5 +25,18 @@ public class GlobalExceptionHandler {
         body.put("timestamp", Instant.now().toString());
         body.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // Sai thông tin đăng nhập hoặc lỗi xác thực -> 401.
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(
+            AuthenticationException ex, HttpServletRequest request) {
+        String code = "Invalid email or password".equals(ex.getMessage()) ? "INVALID_CREDENTIALS" : "UNAUTHORIZED";
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", code);
+        body.put("message", ex.getMessage());
+        body.put("timestamp", Instant.now().toString());
+        body.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 }

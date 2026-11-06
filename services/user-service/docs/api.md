@@ -9,7 +9,7 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 `POST /api/v1/auth/register` khai báo đăng ký công khai, `POST /api/v1/auth/login` khai báo đăng nhập, `GET /api/v1/users/me` khai báo lấy hồ sơ. Đây là các route được `UserController` ánh xạ; route declaration không chứng minh use case đã chạy hoàn chỉnh.
 
 - Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, không thuộc target Kỳ 1; không mở public self-registration. Chính sách đã chốt là chỉ System Admin được tạo Account; API Admin mục tiêu chưa có controller.
-- `/auth/login` gọi `LoginUserPort`; hiện chưa có implementation của port này.
+- `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
 - `/users/me` hiện dùng `X-User-Id` để lấy Account; `Authorization` được đọc nhưng JWT chưa được parse.
 - Repo chưa có controller Admin tạo Account. Chính sách đã chốt tại #7: chỉ System Admin mới tạo Account, loại bỏ public registration.
 

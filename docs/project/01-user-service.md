@@ -7,7 +7,7 @@
 ## Runtime đã đối chiếu
 
 - **UserController** khai báo **POST /api/v1/auth/register**, **POST /api/v1/auth/login** và **GET /api/v1/users/me**.
-- **/users/me** hiện đọc **X-User-Id**; chưa parse JWT. **LoginUserPort** chưa có implementation.
+- **/users/me** hiện đọc **X-User-Id**; chưa parse JWT. **LoginUserPort** đã được triển khai qua **LoginUserService** và **JwtTokenAdapter** (cặp khóa bất đối xứng RSA256).
 - Public registration là route cũ; theo quyết định #7, chính sách đã chốt chỉ System Admin mới được tạo Account, loại bỏ public registration.
 - JPA mapping cho `SystemRoles`/`UserSystemRoles`, `auth_version`, snapshot-sync job/recorder và Redis writer/worker đã có trong source. Worker mặc định tắt; Account/role mutation chưa nối recorder, Admin controller và Gateway auth chưa có. Account deletion operation không thuộc runtime Kỳ 1.
 - `SYSTEM_ADMIN` chỉ dùng cho quản trị Account; schema mục tiêu dùng `SystemRoles`/`UserSystemRoles`. Account mang role này không được làm Owner/Member trong Project. Nếu cùng một cá nhân cần tham gia Project, dùng Account nghiệp vụ không mang `SYSTEM_ADMIN`. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway.
