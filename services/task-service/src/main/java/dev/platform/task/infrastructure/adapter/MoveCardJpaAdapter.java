@@ -12,6 +12,8 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -27,12 +29,14 @@ public class MoveCardJpaAdapter implements MoveCardStore {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void lockBoard(Long projectId, Long boardId) {
-        Integer result = jdbc.queryForObject("DECLARE @result int; "
+        Integer result = jdbc.queryForObject("DECLARE @transaction_marker int; "
+                + "SELECT @transaction_marker = COUNT(*) FROM sys.tables; DECLARE @result int; "
                 + "EXEC @result = sys.sp_getapplock @Resource = ?, @LockMode = 'Exclusive', "
                 + "@LockOwner = 'Transaction', @LockTimeout = 10000; SELECT @result", Integer.class,
                 "task-card-board:" + projectId + ":" + boardId);
-        if (result == null || result < 0) throw new IllegalStateException("Could not acquire board lock");
+        if (result == null || result < 0) throw new IllegalStateException("Could not acquire board lock: " + result);
     }
 
     @Override
