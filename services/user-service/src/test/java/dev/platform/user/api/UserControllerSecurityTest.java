@@ -6,6 +6,8 @@ import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.application.port.in.LoginUserPort;
 import dev.platform.user.application.port.in.RegisterUserPort;
 import dev.platform.user.application.port.out.TokenPort;
+import dev.platform.user.domain.AccountStatus;
+import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.infrastructure.security.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,9 +87,36 @@ class UserControllerSecurityTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/users/me: Đi qua Security filter chain và trả 200 OK khi có Bearer token hợp lệ")
+    void shouldPermitCurrentUserThroughSecurityFilterChainWithBearerToken() throws Exception {
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        UserAggregate user = UserAggregate.rehydrate(
+                userId, "alex@example.com", "hash", "Alex Morgan", AccountStatus.ACTIVE, 1L);
+        when(tokenPort.parseAndValidate("valid.token")).thenReturn(userId);
+        when(mePort.me(userId)).thenReturn(user);
+
+        mvc.perform(get("/api/v1/users/me")
+                        .header("Authorization", "Bearer valid.token"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(jsonPath("$.id").value(userId.toString()))
+                .andExpect(jsonPath("$.email").value("alex@example.com"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/me: Đến được UserController và trả 401 envelope khi thiếu Authorization, không bị Basic Auth chặn")
+    void shouldReachControllerAndReturn401EnvelopeWhenMissingAuthHeader() throws Exception {
+        mvc.perform(get("/api/v1/users/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"));
+    }
+
+    @Test
     @DisplayName("Route ngoài allowlist bị chặn mặc định bởi SecurityFilterChain (denyAll)")
     void shouldDenyUnconfiguredRoutesByDefault() throws Exception {
-        mvc.perform(get("/api/v1/users/me"))
+        mvc.perform(get("/api/v1/users/profiles"))
                 .andExpect(status().isForbidden());
     }
 }

@@ -10,6 +10,7 @@ import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.application.port.in.LoginUserPort;
 import dev.platform.user.application.port.in.RegisterUserPort;
 import dev.platform.user.application.port.out.TokenPort;
+import dev.platform.user.domain.exception.AuthenticationException;
 import dev.platform.user.infrastructure.security.JwtTokenAdapter;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 import java.util.UUID;
 
-// Biên REST Auth/User: nhận DTO, gọi port in, không nhận userId trong body.
+// Biên REST Auth/User: nhận DTO, gọi port in, không nhận userId do client tự gửi.
 @RestController
 @RequestMapping("/api/v1")
 public class UserController {
@@ -84,10 +85,17 @@ public class UserController {
         if (mePort == null) {
             throw new UnsupportedOperationException("GetCurrentUserPort is not implemented yet in this version");
         }
-        if (xUserId == null || xUserId.isBlank()) {
-            throw new IllegalArgumentException("Thieu X-User-Id (stub cho JWT sub)");
+
+        UUID userId;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            String token = authorization.substring(7).trim();
+            userId = tokenPort.parseAndValidate(token);
+        } else {
+            // Khi không có Bearer token hợp lệ, từ chối theo contract bảo mật
+            throw new AuthenticationException("Missing or invalid Authorization header");
         }
-        UserResponse body = UserResponse.from(mePort.me(UUID.fromString(xUserId)));
+
+        UserResponse body = UserResponse.from(mePort.me(userId));
         return ResponseEntity.ok(body);
     }
 }

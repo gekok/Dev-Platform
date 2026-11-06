@@ -7,7 +7,7 @@
 ## Runtime đã đối chiếu
 
 - **UserController** khai báo **POST /api/v1/auth/register**, **POST /api/v1/auth/login** và **GET /api/v1/users/me**.
-- **/users/me** hiện đọc **X-User-Id**; chưa parse JWT. **LoginUserPort** đã được triển khai qua **LoginUserService** và **JwtTokenAdapter** (cặp khóa bất đối xứng RSA256).
+- **/users/me** xác thực token JWT qua RSA256, gọi **GetCurrentUserService** và từ chối client giả mạo identity; **LoginUserPort** đã được triển khai qua **LoginUserService** và **JwtTokenAdapter** (cặp khóa bất đối xứng RSA256).
 - Public registration là route cũ; theo quyết định #7, chính sách đã chốt chỉ System Admin mới được tạo Account, loại bỏ public registration.
 - JPA mapping cho `SystemRoles`/`UserSystemRoles`, `auth_version`, snapshot-sync job/recorder và Redis writer/worker đã có trong source. Worker mặc định tắt; Account/role mutation chưa nối recorder, Admin controller và Gateway auth chưa có. Account deletion operation không thuộc runtime Kỳ 1.
 - `SYSTEM_ADMIN` chỉ dùng cho quản trị Account; schema mục tiêu dùng `SystemRoles`/`UserSystemRoles`. Account mang role này không được làm Owner/Member trong Project. Nếu cùng một cá nhân cần tham gia Project, dùng Account nghiệp vụ không mang `SYSTEM_ADMIN`. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway.
@@ -18,7 +18,7 @@
 - [ ] Chốt route, payload và cách cấp credential cho API tạo Account qua System Admin.
 - [x] Thêm JPA entity/repository target cho `SystemRoles`/`UserSystemRoles` trong user_db; role mutation API/authorization vẫn cần triển khai, không nhận role từ payload client và không dùng quyền Admin làm quyền Project.
 - [ ] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile/tombstone để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
-- [ ] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi.
+- [x] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi (đã giải quyết tại issue #12 và #13).
 - [x] Thêm `auth_version` persistence và snapshot-sync job/recorder seam; cần nối Account/role mutation, Outbox và job trong cùng transaction.
 - [x] Thêm retry worker/Redis writer theo version; worker mặc định tắt và cần bật sau khi mutation flow được nối.
 - [ ] Giữ Directory/profile API là TODO cho tới khi field/authorization contract và cách board-service kiểm tra Account ACTIVE được chốt.
