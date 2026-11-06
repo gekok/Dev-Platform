@@ -7,13 +7,28 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import dev.platform.task.application.service.AuthorizationSnapshotUnavailableException;
-import dev.platform.task.application.service.ProjectAccessDeniedException;
+import dev.platform.task.application.exception.AuthorizationSnapshotUnavailableException;
+import dev.platform.task.application.exception.ProjectAccessDeniedException;
+import dev.platform.task.application.exception.CardOperationUnavailableException;
+import dev.platform.task.application.exception.CardNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 
 // Bắt lỗi validate Aggregate, trả 400 theo kanban-api.md mục 6.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(CardNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCardNotFound(CardNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
+                "CARD_NOT_FOUND", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(CardOperationUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleCardOperationUnavailable(
+            CardOperationUnavailableException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorResponse(
+                "CARD_OPERATION_UNAVAILABLE", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
+    }
 
     // Lỗi validate đầu vào (title trống, position âm...).
     @ExceptionHandler(IllegalArgumentException.class)

@@ -1,4 +1,4 @@
-package dev.platform.task.application.service;
+package dev.platform.task.application.exception;
 
 public class AuthorizationSnapshotUnavailableException extends RuntimeException {
 

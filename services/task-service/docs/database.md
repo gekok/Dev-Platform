@@ -19,6 +19,8 @@
 | position | integer, not null; mặc định 0 | |
 | due_date | datetimeoffset, nullable | |
 
+Tạo Card và move dùng transaction và SQL Server `sp_getapplock` với scope Project/Board để serialize các lần ghi position qua hai use case này. Mọi đường ghi position khác phải cùng tuân thủ khóa trước khi bật move; chưa xác nhận kiểm tra đồng thời với SQL Server.
+
 ### task_assignees
 
 | Cột | Mapping | Ghi chú |
@@ -40,6 +42,8 @@ Job bền vững riêng cho unassign nền: job_id, unique deduplication_key, un
 ### card_comments
 
 id BIGINT PK, card_id BIGINT not null FK nội bộ tới cards.id, author_id UUID scalar, content nvarchar(max) not null, created_at datetimeoffset. Không xóa Comment/attribution khi Member rời Project.
+
+Use case Comment đọc theo Card và Project của Card, ghi author từ identity context hiện tại và thời gian UTC; mention chỉ được kiểm tra, chưa lưu hoặc phát notification. Chưa có bằng chứng nghiệm thu tích hợp Gateway/Redis.
 
 ## Redis authorization và messaging
 

@@ -60,6 +60,9 @@ public class CardAggregate {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("title khong duoc trong");
         }
+        if (title.trim().length() > 500) {
+            throw new IllegalArgumentException("title must not exceed 500 characters");
+        }
         if (position < 0) {
             throw new IllegalArgumentException("position khong duoc am");
         }
