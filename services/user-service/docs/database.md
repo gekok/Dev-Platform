@@ -31,7 +31,7 @@
 | `users` | `auth_version` | Version tăng khi Account status hoặc SystemRoles đổi |
 | `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; script khởi tạo local tạo bảng rỗng |
 
-Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. Bootstrap System Admin đầu tiên và API cấp/thu hồi role vẫn còn mở.
+Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. Bootstrap System Admin đầu tiên đã chốt qua Flyway SQL migration (issue #7); API cấp/thu hồi role vẫn còn mở.
 
 ## Bảng messaging dùng chung
 
@@ -85,7 +85,7 @@ erDiagram
 |---|---|---|---|
 | `users` | `id` PK; `email` unique | Không có FK liên service | `password_hash` không trả qua API; `auth_version` tăng theo đổi status/system role |
 | `system_roles` | `role_code` PK | Không có index phụ | Danh mục role hệ thống; seed `USER`, `SYSTEM_ADMIN` |
-| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; bootstrap Admin còn mở |
+| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; bootstrap Admin qua Flyway seed (issue #7) |
 | `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; script khởi tạo local tạo bảng rỗng |
 | `outbox_events` | `event_id` PK | `idx_outbox_due(status, next_attempt_at, created_at)` | Do `shared/messaging-support` cung cấp và lưu ngay trong `user_db` |
 | `inbox_events` | Composite PK `(consumer_name, event_id)` | Không có index phụ khai báo | Một event được khử trùng theo từng consumer |
@@ -118,7 +118,7 @@ Các bảng dưới đây mô tả dữ liệu theo nghiệp vụ Kỳ 1. Entity
 | `status` | enum/string | not null | Dùng trạng thái Account Kỳ 1; không có `DELETING` |
 | `auth_version` | bigint | not null | Tăng khi status hoặc SystemRoles đổi; version trên snapshot Redis |
 
-`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. `SYSTEM_ADMIN` chỉ quản trị Account và không tự cấp Project access. Bootstrap Admin đầu tiên còn mở. Không nhận role do client tự gửi trong payload đăng ký/tạo Account.
+`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. `SYSTEM_ADMIN` chỉ quản trị Account và không tự cấp Project access, đồng thời cấm tham gia vào Project Kanban (theo quyết định #7). Bootstrap Admin đầu tiên được seed qua Flyway SQL migration. Không nhận role do client tự gửi trong payload tạo Account.
 
 Không thêm `project_id`, `project_role` hay FK sang `board_db`. Account deletion/Owner succession được hoãn sang Kỳ 2; Kỳ 1 không cascade/xóa Project khi Account thay đổi.
 

@@ -8,13 +8,13 @@
 
 - **UserController** khai báo **POST /api/v1/auth/register**, **POST /api/v1/auth/login** và **GET /api/v1/users/me**.
 - **/users/me** hiện đọc **X-User-Id**; chưa parse JWT. **LoginUserPort** chưa có implementation.
-- Public registration là route cũ; contract tạo Account qua System Admin và chính sách registration còn mở.
+- Public registration là route cũ; theo quyết định #7, chính sách đã chốt chỉ System Admin mới được tạo Account, loại bỏ public registration.
 - JPA mapping cho `SystemRoles`/`UserSystemRoles`, `auth_version`, snapshot-sync job/recorder và Redis writer/worker đã có trong source. Worker mặc định tắt; Account/role mutation chưa nối recorder, Admin controller và Gateway auth chưa có. Account deletion operation không thuộc runtime Kỳ 1.
-- `SYSTEM_ADMIN` chỉ dùng cho quản trị Account; schema mục tiêu dùng `SystemRoles`/`UserSystemRoles`. Bootstrap Admin đầu tiên và chính sách một Account đa vai trò còn mở.
+- `SYSTEM_ADMIN` chỉ dùng cho quản trị Account; schema mục tiêu dùng `SystemRoles`/`UserSystemRoles`. Theo quyết định #7, bootstrap Admin đầu tiên qua Flyway SQL migration và cấm tài khoản Admin tham gia Project (tách riêng tài khoản).
 
 ## Việc cần làm
 
-- [ ] Chốt contract tạo Account cho System Admin và chính sách route register cũ; không mở public signup ngoài quyết định.
+- [x] Chốt contract tạo Account cho System Admin và chính sách route register cũ; không mở public signup ngoài quyết định (đã chốt tại issue #7).
 - [x] Thêm JPA entity/repository target cho `SystemRoles`/`UserSystemRoles` trong user_db; role mutation API/authorization vẫn cần triển khai, không nhận role từ payload client và không dùng quyền Admin làm quyền Project.
 - [ ] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile/tombstone để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
 - [ ] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi.
@@ -27,8 +27,8 @@
 ## Tiêu chí nghiệm thu khi triển khai
 
 - System Admin được tách khỏi Project permissions; Owner không có quyền quản trị hệ thống.
-- Tạo Project chỉ dựa trên Account nghiệp vụ `ACTIVE` đã xác thực tại Gateway; System Admin-only không có quyền Project, còn mô hình Account đa vai trò phải theo quyết định riêng.
-- `SYSTEM_ADMIN` được lưu qua `SystemRoles`/`UserSystemRoles`; bootstrap và multi-role policy vẫn được đánh dấu mở.
+- Tạo Project chỉ dựa trên Account nghiệp vụ `ACTIVE` đã xác thực tại Gateway; System Admin-only không có quyền Project, tài khoản System Admin không được tham gia Project (theo quyết định #7).
+- `SYSTEM_ADMIN` được lưu qua `SystemRoles`/`UserSystemRoles`; bootstrap Admin qua Flyway migration và cấm multi-role trong Project đã được chốt (issue #7).
 - Mọi thay đổi Account/status/role tăng `auth_version` và tạo Outbox cùng snapshot-sync job nguyên tử.
 - API/service không coi token chưa hết hạn là bằng chứng Account còn ACTIVE; Task authorization fail closed khi snapshot Redis thiếu/lỗi/không xác minh được.
 - Account deletion không có trong Kỳ 1; không có endpoint hoặc runtime cascade để nghiệm thu.
