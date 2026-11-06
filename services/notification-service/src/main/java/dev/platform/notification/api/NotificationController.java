@@ -30,7 +30,7 @@ public class NotificationController {
     // 4.1 Lấy thông báo của tôi.
     @GetMapping("/me")
     public ResponseEntity<List<NotificationResponse>> listMine(
-            @RequestParam(defaultValue = "false") boolean unreadOnly,
+            @RequestParam(name = "unreadOnly", defaultValue = "false") boolean unreadOnly,
             // TODO kỳ 1: lấy userId từ JWT sub, hiện đọc header stub.
             @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
         if (userId == null) {
@@ -44,7 +44,7 @@ public class NotificationController {
     // 4.2 Đánh dấu đã đọc (check chủ sở hữu ở service kỳ 1, sai chủ -> 403).
     @PatchMapping("/{id}/read")
     public ResponseEntity<NotificationResponse> markRead(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             // TODO kỳ 1: lấy userId từ JWT sub, hiện đọc header stub.
             @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
         if (userId == null) {

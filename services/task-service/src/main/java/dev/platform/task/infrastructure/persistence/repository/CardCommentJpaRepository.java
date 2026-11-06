@@ -10,6 +10,8 @@ import dev.platform.task.infrastructure.persistence.entity.CardCommentEntity;
 // Truy vấn bảng card_comments.
 public interface CardCommentJpaRepository extends JpaRepository<CardCommentEntity, Long> {
 
+    List<CardCommentEntity> findByCard_ProjectIdAndCard_IdOrderByIdAsc(Long projectId, Long cardId);
+
     List<CardCommentEntity> findTop100ByCard_BoardIdInAndIdGreaterThanOrderByIdAsc(
             Collection<Long> boardIds,
             Long afterId);

@@ -8,12 +8,14 @@ import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import dev.platform.task.assignmentcleanup.MembershipAssignmentLock;
 import dev.platform.task.assignmentcleanup.persistence.entity.MembershipAssignmentFenceId;
 import dev.platform.task.assignmentcleanup.persistence.repository.MembershipAssignmentFenceJpaRepository;
 import dev.platform.task.application.port.out.SaveCardPort;
+import dev.platform.task.application.port.in.GetCardsPort;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import dev.platform.task.domain.aggregate.CardAggregate.CommentValue;
 import dev.platform.task.domain.aggregate.CardAggregate.Status;
@@ -26,12 +28,20 @@ import lombok.RequiredArgsConstructor;
 // Adapter JPA cho cổng ra SaveCardPort.
 @Component
 @RequiredArgsConstructor
-public class SaveCardAdapter implements SaveCardPort {
+public class SaveCardAdapter implements SaveCardPort, GetCardsPort {
 
     private final CardJpaRepository cardJpaRepository;
     private final TaskAssigneeJpaRepository taskAssigneeJpaRepository;
     private final MembershipAssignmentFenceJpaRepository fenceRepository;
     private final MembershipAssignmentLock membershipAssignmentLock;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CardAggregate> getByBoard(Long projectId, Long boardId, Long columnId,
+            Integer position, Long id, int count) {
+        return toAggregates(cardJpaRepository.findPage(projectId, boardId, columnId, position, id,
+                PageRequest.of(0, count)));
+    }
 
     @Override
     @Transactional
