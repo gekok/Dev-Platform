@@ -6,75 +6,96 @@ import dev.platform.user.application.port.out.SaveUserPort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.mockito.Mockito.*;
-import static org.assertj.core.api.Assertions.*;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class LoginUserServiceTest {
 
-    // 1. Khai báo 3 diễn viên đóng thế
     private SaveUserPort users;
     private PasswordEncoderPort passwordEncoder;
     private TokenPort tokenPort;
-
-    // 2. Class chính chúng ta cần test
     private LoginUserService loginService;
 
     @BeforeEach
     void setUp() {
-        // Khởi tạo 3 mock đóng thế bằng lệnh mock(...) của Mockito
         users = mock(SaveUserPort.class);
         passwordEncoder = mock(PasswordEncoderPort.class);
         tokenPort = mock(TokenPort.class);
-
-        // Nạp 3 diễn viên vào class chính
         loginService = new LoginUserService(users, passwordEncoder, tokenPort);
     }
 
     @Test
+    @DisplayName("Đăng nhập thành công khi thông tin email và mật khẩu chính xác")
     void shouldLoginSuccessfullyWhenCredentialsAreValid() {
-        // --- 1. ARRANGE (Chuẩn bị) ---
-        // Tạo một user mẫu
         UserAggregate fakeUser = UserAggregate.create("test@example.com", "hashed_pass", "Ha Vu Long");
         LoginCommand command = new LoginCommand("test@example.com", "plain_pass");
 
-        // Dặn dò diễn viên Mock bằng cú pháp: when(hành_động).thenReturn(kết_quả)
-        when(users.findByEmail("test@example.com")).thenReturn(java.util.Optional.of(fakeUser));
+        when(users.findByEmail("test@example.com")).thenReturn(Optional.of(fakeUser));
         when(passwordEncoder.matches("plain_pass", "hashed_pass")).thenReturn(true);
-        when(tokenPort.issue(fakeUser.getId(), fakeUser.getEmail())).thenReturn("fake-jwt-token");
+        when(tokenPort.issue(fakeUser.getId(), fakeUser.getEmail())).thenReturn("fake-rsa-jwt-token");
 
-        // --- 2. ACT (Hành động) ---
         String token = loginService.login(command);
 
-        // --- 3. ASSERT (Khẳng định) ---
-        // Khẳng định token trả về đúng là chuỗi mà tokenPort đã cấp
-        assertThat(token).isEqualTo("fake-jwt-token");
+        assertThat(token).isEqualTo("fake-rsa-jwt-token");
     }
 
     @Test
+    @DisplayName("Từ chối khi mật khẩu không khớp")
     void shouldThrowExceptionWhenPasswordIsIncorrect() {
-        // 1. ARRANGE
         UserAggregate fakeUser = UserAggregate.create("test@example.com", "hashed_pass", "Ha Vu Long");
         LoginCommand command = new LoginCommand("test@example.com", "wrong_pass");
 
-        when(users.findByEmail("test@example.com")).thenReturn(java.util.Optional.of(fakeUser));
-        // Cho passwordEncoder giả vờ so sánh sai:
+        when(users.findByEmail("test@example.com")).thenReturn(Optional.of(fakeUser));
         when(passwordEncoder.matches("wrong_pass", "hashed_pass")).thenReturn(false);
 
-        // 2 & 3. ACT & ASSERT
         assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid email or password");
     }
 
     @Test
+    @DisplayName("Từ chối khi email không tồn tại trong hệ thống")
     void shouldThrowExceptionWhenEmailNotFound() {
-        // 1. ARRANGE
         LoginCommand command = new LoginCommand("notfound@example.com", "any_password");
-        when(users.findByEmail("notfound@example.com")).thenReturn(java.util.Optional.empty());
+        when(users.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
 
-        // 2 & 3. ACT & ASSERT
         assertThatThrownBy(() -> loginService.login(command))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid email or password");
+    }
+
+    @Test
+    @DisplayName("Từ chối khi tài khoản không ở trạng thái ACTIVE")
+    void shouldThrowExceptionWhenAccountIsNotActive() {
+        // Tạo user có status null (không ACTIVE)
+        UserAggregate inactiveUser = UserAggregate.rehydrate(
+                UUID.randomUUID(), "inactive@example.com", "hashed_pass", "Inactive User", null, 1L);
+        LoginCommand command = new LoginCommand("inactive@example.com", "plain_pass");
+
+        when(users.findByEmail("inactive@example.com")).thenReturn(Optional.of(inactiveUser));
+        when(passwordEncoder.matches("plain_pass", "hashed_pass")).thenReturn(true);
+
+        assertThatThrownBy(() -> loginService.login(command))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Account is not active");
+    }
+
+    @Test
+    @DisplayName("Từ chối khi command hoặc các trường bị null")
+    void shouldThrowExceptionWhenInputIsNull() {
+        assertThatThrownBy(() -> loginService.login(null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> loginService.login(new LoginCommand(null, "pass")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> loginService.login(new LoginCommand("test@example.com", null)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
