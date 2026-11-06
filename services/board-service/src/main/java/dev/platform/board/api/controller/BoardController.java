@@ -1,4 +1,4 @@
-package dev.platform.board.api;
+package dev.platform.board.api.controller;
 
 import java.util.List;
 import java.util.NoSuchElementException;

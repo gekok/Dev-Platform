@@ -5,10 +5,10 @@ spring:
   application:
     name: board-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/board_db
-    driver-class-name: org.postgresql.Driver
-    username: devplatform
-    password: devplatform
+    url: jdbc:sqlserver://localhost:1433;databaseName=kanban_board_db;encrypt=true;trustServerCertificate=true
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    username: sa
+    password: 123456
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -16,10 +16,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
       hibernate:
         show_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.SQLServerDialect
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

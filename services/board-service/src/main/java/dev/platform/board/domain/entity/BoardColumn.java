@@ -1,4 +1,4 @@
-package dev.platform.board.domain;
+package dev.platform.board.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

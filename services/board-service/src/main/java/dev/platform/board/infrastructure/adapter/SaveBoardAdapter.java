@@ -11,7 +11,6 @@ import dev.platform.board.application.port.out.SaveBoardPort;
 import dev.platform.board.domain.aggregate.BoardAggregate;
 import dev.platform.board.domain.aggregate.BoardAggregate.BoardColumnValue;
 import dev.platform.board.infrastructure.persistence.entity.BoardColumnEntity;
-import dev.platform.board.infrastructure.persistence.entity.BoardEntity;
 import dev.platform.board.infrastructure.persistence.repository.BoardJpaRepository;
 import lombok.RequiredArgsConstructor;
 

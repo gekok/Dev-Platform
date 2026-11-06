@@ -1,4 +1,4 @@
-package dev.platform.board.domain;
+package dev.platform.board.domain.entity;
 
 /**
  * Cột trong bảng (column trong Kanban).

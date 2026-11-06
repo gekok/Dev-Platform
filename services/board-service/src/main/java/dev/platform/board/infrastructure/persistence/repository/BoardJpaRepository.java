@@ -6,8 +6,6 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import dev.platform.board.infrastructure.persistence.entity.BoardEntity;
-
 // Truy vấn bảng boards.
 public interface BoardJpaRepository extends JpaRepository<BoardEntity, Long> {
 
