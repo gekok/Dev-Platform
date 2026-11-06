@@ -1,14 +1,14 @@
 package dev.platform.task.application.port.out;
 
-// Cổng ra: bắn event thẻ (kỳ 1 nối WebSocket + notification).
+// Publishes ephemeral Board events to local WebSocket subscribers.
 public interface CardEventPublisherPort {
 
-    // Bắn event card.created cho cột.
+    // Publishes card.created for the Board containing the column.
     void cardCreated(Long cardId, Long boardId, Long columnId);
 
-    // Bắn event card.moved về cột + vị trí mới.
+    // Publishes card.moved with the destination column and position.
     void cardMoved(Long cardId, Long boardId, Long toColumnId, int toPosition);
 
-    // Bắn event comment.added cho thẻ.
+    // Publishes comment.added without comment content.
     void commentAdded(Long cardId, Long boardId, Long commentId);
 }
