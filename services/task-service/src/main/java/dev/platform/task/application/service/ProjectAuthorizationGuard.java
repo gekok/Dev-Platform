@@ -1,5 +1,7 @@
 package dev.platform.task.application.service;
 
+import dev.platform.task.application.exception.ProjectAccessDeniedException;
+
 import java.util.UUID;
 
 import dev.platform.task.application.port.out.AuthorizationSnapshotReader;

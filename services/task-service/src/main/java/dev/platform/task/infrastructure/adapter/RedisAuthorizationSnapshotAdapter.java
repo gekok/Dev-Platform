@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.platform.task.application.port.out.AuthorizationSnapshotReader;
-import dev.platform.task.application.service.AuthorizationSnapshotUnavailableException;
+import dev.platform.task.application.exception.AuthorizationSnapshotUnavailableException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
