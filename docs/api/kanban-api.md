@@ -50,8 +50,8 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 - Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
 - API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Cặp `(position,id)` đã tạo thứ tự toàn phần vì `id` là duy nhất. Wire proposal cho infinite-scroll riêng từng Column yêu cầu `columnId` và cursor ràng buộc với `boardId` + `columnId` + sort; đây là scope API/UI cần duyệt, không phải điều kiện toán học của cursor.
 - Gateway là ranh giới xác thực mục tiêu. Identity phải được suy ra từ access token hợp lệ; Gateway loại bỏ/ghi đè identity header do client gửi trước khi chuyển tiếp. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
-- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. `SYSTEM_ADMIN` tự nó không cấp quyền Project; chính sách một Account đa vai trò vẫn mở.
-- Bootstrap System Admin đầu tiên và chính sách một Account đa vai trò còn mở. API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
+- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. `SYSTEM_ADMIN` tự nó không cấp quyền Project; theo quyết định #7, tài khoản System Admin bị cấm tham gia Project (bắt buộc dùng Account riêng).
+- Quyết định #7 đã chốt bootstrap System Admin đầu tiên qua Flyway SQL migration và chỉ System Admin tạo Account (không mở đăng ký tự do). API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -70,7 +70,7 @@ Phần này bổ sung payload/response và quyền theo service để làm nền
 
 ### `user-service`: Auth và System Admin
 
-Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; `SYSTEM_ADMIN` chỉ cho phép quản trị Account, không cấp quyền Project. Bootstrap Admin đầu tiên còn mở. Kỳ 1 không triển khai Account deletion.
+Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; `SYSTEM_ADMIN` chỉ cho phép quản trị Account, không cấp quyền Project và bị cấm tham gia Project (theo quyết định #7). Bootstrap Admin đầu tiên được seed qua Flyway SQL migration. Kỳ 1 không triển khai Account deletion.
 
 | Method | Route mục tiêu | Request | Thành công | Quyền/trạng thái |
 |---|---|---|---|---|
