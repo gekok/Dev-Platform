@@ -2,7 +2,10 @@ package dev.platform.user.infrastructure.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import dev.platform.user.application.port.out.TokenPort;
+import dev.platform.user.domain.exception.AuthenticationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Adapter cấp phát JWT token sử dụng cặp khóa bất đối xứng RSA256 (Asymmetric Key Pair).
+ * Adapter cấp phát và xác thực JWT token sử dụng cặp khóa bất đối xứng RSA256 (Asymmetric Key Pair).
  * Private Key dùng để ký token (giữ bí mật tại user-service).
  * Public Key dùng để kiểm tra tính hợp lệ của token (chia sẻ cho Gateway / consumers).
  */
@@ -54,6 +57,25 @@ public class JwtTokenAdapter implements TokenPort {
                 .withIssuedAt(now)
                 .withExpiresAt(expiresAt)
                 .sign(algorithm);
+    }
+
+    @Override
+    public UUID parseAndValidate(String token) {
+        if (token == null || token.isBlank()) {
+            throw new AuthenticationException("Token cannot be blank");
+        }
+        try {
+            DecodedJWT jwt = JWT.require(algorithm)
+                    .build()
+                    .verify(token);
+            String sub = jwt.getSubject();
+            if (sub == null || sub.isBlank()) {
+                throw new AuthenticationException("Token subject is missing");
+            }
+            return UUID.fromString(sub);
+        } catch (JWTVerificationException | IllegalArgumentException e) {
+            throw new AuthenticationException("Invalid or expired token: " + e.getMessage(), e);
+        }
     }
 
     public RSAPublicKey getPublicKey() {

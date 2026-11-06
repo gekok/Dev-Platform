@@ -10,7 +10,7 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 - `/auth/register` nhận `email`, `password`, `fullName` và gọi `RegisterUserPort`. Theo quyết định #7, route này bị bãi bỏ/deprecated, không mở đăng ký tự do; chỉ System Admin mới có quyền tạo Account (`POST /api/v1/admin/accounts`).
 - `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
-- `/users/me` hiện dùng `X-User-Id` để lấy Account; `Authorization` được đọc nhưng JWT chưa được parse.
+- `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
 - Repo chưa có controller Admin tạo Account. Chính sách đã chốt tại #7: chỉ System Admin mới tạo Account, loại bỏ public registration.
 
 ## Thiết kế mục tiêu đã thống nhất
@@ -89,19 +89,22 @@ Response `TokenResponse` có `accessToken` (string) và `tokenType` (string, hi�
 
 ### Hồ sơ hiện tại
 
-Controller hiện lấy UUID từ `X-User-Id`; header `Authorization` được nhận nhưng không dùng để xác thực. Thiếu `X-User-Id` được ném thành `IllegalArgumentException`.
+Controller xác thực danh tính trực tiếp từ header `Authorization: Bearer <token>`. Adapter `JwtTokenAdapter` xác thực tính hợp lệ của chữ ký RSA256, hạn sử dụng và trích xuất subject `UUID`. Client không thể truyền header hoặc parameter giả mạo để thay đổi tài khoản được đọc.
 
-Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), status thành công là `200 OK`. `X-User-Id` nhận dạng sai UUID cũng đi qua `UUID.fromString` và được handler hiện tại ánh xạ thành `400 BAD_REQUEST`.
+Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), status thành công là `200 OK`. Không trả về mật khẩu, hash hay dữ liệu nhạy cảm.
 
 ### Error mapping và khả năng khởi chạy
 
-| Tình huống được handler bắt | HTTP | Body |
-|---|---:|---|
-| `IllegalArgumentException` | `400` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Tình huống được handler bắt | HTTP | Mã code | Body |
+|---|---:|---|---|
+| Thiếu hoặc sai định dạng `Authorization` header, token sai chữ ký hoặc hết hạn (`AuthenticationException`) | `401` | `UNAUTHORIZED` | `{ "code": "UNAUTHORIZED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Tài khoản không ở trạng thái ACTIVE (`IllegalStateException`) | `403` | `FORBIDDEN` | `{ "code": "FORBIDDEN", "message": "Account is not active", "timestamp": "...", "path": "..." }` |
+| Không tìm thấy tài khoản trong DB (`NoSuchElementException`) | `404` | `USER_NOT_FOUND` | `{ "code": "USER_NOT_FOUND", "message": "User not found: ...", "timestamp": "...", "path": "..." }` |
+| Tham số không hợp lệ (`IllegalArgumentException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Dữ liệu DTO không hợp lệ (`MethodArgumentNotValidException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Thao tác không được hỗ trợ như tự đăng ký (`UnsupportedOperationException`) | `400` | `OPERATION_NOT_SUPPORTED` | `{ "code": "OPERATION_NOT_SUPPORTED", "message": "...", "timestamp": "...", "path": "..." }` |
 
-`GlobalExceptionHandler` chưa có handler riêng cho lỗi Bean Validation, credentials sai, trùng email, `404` hoặc lỗi xác thực. Không suy ra các body/status khác từ handler này.
-
-`UserController` yêu cầu `RegisterUserPort`, `LoginUserPort` và `GetCurrentUserPort`; trong source hiện chỉ có adapter lưu user, chưa có bean triển khai ba inbound port này. Vì vậy các mapping trên mô tả contract được khai báo, chưa phải bằng chứng service khởi chạy và phục vụ được các request.
+`UserController` đã được trang bị đầy đủ bean: `LoginUserService` cho đăng nhập, `GetCurrentUserService` cho truy vấn hồ sơ, và `JwtTokenAdapter` cho ký/xác thực token RSA256. `RegisterUserPort` được đánh dấu deprecated theo quyết định #7.
 
 ## API mục tiêu thuộc user-service
 
