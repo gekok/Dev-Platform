@@ -7,7 +7,7 @@
 - Each service owns its database; do not add cross-service foreign keys.
 
 ## Build, Test, and Development
-- `docker compose up -d` starts RabbitMQ; services use local SQL Server and K1 snapshots need Redis at `localhost:6379`, absent from Compose. See README for database setup.
+- `docker compose up -d` starts RabbitMQ and Redis; services use local SQL Server. See README for setup and readiness checks.
 - At the root, use `mvn -DskipTests package` to build or `mvn test` to run backend tests.
 - Run a service with `cd services/<service> && mvn spring-boot:run`; Gateway uses `cd gateway && mvn spring-boot:run`.
 - Demo: `cd web-demo && npm ci && npm run dev`; checks: `npm test`, `npm run lint`, `npm run build`.
@@ -29,7 +29,8 @@
 
 ## Commits and Pull Requests
 - Follow Conventional Commit prefixes in history (`feat:`, `fix:`, `docs:`, `refactor:`); keep commits focused.
-- PRs must list scope, affected services/contracts, verification results, and API/schema impacts; include screenshots for UI changes.
+- Tiêu đề và nội dung Pull Request (PR) phải được viết bằng Tiếng Việt để cả nhóm và mentor dễ review; PR phải nêu rõ tóm tắt phạm vi, kết quả kiểm thử và liên kết `Closes #<id>`; tuyệt đối không gắn PR vào Project để tránh trùng lặp thẻ trên Kanban.
+- Mọi trao đổi, thảo luận, phản hồi review và comment giữa các thành viên trong nhóm trên GitHub (Issue, Pull Request, Commit discussions) đều bắt buộc sử dụng **Tiếng Việt**.
 
 ## Security
 - Never commit credentials; `.env` is ignored. Treat `X-User-Id` as untrusted until Gateway authentication and identity-header enforcement are implemented.

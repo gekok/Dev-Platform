@@ -18,7 +18,9 @@ Yêu cầu Java 21 và Maven. Từ root repo:
 
     mvn -pl gateway spring-boot:run
 
-Gateway nghe tại http://localhost:8080. Request chỉ thành công nếu upstream service tương ứng chạy đúng port. Upstream hiện hard-coded trong application.yml.
+Gateway nghe tại http://localhost:8080. Request chỉ thành công nếu upstream service tương ứng chạy. Upstream mặc định là localhost các cổng 8081–8084; có thể cấu hình qua các thuộc tính `gateway.upstream.user`, `gateway.upstream.board`, `gateway.upstream.task`, `gateway.upstream.notification`.
+
+Chạy `mvn -pl gateway test` từ root để kiểm tra khởi động, route HTTP với upstream giả và internal route không được expose. Các test này không chứng minh xác thực hay tích hợp service thật. Module Gateway dùng Spring Cloud 2025.1.4 tương thích Spring Boot 4.1.x; các module khác vẫn giữ phiên bản quản lý ở root.
 
 gateway/pom.xml dùng Spring Cloud Gateway Server WebFlux và Actuator. Gateway không có API/domain controller riêng.
 

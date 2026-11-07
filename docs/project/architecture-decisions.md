@@ -48,8 +48,10 @@ task-service ── Internal REST API đồng bộ ──> board-service
 - `Admin` chỉ quản trị tài khoản hệ thống; Admin không có quyền nghiệp vụ trên Project, Board, membership hoặc Card. Account deletion chưa triển khai trong Kỳ 1.
 - Mỗi Project có đúng một `Owner`: tài khoản tạo Project là Owner. Owner không thể tự gỡ mình khỏi Project; Member được tự rời Project.
 - Tạo Project yêu cầu Account nghiệp vụ đang `ACTIVE` và danh tính đã được xác thực tại Gateway. `board-service` lấy actor từ identity context tin cậy do Gateway chuyển tiếp; không nhận actor ID từ request body hoặc header do client tự chọn. Tạo Project và Membership `OWNER` phải nằm trong cùng transaction của `board_db`.
-- Quyền `SYSTEM_ADMIN` chỉ cấp nghiệp vụ quản trị Account; tự nó không cấp quyền tạo/xem/thao tác Project. Account chỉ có quyền System Admin không được tạo Project. Việc một Account có thể đồng thời mang quyền System Admin và dùng Project, hay cần hai Account riêng, vẫn cần chốt.
-- Role hệ thống là dữ liệu của `user-service`, không phải Project role. Schema mục tiêu dùng `SystemRoles` và `UserSystemRoles`; bootstrap System Admin đầu tiên vẫn cần chốt. Client không được tự khai báo role khi tạo Account.
+- Quyền `SYSTEM_ADMIN` chỉ phục vụ quản trị Account, không cấp quyền Project. Account mang role `SYSTEM_ADMIN` không được tạo Project, làm Owner hoặc làm Member. Nếu một cá nhân cần vừa quản trị hệ thống vừa làm việc trong Project, phải dùng hai Account: Account quản trị mang `SYSTEM_ADMIN` và Account nghiệp vụ không mang role này để tham gia Project.
+- Role hệ thống là dữ liệu của `user-service`, không phải Project role. Schema mục tiêu dùng `SystemRoles` và `UserSystemRoles`. Script [SQL bootstrap local](../../sql/local-sqlserver-bootstrap.sql) seed Account System Admin mẫu và gán role `SYSTEM_ADMIN` trong `user_db`; Kỳ 1 không dùng Flyway. Cách bootstrap cho môi trường triển khai có thể được thiết kế sau Kỳ 2. Client không được tự khai báo role khi tạo Account.
+- Lựa chọn bootstrap ở trên thay thế riêng quyết định dùng Flyway trong [PR #43](https://github.com/gekok/Dev-Platform/pull/43). Các quyết định còn lại của PR #43 về chỉ System Admin tạo Account, không public self-registration và Account mang `SYSTEM_ADMIN` không tham gia Project vẫn giữ nguyên.
+- Chính sách cấp tài khoản theo issue #7: Hệ thống không cho phép đăng ký tự do (đóng/bãi bỏ luồng public registration `POST /api/v1/auth/register` cũ); chỉ `SYSTEM_ADMIN` mới có quyền tạo tài khoản người dùng. `POST /api/v1/admin/accounts` là route đề xuất; route, payload và credential provisioning còn mở.
 - Owner có thể gỡ Member khỏi Project. Khi không muốn tiếp tục dùng Project/Board, Owner chuyển trạng thái tương ứng sang `CANCELLED`.
 - Account deletion chưa triển khai trong Kỳ 1. Định hướng Kỳ 2 là soft delete; nếu Account là Owner thì chuyển Owner cho Member đủ điều kiện có thời gian tham gia sớm nhất. Chặn xóa nếu không có Member kế nhiệm.
 - Khi Member bị gỡ hoặc tự rời Project, quyền bị thu hồi khi Redis áp dụng snapshot mới. Task-service unassign Card bằng xử lý nền sau đó; việc cleanup không khôi phục quyền và không xóa Comment hay attribution lịch sử.
@@ -73,6 +75,7 @@ task-service ── Internal REST API đồng bộ ──> board-service
 
 ## 4. Giao tiếp giữa các service và snapshot phân quyền
 
+- Môi trường phát triển local dùng Docker Compose cho RabbitMQ và Redis; SQL Server chạy trực tiếp trên máy. Việc container sẵn sàng không đồng nghĩa luồng event hoặc snapshot đã nối hoàn chỉnh.
 - Hệ thống dùng mô hình giao tiếp kết hợp: Internal REST API đồng bộ, RabbitMQ truyền domain event và Redis lưu snapshot dùng chung giữa các instance.
 - Internal REST API dùng khi cần đọc dữ liệu gốc đồng bộ hoặc kiểm tra quyền. API này **chưa triển khai** cho đến khi thống nhất/thiết lập bảo mật cho giao tiếp service nội bộ.
 - RabbitMQ truyền các event gồm `USER_STATUS_CHANGED`, `USER_SYSTEM_ROLES_CHANGED`, `MEMBERSHIP_CHANGED`, `MEMBERSHIP_REMOVED` và yêu cầu cleanup assignment khi Membership bị thu hồi. Account/Project cascade không thuộc Kỳ 1.
@@ -93,6 +96,8 @@ Kỳ 1 không có endpoint, `DELETING` status, operation, consumer hoặc cascad
 - Publisher Confirm (RabbitMQ → Relay) khác Consumer ACK (Consumer → RabbitMQ). Nếu Relay không nhận được confirm, Outbox chưa thể đánh dấu `SENT` và sẽ gửi lại đúng bản ghi với cùng `eventId`, `aggregateVersion` và payload. RabbitMQ có thể đã nhận lần gửi trước nhưng confirm bị mất, nên đây là một nguồn tạo duplicate.
 - Consumer dùng Inbox để chống duplicate: lưu `eventId` đã xử lý với unique constraint theo cặp `(consumerName, eventId)`; với xử lý đồng bộ, ghi Inbox và thay đổi nghiệp vụ vào DB Consumer trong cùng transaction. Với tác vụ nền, ghi Inbox cùng durable job/checkpoint trong cùng transaction rồi ACK; worker tiếp tục công việc. Nếu transaction thất bại thì rollback và retry; nếu commit thành công nhưng ACK mất thì RabbitMQ redeliver, Inbox nhận ra duplicate và không tạo side effect lần hai.
 - Inbox/idempotency được scope theo từng Consumer. Outbox retry và RabbitMQ redelivery là hai đường giao lại khác nhau; Outbox không bảo đảm Consumer đã xử lý thành công. Mô hình là at-least-once, không phải exactly-once.
+- Kỳ 1 vận hành một instance cho mỗi service. Outbox Relay hiện chưa có cơ chế claim/lease cho nhiều instance; không tăng số instance của cùng service khi chưa thiết kế và kiểm thử phối hợp relay.
+- Consumer lỗi được xử lý lần đầu và retry tối đa 3 lần, khoảng chờ cố định 5 giây giữa các lần retry; nếu vẫn thất bại thì chuyển DLQ. Đây là chính sách mục tiêu, chưa chứng minh listener, retry hay DLQ đã được triển khai. Chính sách này không đặt giới hạn 3 lần cho Outbox Relay; cấu hình queue/DLQ, xử lý sau DLQ và phân loại lỗi còn cần thiết kế.
 - Envelope event mục tiêu có `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt` và `payload`. `eventId` nhận diện một event cụ thể để chống trùng; giữ nguyên qua mọi lần retry và không dùng để so thứ tự.
 - Tên event viết hoa ở ghi chú này là tên nghiệp vụ/constant; wire `eventType` dùng chữ thường, phân tách bằng dấu chấm (ví dụ `user.status.changed`, `project.membership.removed`).
 - Event Kỳ 1 dùng Outbox của service sở hữu dữ liệu nguồn:
@@ -173,7 +178,7 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 - Trong Kỳ 1, API Gateway xác thực danh tính và định tuyến request; các service phía sau tin cậy danh tính/ngữ cảnh do Gateway chuyển tiếp, không cần triển khai lại toàn bộ xác thực. Gateway chỉ chuyển tiếp identity đã suy ra từ access token hợp lệ; phải loại bỏ/ghi đè `X-User-Id` và identity header do client gửi.
 - Account phải ở trạng thái `ACTIVE` để được xác thực/cấp quyền. Kỳ 1 không có trạng thái `DELETING` hay Account deletion flow. Gateway và service không được suy ra Account còn hợp lệ chỉ từ token chưa hết hạn; nếu snapshot không xác minh được thì fail closed.
 - `POST /api/v1/projects` chỉ nhận Account nghiệp vụ đang `ACTIVE`. Gateway cung cấp identity đã xác thực; `board-service` dùng identity đó làm Owner và ghi Project cùng Owner membership trong một transaction. Client không được chọn `ownerId`/`userId` trong payload để giả danh.
-- Quyền `SYSTEM_ADMIN` tự nó không cho phép thao tác Project. Claim/nguồn kiểm tra role Admin và chính sách Account vừa là Admin vừa là người dùng Project còn chờ chốt; role từ request body/header không được tin cậy.
+- Account mang `SYSTEM_ADMIN` không được thao tác hoặc tham gia Project. Người cần làm việc trong Project phải dùng Account nghiệp vụ không mang role này; role từ request body/header không được tin cậy.
 - `board-service` là nơi có dữ liệu chuẩn để quyết định quyền theo membership Project. Internal REST từ `task-service` để hỏi/kiểm tra dữ liệu này sẽ triển khai sau khi có bảo mật giao tiếp nội bộ.
 - Cơ chế bảo vệ danh tính/ngữ cảnh chuyển tiếp, xử lý header do client gửi và giới hạn truy cập trực tiếp đến service cần được cụ thể hóa khi triển khai.
 
@@ -188,7 +193,7 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 
 ## 7. Các điểm cần bàn tiếp
 
-1. **System Admin:** bootstrap System Admin đầu tiên và chính sách một Account vừa là System Admin vừa tham gia Project.
+1. **System Admin:** Đã chốt theo quyết định [#7](https://github.com/gekok/Dev-Platform/issues/7): chỉ System Admin được tạo Account, không mở public self-registration, và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Nếu cùng một cá nhân cần cả hai phạm vi, dùng Account quản trị riêng và Account nghiệp vụ không mang `SYSTEM_ADMIN`. SQL bootstrap local đã seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Quy trình bootstrap môi trường triển khai có thể bàn sau Kỳ 2.
 2. **Account lookup cho Invitation:** vì internal REST chưa bảo mật, cần chốt cách board-service xác minh target Account tồn tại/ACTIVE trước khi bật Invitation và Accept; API directory/bulk profile cùng field được lộ cũng còn mở.
 3. **Invitation policy:** expiry, reject/cancel rules, list Invitation của Owner và các mã lỗi/status nghiệp vụ chi tiết.
 4. **Project/Board lifecycle:** ba trạng thái `ACTIVE`, `COMPLETED`, `CANCELLED` đã thống nhất; transition graph và tác động tới dữ liệu con còn mở.

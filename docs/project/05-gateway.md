@@ -11,7 +11,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 - Gateway hiện route **/api/v1/auth/** và **/api/v1/users/** sang user-service; source có route `/ws/**` tới task-service nhưng đang khai báo HTTP upstream, cần xác nhận/chuyển sang WebSocket upstream trong phạm vi Gateway #31.
 - Route hiện tại đưa Project-scoped Card path cụ thể tới task-service trước `/api/v1/projects/**`; Board-first Board routes vẫn đi board-service.
 - Cấu hình route không có bằng chứng Gateway đang xác thực JWT hoặc xóa header identity giả mạo.
-- RabbitMQ có trong Compose; route HTTP không đồng nghĩa service event consumer đã kết nối.
+- RabbitMQ và Redis được cấu hình trong Compose; route HTTP không đồng nghĩa service event consumer đã kết nối.
 
 ## Thiết kế đích
 
@@ -30,7 +30,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 ## Việc cần làm
 
 - [ ] Chốt JWT issuer/signature/expiry, nguồn role claim System Admin, Account status/revocation freshness và identity forwarding contract; không tin role/identity do client gửi.
-- [ ] Đồng bộ với user-service cách bootstrap System Admin đầu tiên và chính sách một Account vừa có quyền Admin vừa dùng Project.
+- [x] Đồng bộ với user-service chính sách issue #7: chỉ System Admin tạo Account, không public self-registration; Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Người cần làm việc trong Project dùng Account nghiệp vụ không mang role này. SQL bootstrap local seed Admin mẫu; Kỳ 1 không dùng Flyway.
 - [ ] Route `/api/v1/projects/invitations` và Project resources tới board-service; không đặt inbox Invitation trong namespace `/users`.
 - [ ] Đặt Card route cụ thể `/api/v1/projects/*/boards/*/cards/**` và `/api/v1/projects/*/cards/**` tới task-service trước route board-service `/api/v1/projects/**,/api/v1/boards/**`.
 - [ ] Route User directory/profile tới user-service; route notification và WebSocket tiếp tục tới service tương ứng.

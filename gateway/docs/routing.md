@@ -1,6 +1,6 @@
 # Gateway routing reference
 
-Route table này được đối chiếu với gateway/src/main/resources/application.yml. Gateway chạy WebFlux trên port 8080, giữ nguyên path khi proxy và hiện dùng upstream localhost cố định.
+Route table này được đối chiếu với gateway/src/main/resources/application.yml. Gateway chạy WebFlux trên port 8080, giữ nguyên path khi proxy; upstream mặc định dùng localhost và có thể cấu hình qua `gateway.upstream.user`, `gateway.upstream.board`, `gateway.upstream.task`, `gateway.upstream.notification`.
 
 ## Route khai báo trong source
 
@@ -40,7 +40,7 @@ Khi bổ sung route:
 3. /api/v1/admin/**, /api/v1/users/**, /api/v1/auth/** → user-service.
 4. /api/v1/notifications/** → notification-service.
 
-Đây là route design; chỉ các route trong bảng trên đã hiện diện trong YAML. Khi upstream lỗi hoặc route không match, không suy diễn response nghiệp vụ từ contract của service.
+Đây là route design; chỉ các route trong bảng trên đã hiện diện trong YAML. `mvn -pl gateway test` kiểm tra các route HTTP chính và `/internal/v1/notifications` bằng upstream giả; chưa kiểm thử authentication, WebSocket hay service thật. Khi upstream lỗi hoặc route không match, không suy diễn response nghiệp vụ từ contract của service.
 
 ## Dependency
 

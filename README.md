@@ -33,7 +33,7 @@ Kỳ 2 dự kiến mở rộng năng lực Git core và Workflow. Ranh giới se
 ```text
 Dev-Platform/
 ├── pom.xml
-├── docker-compose.yml             # RabbitMQ cho môi trường local
+├── docker-compose.yml             # RabbitMQ và Redis cho môi trường local
 ├── gateway/                       # cổng vào HTTP; docs nội bộ ở gateway/README.md
 ├── services/
 │   ├── user-service/              # tài khoản và xác thực
@@ -50,7 +50,7 @@ Dev-Platform/
     └── project/                   # quyết định, hướng dẫn và checklist tích hợp
 ```
 
-Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Column` dùng chung `board_db`; các ID được tham chiếu giữa service dưới dạng giá trị, không tạo JPA foreign key xuyên database. RabbitMQ có trong Compose; messaging và Outbox Relay không tự bật theo cấu hình mặc định.
+Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Column` dùng chung `board_db`; các ID được tham chiếu giữa service dưới dạng giá trị, không tạo JPA foreign key xuyên database. RabbitMQ và Redis có trong Compose; messaging và Outbox Relay không tự bật theo cấu hình mặc định.
 
 ## 4. Quy ước tài liệu và triển khai
 
@@ -63,13 +63,13 @@ Mỗi service giữ database riêng. `Project`, `Membership`, `Board` và `Colum
 
 **Mục tiêu kiến trúc:** Gateway xác thực và định tuyến; `board-service` là nguồn chuẩn về Project/Membership; các service còn lại sở hữu dữ liệu riêng theo ranh giới trên.
 
-**Runtime hiện tại:** `board-service` vẫn khai báo route Board-first `/api/v1/boards` và stub `X-User-Id`. Project/Membership/Invitation đã có entity, nhưng use case và API Project-first chưa nối hoàn chỉnh; adapter Board-first từ chối `save` và `findByKey` vì thiếu Project context. Auth cũng chưa hoàn chỉnh: `GET /users/me` còn dùng `X-User-Id`, `LoginUserPort` chưa có implementation và Gateway chưa xác thực JWT. Kỳ 1 đang bổ sung skeleton Redis snapshot và assignment cleanup; những integration chưa nối end-to-end được ghi rõ trong tài liệu. Account deletion/cascade không thuộc runtime Kỳ 1.
+**Runtime hiện tại:** `board-service` vẫn khai báo route Board-first `/api/v1/boards` và còn controller dùng `X-User-Id`. Project/Membership/Invitation đã có entity, nhưng use case và API Project-first chưa nối hoàn chỉnh; adapter Board-first từ chối `save` và `findByKey` vì thiếu Project context. `user-service` đã có `POST /api/v1/auth/login` và `GET /api/v1/users/me`; endpoint hiện tại xác thực Bearer token bằng RSA256. Gateway mới định tuyến Auth/User, chưa xác thực JWT hoặc loại bỏ identity header do client gửi. Kỳ 1 đang bổ sung snapshot Redis và assignment cleanup; những integration chưa nối end-to-end được ghi rõ trong tài liệu. Account deletion/cascade không thuộc runtime Kỳ 1.
 
 Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tài liệu tham khảo cho giao diện và một phần route/payload; không đồng nghĩa backend hiện tại đã cung cấp các API đó.
 
 ## 6. Chạy môi trường local
 
-Yêu cầu: Java 21, Maven, SQL Server local, Redis; Docker dùng để chạy RabbitMQ. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+Yêu cầu: Java 21, Maven, SQL Server local và Docker Compose để chạy RabbitMQ, Redis. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
 
 Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
 
@@ -77,18 +77,47 @@ Ví dụ chạy script bằng PowerShell: `sqlcmd -S 'localhost\PHUC' -U sa -C -
 
 Các đường dẫn `.env` được tìm theo thư mục làm việc: `../../.env` và `.env` ở thư mục hiện tại, trong đó `.env` hiện tại được ưu tiên. Khi chạy từ thư mục service, tránh tạo thêm `.env` trong service nếu muốn dùng cấu hình chung; khi chạy từ root, `../../.env` có thể trỏ ra ngoài repo. Chỉ chạy từ thư mục làm việc tin cậy.
 
-```bash
-# Dựng RabbitMQ; SQL Server và Redis chạy riêng
-docker compose up -d
+Chạy một lần từ thư mục gốc để build dự án và cài các module `shared/event-contracts`, `shared/messaging-support` vào Maven local, giúp từng service tìm được dependency:
 
-# Chạy từng service (mỗi lệnh trong một terminal)
-cd services/user-service && mvn spring-boot:run
-cd services/board-service && mvn spring-boot:run
-cd services/task-service && mvn spring-boot:run
-cd services/notification-service && mvn spring-boot:run
-
-# Chạy Gateway
-cd gateway && mvn spring-boot:run
+```powershell
+cd C:\full\MSS301\project\Dev-Platform
+mvn -DskipTests install
 ```
+
+Chạy `docker compose up -d` tại thư mục gốc để khởi động RabbitMQ (`localhost:5672`, giao diện quản trị `localhost:15672`) và Redis (`localhost:6379`). SQL Server chạy riêng trên máy. Kiểm tra bằng `docker compose ps` và `docker compose exec redis redis-cli ping` (mong đợi `PONG`); dừng container bằng `docker compose stop`, chạy lại bằng `docker compose start`. Nếu cổng đã bị chiếm, giải phóng cổng hoặc thay đổi cấu hình tương ứng. Redis chưa có volume riêng: dữ liệu snapshot có thể mất khi container bị xóa, và cơ chế rebuild snapshot chưa hoàn thiện; không coi cấu hình này là lưu trữ production. RabbitMQ cũng chưa có volume được khai báo. Container chạy không chứng minh luồng event hay snapshot đã nối end-to-end.
+
+Mở một terminal PowerShell riêng cho mỗi service. Đổi đường dẫn nếu dự án nằm ở vị trí khác:
+
+**Terminal 1 — user-service (8081)**
+
+```powershell
+cd C:\full\MSS301\project\Dev-Platform\services\user-service
+mvn spring-boot:run
+```
+
+**Terminal 2 — board-service (8082)**
+
+```powershell
+cd C:\full\MSS301\project\Dev-Platform\services\board-service
+mvn spring-boot:run
+```
+
+**Terminal 3 — task-service (8083)**
+
+```powershell
+cd C:\full\MSS301\project\Dev-Platform\services\task-service
+mvn spring-boot:run
+```
+
+**Terminal 4 — notification-service (8084)**
+
+```powershell
+cd C:\full\MSS301\project\Dev-Platform\services\notification-service
+mvn spring-boot:run
+```
+
+Nhấn `Ctrl+C` trong terminal để dừng service. Gateway có thể được chạy riêng từ thư mục `gateway` bằng `mvn spring-boot:run`.
+
+**Giới hạn hiện tại:** Một số use case nghiệp vụ và API Project-first vẫn là skeleton hoặc chưa nối giữa các service. Service khởi động thành công không đồng nghĩa các luồng nghiệp vụ đã chạy end-to-end.
 
 Gateway dự kiến là cổng vào `http://localhost:8080/api/v1`. Tình trạng API và xác thực hiện tại được phân biệt trong [API contract](docs/api/kanban-api.md); không suy ra rằng các route Project-first đã được triển khai chỉ từ việc service khởi động được.
