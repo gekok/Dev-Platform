@@ -53,16 +53,7 @@ public class JwtTokenAdapter implements TokenPort {
 
   public JwtTokenAdapter(
       long expirationMillis, String privateKeyPem, String publicKeyPem, String keyFilePath) {
-    this(expirationMillis, privateKeyPem, publicKeyPem, keyFilePath, DEFAULT_ISSUER);
-  }
-
-  public JwtTokenAdapter(
-      long expirationMillis,
-      String privateKeyPem,
-      String publicKeyPem,
-      String keyFilePath,
-      String issuer) {
-    this(resolveKeyPair(privateKeyPem, publicKeyPem, keyFilePath), expirationMillis, issuer);
+    this(resolveKeyPair(privateKeyPem, publicKeyPem, keyFilePath), expirationMillis, DEFAULT_ISSUER);
   }
 
   public JwtTokenAdapter(long expirationMillis) {

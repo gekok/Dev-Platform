@@ -9,12 +9,13 @@ Gateway là cổng HTTP của Dev-Platform, dùng Spring Cloud Gateway Server We
 - Gateway hiện xác thực JWT trên các request bảo vệ: RS256, issuer, hạn dùng, `iat` hiện diện và UUID subject. Gateway lấy public key từ user-service, cache key thành công tới khi restart.
 - Sau JWT, Gateway đọc Account snapshot `auth:account:{accountId}` từ Redis. Snapshot phải đúng Account, có `authVersion` hợp lệ và `status=ACTIVE`; thiếu/lỗi snapshot trả `503`. Gateway không sở hữu/cache snapshot và không chuyển Project role.
 - Gateway gỡ `X-User-Id` do client gửi rồi đặt lại từ JWT `sub`. Bearer Authorization được giữ nguyên để user-service tiếp tục xác thực `/users/me`; `email` vẫn nằm trong payload JWT được forward, nhưng Gateway không tạo profile header riêng. JWT được ký, không mã hóa.
+- Token được phát trước khi `iss` được thêm vào JWT sẽ bị từ chối bởi issuer validation; đăng nhập lại để lấy token mới.
 - `401`: token thiếu/sai; `403`: Account snapshot không ACTIVE; `503`: public key hoặc snapshot không thể xác minh. Public routes là `POST /api/v1/auth/login`, `GET /api/v1/auth/public-key` và `GET /actuator/health`; các route khác yêu cầu token.
-- Account snapshot recorder/worker của user-service chưa nối với các thay đổi Account và worker mặc định tắt. Vì vậy protected request hiện fail closed bằng `503` cho tới khi snapshot được tạo trong Redis. Gateway JWT code không đồng nghĩa Auth đã tích hợp end-to-end.
+- Account create/status/role mutation của user-service ghi Outbox và snapshot-sync job cùng transaction; worker mặc định tắt (`USER_AUTH_SNAPSHOT_SYNC_ENABLED=false`). Vì vậy protected request fail-closed bằng `503` cho tới khi snapshot được apply vào Redis. Gateway JWT code không đồng nghĩa Auth đã tích hợp end-to-end.
 - Các service vẫn có thể bị gọi trực tiếp qua port hiện tại, bỏ qua Gateway filter; chặn network ingress là điều kiện triển khai thật và chưa thuộc thay đổi này. CORS allowlist chưa cấu hình; cần chốt origin của web client trước khi dùng khác origin.
 - System Admin quản trị Account nhưng không tự có quyền Project. Kỳ 1 không có Account deletion endpoint/status hoặc Project cascade.
-- Project/Membership/Invitation routes hiện được route tới board-service nhưng controller target chưa có. Admin Account route và internal route chưa được cấu hình.
-- /ws/** có route tới task-service, nhưng Task chưa đăng ký handler. Gateway source hiện dùng HTTP upstream; auth/identity forwarding, WebSocket proxy và secured Board-to-Project lookup cần sẵn sàng trước khi bật runtime #24.
+- Project/Membership/Invitation routes hiện được route tới board-service nhưng controller target chưa có. `/api/v1/admin/**` được route tới user-service; `AdminUserController` tự kiểm tra role `SYSTEM_ADMIN`. Internal route chưa được cấu hình.
+- /ws/** có route tới task-service, nhưng Task chưa đăng ký handler. Gateway source hiện dùng HTTP upstream; WebSocket proxy, browser credential handling và secured Board-to-Project lookup cần sẵn sàng trước khi bật runtime #24.
 
 ## Chạy local
 

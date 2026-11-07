@@ -6,13 +6,13 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Controller hiện có
 
-`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, và `PUT /api/v1/admin/users/{userId}/roles` cập nhật vai trò hệ thống.
+`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, cùng các route `GET`, `POST`, `PUT`, `DELETE /api/v1/admin/users/{userId}/roles...` để xem và quản lý system role.
 
 - Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, đã bị bãi bỏ theo quyết định #7; ném `OPERATION_NOT_SUPPORTED`. Chính sách đã chốt là chỉ System Admin mới tạo Account.
 - `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
 - `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
-- `/admin/accounts`, `/admin/users/{userId}/status`, `/admin/users/{userId}/roles` được quản trị bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và Snapshot sync job trong cùng transaction.
-- `/users` và `/users/profiles` phục vụ Project Owner tìm kiếm thành viên và Frontend render tên hiển thị của Card/Member mà không làm lộ email hay dữ liệu nhạy cảm.
+- `/admin/accounts`, `/admin/users/{userId}/status` và các route `/admin/users/{userId}/roles...` được xử lý bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Gateway route `/api/v1/admin/**` tới user-service và áp dụng Account snapshot gate trước khi proxy. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và snapshot-sync job trong cùng transaction.
+- `/users` và `/users/profiles` có handler runtime: directory trả `id`, `fullName`, `email`; bulk profile trả `id`, `displayName`. Privacy policy và giới hạn directory cần được chốt riêng; hiện không mô tả email là field ẩn.
 
 
 ## Thiết kế mục tiêu đã thống nhất
@@ -20,7 +20,7 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 - System Admin quản lý vòng đời Account; Admin không có quyền nghiệp vụ trong Project.
 - `SYSTEM_ADMIN` là quyền hệ thống, không phải Project role. Account mang role này không được tạo Project hoặc làm Owner/Member. Nếu cùng một cá nhân cần tham gia Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`.
 - Owner duy nhất của Project không bị biến thành “admin hệ thống”. Account được mời chỉ thành Member sau khi chấp nhận Invitation.
-- Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account nên API directory/profile mục tiêu thuộc service này. Hai route dưới đây là đề xuất, chưa có controller.
+- Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account. Directory/profile handlers đã có trong `UserController`; field trả về đang là implementation hiện tại, còn privacy policy, query rules và consumer authorization cần được chốt.
 - Schema mục tiêu lưu system role bằng `SystemRoles` và quan hệ `UserSystemRoles`. SQL bootstrap local seed Account System Admin mẫu và role tương ứng trong `user_db`; Kỳ 1 không dùng Flyway. Cách bootstrap cho môi trường triển khai có thể được thiết kế sau Kỳ 2.
 - Khi Account status hoặc system role đổi, tăng `auth_version`, ghi Outbox event và durable snapshot-sync job cùng transaction trong user_db.
 - user-service sở hữu Account authentication snapshot và retry apply vào Redis theo version. Snapshot version cũ không được ghi đè version mới.
@@ -121,19 +121,24 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 ## API mục tiêu thuộc user-service
 
-User-service sở hữu Account/Auth và system role. Các route dưới đây là bản thiết kế, không phải controller runtime:
+User-service sở hữu Account/Auth và system role. Bảng dưới phân biệt API đã có controller runtime với API mục tiêu; contract chung chưa đồng nghĩa mọi route Project-first đã được nghiệm thu end-to-end:
 
-`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Route/payload và cách cấp credential cho API Admin vẫn còn mở; không suy ra chi tiết contract từ controller cũ.
+`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Admin API runtime nhận payload tạo Account gồm `email`, `password`, `fullName` và `roles` (tùy chọn; mặc định role `USER`), trả `UserResponse`; status và role management cũng đã có handler. Field `roles` hiện tại trái với quyết định không để client tự khai role khi tạo Account; đây là sai khác implementation, không phải contract đã duyệt. Formal contract, error mapping và cách cấp credential vẫn cần được đồng bộ.
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 TokenResponse` | Public; chỉ Account `ACTIVE` |
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
-| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email | `200 UserCandidate[]` (đề xuất) | Account đã xác thực; chỉ tìm Account `ACTIVE`; quyền directory/privacy và giới hạn cần chốt |
-| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list | `200 UserProfile[]` (đề xuất) | Account đã xác thực; batch profile tối thiểu |
-| `POST` | `/api/v1/admin/accounts` | Payload chưa chốt | `201 AccountSummary` (đề xuất) | System Admin |
+| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email; mặc định `limit=20` | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | Account đã xác thực; privacy/query rules cần chốt |
+| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list; tối đa 100 IDs được xử lý | Runtime `200 UserProfile[]`: `id`, `displayName` | Account đã xác thực; tombstone chưa có trong runtime |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "...", "roles": ["USER"] }` (`roles` tùy chọn) | `201 UserResponse` gồm `id`, `email`, `fullName`, `status`, `authVersion`, `roles` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `PATCH` | `/api/v1/admin/users/{userId}/status` | `{ "status": "SUSPENDED" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `GET` | `/api/v1/admin/users/{userId}/roles` | Không body | `200 string[]` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `POST` | `/api/v1/admin/users/{userId}/roles` | `{ "role": "SYSTEM_ADMIN" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `PUT` | `/api/v1/admin/users/{userId}/roles` | `{ "roles": ["USER", "SYSTEM_ADMIN"] }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | Không body | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 
-`UserCandidate` đề xuất gồm `id`, `fullName`, `email`; email chỉ được trả trong luồng chọn người mời nếu quyền tra cứu directory được duyệt. `UserProfile` đề xuất gồm `id`, `displayName`. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
+Runtime `UserCandidate` gồm `id`, `fullName`, `email`; runtime `UserProfile` gồm `id`, `displayName`. Email hiện được trả bởi directory handler; policy ai được tra cứu email còn mở. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
 
 Ví dụ response directory và bulk profile (shapes đề xuất):
 
@@ -161,8 +166,8 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 | Actor không phải System Admin | `403` | `SYSTEM_ADMIN_REQUIRED` |
 | Email đã được dùng | `409` | `EMAIL_ALREADY_EXISTS` |
 
-Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, cấp-thu hồi System Role và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
+Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; status operation, error mapping cuối và credential provisioning còn mở. Admin route/payload nêu trên là runtime hiện tại, chưa thay thế việc duyệt contract chuẩn. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
 
-`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route cấp/thu hồi role, Admin account API contract và credential provisioning còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
+`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route Admin và role management có implementation source; contract chuẩn và credential provisioning cần được đồng bộ. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 
 Contract chung và field proposal nằm tại [Kanban API](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế); các API hiện có trong controller và khả năng khởi chạy vẫn được mô tả riêng ở phần runtime phía trên.

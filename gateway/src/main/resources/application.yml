@@ -18,7 +18,7 @@ spring:
             - id: user-service
               uri: ${gateway.upstream.user}
               predicates:
-                - Path=/api/v1/users/**,/api/v1/auth/**
+                - Path=/api/v1/users/**,/api/v1/auth/**,/api/v1/admin/**
             # Đặt trước board-service vì Card API mang Project scope nhưng do task-service sở hữu.
             - id: task-service
               uri: ${gateway.upstream.task:http://localhost:8083}

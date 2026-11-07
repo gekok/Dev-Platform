@@ -132,7 +132,7 @@
         <mxCell id="3" value="SYSTEM_ADMIN thuộc user_db; OWNER/MEMBER thuộc board_db. Admin role tự nó không cấp quyền Project." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1420" height="44" as="geometry" />
         </mxCell>
-        <mxCell id="4" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;System Admin&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Đã chốt&lt;/b&gt;&lt;br/&gt;• Tạo tài khoản hệ thống&lt;br/&gt;• SQL bootstrap local seed Account Admin mẫu; Kỳ 1 không dùng Flyway&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Còn mở&lt;/b&gt;&lt;br/&gt;• Quyền/API cấp, thu hồi SystemRoles&lt;br/&gt;• Bootstrap môi trường triển khai (sau Kỳ 2)&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Không được chỉ vì là Admin&lt;/b&gt;&lt;br/&gt;• Là Owner/Member hoặc thao tác Project&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
+        <mxCell id="4" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;System Admin&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Đã chốt&lt;/b&gt;&lt;br/&gt;• Tạo tài khoản hệ thống&lt;br/&gt;• SQL bootstrap local seed Account Admin mẫu; Kỳ 1 không dùng Flyway&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Còn mở&lt;/b&gt;&lt;br/&gt;• Contract chuẩn về cấp, thu hồi SystemRoles&lt;br/&gt;• Bootstrap môi trường triển khai (sau Kỳ 2)&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Không được chỉ vì là Admin&lt;/b&gt;&lt;br/&gt;• Là Owner/Member hoặc thao tác Project&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
           <mxGeometry x="55" y="160" width="430" height="395" as="geometry" />
         </mxCell>
         <mxCell id="5" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;Owner&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Owner duy nhất trong Project&lt;/b&gt;&lt;br/&gt;• Tạo Project; người tạo thành Owner&lt;br/&gt;• Mời/gỡ Member&lt;br/&gt;• Tạo Board; quản lý lifecycle&lt;br/&gt;• Tạo Column/Card, move, assign, comment&lt;br/&gt;• Không thể tự rời; có thể CANCELLED Project&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
@@ -141,7 +141,7 @@
         <mxCell id="6" value="&lt;div style=&#39;font-size:16px;font-weight:bold;&#39;&gt;Member&lt;/div&gt;&lt;hr/&gt;&lt;div style=&#39;font-size:12px;line-height:1.4;&#39;&gt;&lt;b&gt;Sau khi Accept Invitation&lt;/b&gt;&lt;br/&gt;• Tạo Column/Card, move, assign, comment&lt;br/&gt;• Tự rời Project&lt;br/&gt;&lt;br/&gt;&lt;b&gt;Không được&lt;/b&gt;&lt;br/&gt;• Mời/gỡ người khác&lt;br/&gt;• Tạo Board hoặc quản lý lifecycle&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=14;fontSize=12;strokeColor=#82b366;fillColor=#d5e8d4;" vertex="1" parent="1">
           <mxGeometry x="1005" y="160" width="430" height="395" as="geometry" />
         </mxCell>
-        <mxCell id="7" value="&lt;b&gt;Đã chốt:&lt;/b&gt; Account mang SYSTEM_ADMIN không được làm Owner/Member trong Project; người cần cả hai phạm vi dùng hai Account riêng. SQL bootstrap local seed Admin mẫu; Kỳ 1 không dùng Flyway.&lt;br/&gt;&lt;b&gt;Còn mở:&lt;/b&gt; API cấp/thu hồi system role, Admin API/credential provisioning và bootstrap môi trường triển khai (sau Kỳ 2). Quyền Project đến từ Membership, không từ claim do client gửi." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+        <mxCell id="7" value="&lt;b&gt;Đã chốt:&lt;/b&gt; Account mang SYSTEM_ADMIN không được làm Owner/Member trong Project; người cần cả hai phạm vi dùng hai Account riêng. SQL bootstrap local seed Admin mẫu; Kỳ 1 không dùng Flyway.&lt;br/&gt;&lt;b&gt;Còn mở:&lt;/b&gt; Contract chuẩn Admin/role và credential provisioning và bootstrap môi trường triển khai (sau Kỳ 2). Quyền Project đến từ Membership, không từ claim do client gửi." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
           <mxGeometry x="55" y="600" width="1390" height="100" as="geometry" />
         </mxCell>
         <mxCell id="8" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">
@@ -242,13 +242,13 @@
             <mxPoint x="716" y="509" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; System Admin: POST /api/v1/admin/accounts (route proposal)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+        <mxCell id="17" value="&lt;b&gt;08.&lt;/b&gt; System Admin: POST /api/v1/admin/accounts (đã có source)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#456b8a;strokeWidth=1.4;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="140" y="563" as="sourcePoint" />
             <mxPoint x="428" y="563" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Admin route/controller chưa hoàn chỉnh" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+        <mxCell id="18" value="&lt;b&gt;09.&lt;/b&gt; Gateway route /api/v1/admin/** tới user-service" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="428" y="617" as="sourcePoint" />
             <mxPoint x="716" y="617" as="targetPoint" />

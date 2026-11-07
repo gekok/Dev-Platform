@@ -6,18 +6,16 @@ Route table này được đối chiếu với gateway/src/main/resources/applic
 
 | Thứ tự | Route ID | Path | Upstream | Ghi chú |
 |---:|---|---|---|---|
-| 1 | user-service | /api/v1/users/**, /api/v1/auth/** | http://localhost:8081 | User/Auth runtime |
+| 1 | user-service | /api/v1/users/**, /api/v1/auth/**, /api/v1/admin/** | http://localhost:8081 | User/Auth/Admin runtime; Admin controller cũng kiểm tra `SYSTEM_ADMIN` |
 | 2 | task-service | /api/v1/projects/*/boards/*/cards/**, /api/v1/projects/*/cards/** | http://localhost:8083 | Card routes Project-scoped; phải đứng trước route rộng của board-service |
 | 3 | board-service | /api/v1/projects/**, /api/v1/boards/** | http://localhost:8082 | Project target và Board-first runtime |
-| 4 | task-service-ws | /ws/** | http://localhost:8083 | Route hiện khai báo HTTP upstream; Gateway #31 cần xác nhận/chuyển sang WebSocket upstream. Task chưa đăng ký handler; runtime #24 chờ Gateway auth, proxy WS và Board lookup thật |
+| 4 | task-service-ws | /ws/** | http://localhost:8083 | Route hiện khai báo HTTP upstream; Gateway #31 cần xác nhận/chuyển sang WebSocket upstream. Task chưa đăng ký handler; runtime #24 chờ credential handling, proxy WS và Board lookup thật |
 | 5 | notification-service | /api/v1/notifications/** | http://localhost:8084 | Notification client routes |
 
 Path được proxy nguyên dạng, không rewrite. Project-scoped Card route được khai báo cụ thể trước /api/v1/projects/** để Task nhận đúng request.
 
 ## Routes chưa được khai báo
 
-- /api/v1/admin/**: Account administration thuộc user-service; chưa có Gateway route/controller hoàn chỉnh.
-- /api/v1/users?query=... và /api/v1/users/profiles/**: directory/bulk profile là API mục tiêu, chưa có controller target.
 - /internal/v1/notifications/**: notification-service có controller nội bộ, nhưng Gateway không expose route này; controller hiện chưa có service-token enforcement.
 - Các route Invitation/Membership được bao phủ bởi /api/v1/projects/** trong cấu hình, nhưng board-service chưa có Project/Membership controller runtime.
 

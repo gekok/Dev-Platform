@@ -26,7 +26,7 @@
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
 - [x] Gateway có JWT validation, Account snapshot gate và ghi đè `X-User-Id`; không tin role/actor ID trong request body/header. Snapshot-sync runtime, tích hợp E2E và direct-service ingress còn mở.
-- [ ] Trước khi bật #24: hoàn tất Gateway identity propagation, secured Board-to-Project lookup và WebSocket proxy; kiểm thử revoke khi socket đang mở.
+- [ ] Trước khi bật #24: bảo vệ direct-service boundary, hoàn tất secured Board-to-Project lookup và WebSocket proxy; kiểm thử revoke khi socket đang mở. HTTP Gateway identity propagation đã có source.
 - [ ] Task authorization guard đọc Account/Project snapshots từ Redis trên mọi Card/Comment route có bảo vệ.
 - [ ] Membership cleanup worker, Inbox transaction, fence và Outbox completion được nối; cleanup không chặn revoke completion.
 
