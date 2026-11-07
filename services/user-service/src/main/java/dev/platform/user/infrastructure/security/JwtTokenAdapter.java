@@ -25,10 +25,12 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class JwtTokenAdapter implements TokenPort {
 
@@ -136,12 +138,16 @@ public class JwtTokenAdapter implements TokenPort {
       }
 
       KeyPair keyPair = generateRsaKeyPair();
-      if (path.getParent() != null) {
-        Files.createDirectories(path.getParent());
+      try {
+        if (path.getParent() != null) {
+          Files.createDirectories(path.getParent());
+        }
+        String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+        String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+        Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
+      } catch (Exception writeEx) {
+        log.warn("Could not persist generated RSA key file to disk ({}), continuing with in-memory key: {}", targetPath, writeEx.getMessage());
       }
-      String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-      String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-      Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
       return keyPair;
     } catch (Exception e) {
       if (e instanceof IllegalStateException ise) {
@@ -190,6 +196,8 @@ public class JwtTokenAdapter implements TokenPort {
           privateKeyStr
               .replace("-----BEGIN PRIVATE KEY-----", "")
               .replace("-----END PRIVATE KEY-----", "")
+              .replace("\\n", "")
+              .replace("\\r", "")
               .replaceAll("\\s+", "");
       byte[] privBytes = Base64.getDecoder().decode(privClean);
       RSAPrivateKey privKey =
@@ -199,6 +207,8 @@ public class JwtTokenAdapter implements TokenPort {
           publicKeyStr
               .replace("-----BEGIN PUBLIC KEY-----", "")
               .replace("-----END PUBLIC KEY-----", "")
+              .replace("\\n", "")
+              .replace("\\r", "")
               .replaceAll("\\s+", "");
       byte[] pubBytes = Base64.getDecoder().decode(pubClean);
       RSAPublicKey pubKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));

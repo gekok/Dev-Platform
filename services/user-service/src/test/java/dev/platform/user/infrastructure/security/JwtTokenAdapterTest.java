@@ -70,4 +70,25 @@ class JwtTokenAdapterTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("do not match");
   }
+
+  @Test
+  @DisplayName("Parse thành công cặp khóa PEM chứa ký tự newline dạng escape (\\n) từ biến môi trường")
+  void shouldParsePemWithEscapedNewlines() throws Exception {
+    KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
+    gen.initialize(2048);
+    KeyPair keyPair = gen.generateKeyPair();
+
+    String privBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+    String pubBase64 = java.util.Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+
+    String privWithEscapedNewlines = "-----BEGIN PRIVATE KEY-----\\n" + privBase64 + "\\n-----END PRIVATE KEY-----";
+    String pubWithEscapedNewlines = "-----BEGIN PUBLIC KEY-----\\n" + pubBase64 + "\\n-----END PUBLIC KEY-----";
+
+    JwtTokenAdapter envAdapter = new JwtTokenAdapter(3600000L, privWithEscapedNewlines, pubWithEscapedNewlines, "");
+    UserAggregate user = UserAggregate.create("env@demo.local", "hash", "Env User", Set.of("USER"));
+
+    String token = envAdapter.issue(user);
+    assertThat(token).isNotBlank();
+    assertThat(envAdapter.parseAndValidate(token)).isEqualTo(user.getId());
+  }
 }
