@@ -17,7 +17,7 @@ Cho phép gán/bỏ gán Card trong Project, lưu membership generation và gi�
 
 ## Cleanup và retry
 
-- Event cleanup Membership đã có contract trong catalog chung. Task listener bind durable queue theo routing key đã duyệt và chỉ ACK sau khi recorder transaction commit. Listener cần `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY=true`; cờ retry/DLQ mặc định false. Khi xử lý lỗi hiện NACK/requeue; chưa bật cho tới khi có bounded retry/backoff và DLQ tương thích với queue.
+- Event cleanup Membership đã có contract trong catalog chung. Task listener bind durable queue theo routing key đã duyệt và chỉ ACK sau khi recorder transaction commit. Listener cần `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY=true`; cờ retry/DLQ mặc định false. Khi xử lý lỗi hiện NACK/requeue; chưa bật cho tới khi topology chung có bounded retry/backoff và DLQ, ACK/NACK của Task tương thích, và poison-message verification xác nhận message lỗi không quay vòng vô hạn.
 - Worker chỉ xóa assignment cùng project/user/membershipVersion và board scope. Trước khi hoàn tất phải có fence, kể cả boardIds rỗng. Comment và author không bị sửa.
 - Hiện worker bắt lỗi ngay trong transaction sau khi có thể đã xóa assignment hoặc ghi completion. Điều chỉnh để một lỗi sau mutation rollback toàn bộ batch và Outbox; cập nhật retry ở transaction riêng sau rollback. Completion chỉ được commit cùng kết quả batch; giữ source aggregate version và eventId ổn định theo Outbox retry.
 - Kiểm tra xử lý cùng lúc, duplicate, rejoin và retry. Không chặn revoke completion chờ cleanup.

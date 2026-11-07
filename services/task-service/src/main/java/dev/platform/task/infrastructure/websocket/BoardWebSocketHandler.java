@@ -50,8 +50,15 @@ public class BoardWebSocketHandler extends TextWebSocketHandler {
         }
         Long boardId = attribute(session, BoardWebSocketHandshakeInterceptor.BOARD_ID, Long.class);
         WebSocketSession safeSession = new ConcurrentWebSocketSessionDecorator(session, 5_000, 64 * 1024);
-        sessionsByBoard.computeIfAbsent(boardId, ignored -> new ConcurrentHashMap<>())
-                .put(session.getId(), safeSession);
+        sessionsByBoard.compute(boardId, (ignored, sessions) -> {
+            if (!safeSession.isOpen()) {
+                return sessions;
+            }
+            ConcurrentMap<String, WebSocketSession> boardSessions =
+                    sessions == null ? new ConcurrentHashMap<>() : sessions;
+            boardSessions.put(safeSession.getId(), safeSession);
+            return boardSessions;
+        });
     }
 
     @Override
