@@ -16,6 +16,7 @@ import dev.platform.task.assignmentcleanup.persistence.entity.MembershipAssignme
 import dev.platform.task.assignmentcleanup.persistence.repository.MembershipAssignmentFenceJpaRepository;
 import dev.platform.task.application.port.out.SaveCardPort;
 import dev.platform.task.application.port.in.GetCardsPort;
+import dev.platform.task.application.exception.ProjectAccessDeniedException;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import dev.platform.task.domain.aggregate.CardAggregate.CommentValue;
 import dev.platform.task.domain.aggregate.CardAggregate.Status;
@@ -71,6 +72,12 @@ public class SaveCardAdapter implements SaveCardPort, GetCardsPort {
     @Override
     public Optional<CardAggregate> findById(Long projectId, Long id) {
         return cardJpaRepository.findByIdAndProjectId(id, projectId)
+                .map(entity -> toAggregate(entity, primaryAssignee(entity.getId())));
+    }
+
+    @Override
+    public Optional<CardAggregate> findForUpdate(Long projectId, Long id) {
+        return cardJpaRepository.lockByIdAndProjectId(id, projectId)
                 .map(entity -> toAggregate(entity, primaryAssignee(entity.getId())));
     }
 
@@ -169,7 +176,7 @@ public class SaveCardAdapter implements SaveCardPort, GetCardsPort {
         MembershipAssignmentFenceId fenceId = new MembershipAssignmentFenceId(
                 card.getProjectId(), card.getAssigneeId(), card.getAssigneeMembershipVersion());
         if (fenceRepository.existsById(fenceId)) {
-            throw new IllegalStateException("ASSIGNEE_MEMBERSHIP_REVOKED");
+            throw new ProjectAccessDeniedException("Assignee membership generation has been revoked");
         }
     }
 

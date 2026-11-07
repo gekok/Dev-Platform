@@ -2,7 +2,7 @@
 
 ## Phạm vi
 
-Di chuyển Card trong Project/Board và cập nhật position source/target nguyên tử; không phát event chưa được duyệt, không gọi internal REST chưa bảo mật. Khi chưa thể xác minh Board/Column, API phải từ chối và không ghi dữ liệu. Không thêm mock.
+Di chuyển Card trong Project/Board và cập nhật position source/target nguyên tử; chưa phát `card.moved` Notification event vì #25 chỉ duyệt intent assignment và mention. Không gọi internal REST chưa bảo mật. Khi chưa thể xác minh Board/Column, API phải từ chối và không ghi dữ liệu. Không thêm mock.
 
 ## Phương án
 
@@ -13,7 +13,7 @@ Phương án được chọn: tách kiểm tra quan hệ Board/Column thành por
 - Kiểm tra actor qua guard hiện có. Tìm Card theo projectId/cardId; Card không tồn tại hoặc sai Project trả 404. Kiểm tra source và destination thuộc Board/Project của Card qua port; chưa có adapter thật thì trả 503 và không ghi.
 - Dùng transaction SQL Server cho toàn bộ thay đổi. Serialize các lần reorder cùng Project/Board bằng khóa giao dịch SQL Server `sp_getapplock` theo Project/Board, xử lý thất bại lấy lock như lỗi và rollback. Mọi đường ghi position trong task-service phải dùng cùng khóa trước khi bật move; issue #20 tạo Card hiện đang fail closed và cần áp dụng khóa khi triển khai.
 - Sắp các Card theo `position DESC, id DESC`; `toPosition` là chỉ số hiển thị bắt đầu từ 0, sau khi gỡ Card đang di chuyển; chỉ chấp nhận 0 đến số Card đích còn lại. Chèn Card vào chỉ số đó, gán lại position không âm, duy nhất theo thứ tự giảm dần cho mỗi Column bị ảnh hưởng. Reorder cùng Column xử lý một danh sách. Ghi và trả Card cùng transaction; lỗi rollback toàn bộ.
-- Không phát domain event đến khi catalog và Outbox contract được duyệt. Ghi rõ cursor có thể stale sau move. Không thay đổi schema và không thêm FK giữa service.
+- Chỉ phát WebSocket `card.moved` theo semantics best-effort của #24; không phát durable Notification event `MOVED` theo catalog #25 hiện tại. Ghi rõ cursor có thể stale sau move. Không thay đổi schema và không thêm FK giữa service.
 
 ## Kiểm tra và giới hạn
 

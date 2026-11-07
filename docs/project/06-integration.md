@@ -1,6 +1,6 @@
 # Tích hợp Kỳ 1 theo Project-first
 
-**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Task controller đã có Project-scoped routes, Redis guard và assignment-cleanup seams; Project/Membership mutation, Gateway authentication, Rabbit listener wiring và DB migrations chưa được nối end-to-end.
+**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Task controller đã có Project-scoped routes, Redis guard và assignment-cleanup consumer source; Project/Membership mutation, Gateway authentication, broker delivery/ACK và DB migrations chưa được nghiệm thu end-to-end.
 
 **Nguồn chuẩn:** [architecture decisions](architecture-decisions.md), [API Kỳ 1](../api/kanban-api.md), [chỉ mục tài liệu](../README.md).
 
@@ -25,6 +25,7 @@
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
 - [ ] Gateway có JWT auth/identity forwarding an toàn; bỏ/ghi đè `X-User-Id` do client gửi và không tin role/actor ID trong request body/header.
+- [ ] Trước khi bật #24: hoàn tất Gateway identity propagation, secured Board-to-Project lookup và WebSocket proxy; kiểm thử revoke khi socket đang mở.
 - [ ] Task authorization guard đọc Account/Project snapshots từ Redis trên mọi Card/Comment route có bảo vệ.
 - [ ] Membership cleanup worker, Inbox transaction, fence và Outbox completion được nối; cleanup không chặn revoke completion.
 
@@ -44,7 +45,7 @@
 ### 2. Card, Comment, realtime và Notification
 
 - [ ] Card route mang `projectId`, Task lưu `cards.project_id` và đối chiếu project path với Card khi đọc/sửa. Kiểm tra Board/Column thuộc Project vẫn là integration TODO vì internal REST chưa được bảo mật.
-- [ ] Move Card cập nhật thứ tự; realtime event đồng bộ client.
+- [ ] Move Card cập nhật thứ tự; #24 giữ nguyên route/payload đã duyệt nhưng runtime chưa triển khai trước khi Gateway identity, Board lookup và WS proxy sẵn sàng.
 - [ ] Comment/mention giữ đúng author và phạm vi Project.
 - [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Wire proposal per-Column yêu cầu columnId và cursor gắn Board/Column/sort; khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.
 - [ ] Notification list/read chỉ trả dữ liệu của Account tương ứng.
@@ -56,6 +57,8 @@
 Kỳ 1 không có Account deletion, `DELETING` status hay cascade Project. Kỳ 2 sẽ thiết kế soft delete, Owner succession và cách theo dõi operation riêng.
 
 ### 4. Độ tin cậy event
+
+Task producer #25 ghi `card.assigned` và `comment.mentioned` vào shared Outbox cùng transaction với Card/Comment; recipient rules, payload và `aggregateVersion=1` event-intent semantics đã được chốt trong architecture decisions. Không cần thêm Card version hoặc schema/migration theo contract này. Consumer Notification, broker routing/Inbox/ACK, retry/DLQ và end-to-end delivery chưa được tích hợp; consumer cleanup #22 là flow riêng. Các tiêu chí generic dưới đây còn là acceptance của task tích hợp, không phải bằng chứng producer đã giao được event qua RabbitMQ.
 
 - [ ] Producer commit business state và Outbox cùng transaction.
 - [ ] Relay đánh dấu SENT khi có Publisher Confirm và không có Publisher Return; khi chưa xác định publish outcome, retry cùng eventId, aggregateVersion, payload.
@@ -72,6 +75,8 @@ Kỳ 1 không có Account deletion, `DELETING` status hay cascade Project. Kỳ 
 - [ ] Mỗi service chỉ sửa dữ liệu do mình sở hữu.
 - [ ] Membership revoke không báo hoàn tất trước Redis apply; assignment cleanup tiếp tục retry riêng và không làm sống lại quyền.
 - [ ] Đối chiếu HTTP/event/error/status với tài liệu chung và docs service.
+- [ ] Chỉ bật `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED` sau khi Gateway xác thực JWT, ghi đè `X-User-Id` từ principal và chặn truy cập trực tiếp tới task-service; kiểm tra actor giả mạo bị từ chối.
+- [ ] Chỉ bật `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` sau khi queue có bounded retry/backoff và DLQ tương thích với NACK/requeue; kiểm tra poison message không quay vòng vô hạn.
 - [ ] Chạy end-to-end với DB/RabbitMQ, lưu response/log/event/DB evidence cho happy path và lỗi.
 
 ## Chưa thuộc lần tích hợp Kỳ 1

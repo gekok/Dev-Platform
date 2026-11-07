@@ -3,6 +3,7 @@ package dev.platform.task.api;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import dev.platform.task.api.dto.AddCommentRequest;
 import dev.platform.task.api.dto.AssignCardRequest;
+import dev.platform.task.api.dto.CardDetailResponse;
 import dev.platform.task.api.dto.CardResponse;
 import dev.platform.task.api.dto.CommentResponse;
 import dev.platform.task.api.dto.CreateCardRequest;
@@ -24,9 +26,11 @@ import dev.platform.task.application.command.AddCommentCommand;
 import dev.platform.task.application.command.AssignCardCommand;
 import dev.platform.task.application.command.CreateCardCommand;
 import dev.platform.task.application.command.MoveCardCommand;
+import dev.platform.task.application.exception.CardOperationUnavailableException;
 import dev.platform.task.application.port.in.AddCommentPort;
 import dev.platform.task.application.port.in.AssignCardPort;
 import dev.platform.task.application.port.in.CreateCardPort;
+import dev.platform.task.application.port.in.GetCardPort;
 import dev.platform.task.application.port.in.GetCardsPort;
 import dev.platform.task.application.port.in.MoveCardPort;
 import dev.platform.task.application.service.ProjectAuthorizationGuard;
@@ -47,10 +51,14 @@ public class CardController {
 
     private final CreateCardPort createCardPort;
     private final GetCardsPort getCardsPort;
+    private final GetCardPort getCardPort;
     private final MoveCardPort moveCardPort;
     private final AssignCardPort assignCardPort;
     private final AddCommentPort addCommentPort;
     private final ProjectAuthorizationGuard authorizationGuard;
+
+    @Value("${dev-platform.security.trusted-gateway-identity.enabled:false}")
+    private boolean trustedGatewayIdentityEnabled;
 
     // Tạo thẻ (3.1).
     @PostMapping("/api/v1/projects/{projectId}/boards/{boardId}/cards")
@@ -60,6 +68,7 @@ public class CardController {
             @RequestBody CreateCardRequest request,
             // TODO Gateway phải ghi đè header này từ principal đã xác thực.
             @RequestHeader(value = "X-User-Id") UUID userId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, userId);
         Long assigneeMembershipVersion = request.assigneeId() == null ? null
                 : authorizationGuard.requireActiveAssigneeMembership(projectId, request.assigneeId());
@@ -73,10 +82,11 @@ public class CardController {
     public ResponseEntity<CardPage> listCards(
             @PathVariable("projectId") Long projectId,
             @PathVariable("boardId") Long boardId,
-            @RequestParam(value = "columnId", required = false) Long columnId,
+            @RequestParam("columnId") Long columnId,
             @RequestParam(value = "limit", defaultValue = "5") int limit,
             @RequestParam(value = "cursor", required = false) String cursor,
             @RequestHeader(value = "X-User-Id") UUID userId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, userId);
         if (limit < 1 || limit > 20) throw new IllegalArgumentException("limit must be between 1 and 20");
         CardCursor.Anchor anchor = cursor == null ? null : CardCursor.decode(cursor, projectId, boardId, columnId);
@@ -91,6 +101,16 @@ public class CardController {
 
     public record CardPage(List<CardResponse> items, String nextCursor) {}
 
+    @GetMapping("/api/v1/projects/{projectId}/cards/{cardId}")
+    public ResponseEntity<CardDetailResponse> getCard(
+            @PathVariable("projectId") Long projectId,
+            @PathVariable("cardId") Long cardId,
+            @RequestHeader(value = "X-User-Id") UUID userId) {
+        requireTrustedGatewayIdentity();
+        authorizationGuard.requireProjectMember(projectId, userId);
+        return ResponseEntity.ok(CardDetailResponse.from(getCardPort.getById(projectId, cardId)));
+    }
+
     // Kéo thẻ qua cột (3.3).
     @PatchMapping("/api/v1/projects/{projectId}/cards/{cardId}/move")
     public ResponseEntity<CardResponse> moveCard(
@@ -98,6 +118,7 @@ public class CardController {
             @PathVariable("cardId") Long cardId,
             @RequestBody MoveCardRequest request,
             @RequestHeader(value = "X-User-Id") UUID actorId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, actorId);
         if (request.toPosition() == null) {
             throw new IllegalArgumentException("toPosition is required");
@@ -115,6 +136,7 @@ public class CardController {
             @PathVariable("cardId") Long cardId,
             @RequestBody AssignCardRequest request,
             @RequestHeader(value = "X-User-Id") UUID actorId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, actorId);
         Long assigneeMembershipVersion = request.assigneeId() == null ? null
                 : authorizationGuard.requireActiveAssigneeMembership(projectId, request.assigneeId());
@@ -129,6 +151,7 @@ public class CardController {
     public ResponseEntity<List<CommentResponse>> listComments(
             @PathVariable("projectId") Long projectId, @PathVariable("cardId") Long cardId,
             @RequestHeader(value = "X-User-Id") UUID userId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, userId);
         return ResponseEntity.ok(addCommentPort.getComments(projectId, cardId).stream()
                 .map(comment -> CommentResponse.from(cardId, comment)).toList());
@@ -140,10 +163,17 @@ public class CardController {
             @PathVariable("cardId") Long cardId,
             @RequestBody AddCommentRequest request,
             @RequestHeader(value = "X-User-Id") UUID authorId) {
+        requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, authorId);
         AddCommentCommand cmd = new AddCommentCommand(
                 projectId, cardId, authorId, request.content(), request.mentionedUserIds());
         CommentValue comment = addCommentPort.addComment(cmd);
         return ResponseEntity.status(HttpStatus.CREATED).body(CommentResponse.from(cardId, comment));
+    }
+
+    private void requireTrustedGatewayIdentity() {
+        if (!trustedGatewayIdentityEnabled) {
+            throw new CardOperationUnavailableException();
+        }
     }
 }
