@@ -184,7 +184,7 @@ Board/Column thuộc Project phải được xác minh từ nguồn đáng tin c
 | `GET` | `/api/v1/notifications/me?unreadOnly=false` | `unreadOnly` mặc định false | `200 Notification[]` | Chỉ Notification của Account hiện tại |
 | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Không body | `200 Notification` đã đọc | Chỉ recipient |
 
-Shape tham khảo: `{ id, type, title, projectId, cardId, boardId, read, createdAt }`; `projectId`, `cardId`, `boardId` có thể null với Notification hệ thống hoặc Notification không gắn entity tương ứng. Demo hiện dùng `ASSIGNED`, `MENTIONED`, `MOVED`; type Kỳ 1 cần duyệt theo event thực tế. Notification được tạo từ domain event/internal integration, không cho client tự tạo. Internal route hiện là skeleton và bị tắt mặc định; nếu bật, nó vẫn chưa có bảo vệ service-to-service và không được expose qua Gateway.
+Shape tham khảo: `{ id, type, title, projectId, cardId, boardId, read, createdAt }`; `projectId`, `cardId`, `boardId` có thể null với Notification hệ thống hoặc Notification không gắn entity tương ứng. Kỳ 1 Task producer phát `card.assigned` → `ASSIGNED` cho assignee mới khác actor, và `comment.mentioned` → `MENTIONED` cho recipient IDs duy nhất còn là Project Member khi Comment được ghi, trừ tác giả. Không phát `MOVED`. Notification consumer tạo một record cho mỗi recipient trong transaction Inbox; title được tạo ở Notification service từ event type/context, không lấy từ Comment body. Task event payload chỉ mang recipient IDs và context IDs, không chứa Card title/Comment body. Producer Outbox đã có trong Task source; Notification consumer và E2E broker flow vẫn thuộc integration task. Notification được tạo từ event, không cho client tự tạo. Internal route hiện là skeleton và bị tắt mặc định; nếu bật, nó vẫn chưa có bảo vệ service-to-service và không được expose qua Gateway.
 
 Account/Project deletion và Notification retention thuộc Kỳ 2. Notification Kỳ 1 thuộc Account nhận; Project/Board/Card chỉ là context, không có cascade delete theo Project.
 
@@ -517,15 +517,19 @@ Response `200 OK`: thông báo sau khi đổi `read` thành `true`.
 
 ### Real-time
 
+Issue #24 architecture approved on 2026-11-06. This is the approved target contract; Task runtime must wait until Gateway identity, trusted Board lookup, and Gateway WebSocket proxy are ready.
+
 Web React giữ một kênh sống (WebSocket) theo bảng:
 
 ```text
 WS /ws/boards/{boardId}
 ```
 
-Header: `Authorization: Bearer <jwt>`.
+Header contract hiện ghi `Authorization: Bearer <jwt>`; Gateway phải xác thực handshake và chuyển identity tin cậy tới Task. Task không tin `X-User-Id` hay `projectId` do client gửi. Task resolve Board→Project từ nguồn persisted đáng tin cậy, rồi kiểm tra Account và Project membership qua snapshot ở lúc handshake, định kỳ khi socket mở và ngay trước mỗi lần gửi. Nếu không xác minh được identity, Board relation hoặc snapshot, Task từ chối handshake/đóng socket. Runtime chưa được bật trước khi các phụ thuộc này sẵn sàng. Cần xác nhận cách browser WebSocket cung cấp credential và cách Gateway chuyển identity trước khi tích hợp.
 
-Event server bắn xuống:
+Fanout chỉ tới các session cùng Board trong Task instance hiện tại. Event được gửi sau khi transaction Card/Comment commit; send/queue lỗi có thể làm rơi event nhưng không đổi kết quả HTTP đã commit. WebSocket không lưu bền, không retry/replay và không bảo đảm thứ tự hay nhận đủ. Khi reconnect, client refetch REST. Event không chứa title hoặc Comment body. Đây là semantics cho WebSocket #24, không phải RabbitMQ catalog của #25.
+
+Event server gửi xuống:
 
 ```json
 { "event": "card.moved", "cardId": 100, "toColumnId": 11, "toPosition": 0 }
@@ -538,6 +542,8 @@ Event server bắn xuống:
 ```json
 { "event": "comment.added", "cardId": 100, "commentId": 900 }
 ```
+
+Gateway auth runtime, Board-to-Project adapter an toàn và proxy WebSocket qua Gateway chưa sẵn sàng; Task handler hiện chưa được đăng ký.
 
 Mobile Flutter không giữ socket suốt. Nhận việc gán và mention qua đẩy
 (push FCM). Bấm vào tin mới mở app và gọi API lấy chi tiết.

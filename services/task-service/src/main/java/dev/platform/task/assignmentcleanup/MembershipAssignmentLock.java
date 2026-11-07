@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import lombok.RequiredArgsConstructor;
+import dev.platform.task.application.port.out.AssignmentLockPort;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -13,11 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
-public class MembershipAssignmentLock {
+public class MembershipAssignmentLock implements AssignmentLockPort {
 
     private final JdbcTemplate jdbcTemplate;
 
     @Transactional(propagation = Propagation.MANDATORY)
+    @Override
     public void lock(Long projectId, java.util.UUID userId) {
         String lockKey = "membership-assignment:" + projectId + ":" + userId;
         jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {

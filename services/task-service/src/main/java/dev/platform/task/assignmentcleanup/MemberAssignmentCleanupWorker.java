@@ -1,9 +1,11 @@
 package dev.platform.task.assignmentcleanup;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +22,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
 @RequiredArgsConstructor
@@ -33,12 +37,29 @@ public class MemberAssignmentCleanupWorker {
     private final MembershipAssignmentLock membershipLock;
     private final OutboxEventWriter outbox;
     private final ObjectMapper objectMapper;
+    private final PlatformTransactionManager transactionManager;
 
     @Scheduled(fixedDelayString = "${dev-platform.assignment-cleanup.fixed-delay-ms:1000}")
-    @Transactional
     public void processNextBatch() {
-        jobs.findFirstByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
-                MemberAssignmentCleanupStatus.PENDING, OffsetDateTime.now()).ifPresent(this::process);
+        AtomicReference<UUID> jobId = new AtomicReference<>();
+        TransactionTemplate batch = new TransactionTemplate(transactionManager);
+        batch.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        try {
+            batch.executeWithoutResult(status -> jobs
+                    .findFirstByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
+                            MemberAssignmentCleanupStatus.PENDING, OffsetDateTime.now())
+                    .ifPresent(job -> {
+                        jobId.set(job.getJobId());
+                        process(job);
+                    }));
+        } catch (RuntimeException exception) {
+            if (jobId.get() == null) throw exception;
+            TransactionTemplate retry = new TransactionTemplate(transactionManager);
+            retry.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            retry.executeWithoutResult(status -> jobs.lockByJobId(jobId.get())
+                    .filter(job -> job.getStatus() == MemberAssignmentCleanupStatus.PENDING)
+                    .ifPresent(job -> job.scheduleRetry(OffsetDateTime.now(), exception.getMessage())));
+        }
     }
 
     private void process(MemberAssignmentCleanupJobEntity job) {
@@ -46,14 +67,14 @@ public class MemberAssignmentCleanupWorker {
         try {
             List<Long> boardIds = objectMapper.readValue(job.getBoardIdsJson(), new TypeReference<>() {
             });
-            if (boardIds.isEmpty()) {
-                complete(job);
-                return;
-            }
             var fenceId = new dev.platform.task.assignmentcleanup.persistence.entity.MembershipAssignmentFenceId(
                     job.getProjectId(), job.getUserId(), job.getMembershipVersion());
             if (!fences.existsById(fenceId)) {
                 throw new IllegalStateException("Assignment cleanup fence is missing for job " + job.getJobId());
+            }
+            if (boardIds.isEmpty()) {
+                complete(job);
+                return;
             }
             List<TaskAssigneeEntity> batch = assignees
                     .findTop100ByIdUserIdAndMembershipVersionAndCardProjectIdAndCardBoardIdInAndCardIdGreaterThanOrderByCardIdAsc(
@@ -70,8 +91,8 @@ public class MemberAssignmentCleanupWorker {
             if (!hasMore) {
                 publishCompletion(job);
             }
-        } catch (RuntimeException | IOException exception) {
-            job.scheduleRetry(OffsetDateTime.now(), exception.getMessage());
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
         }
     }
 

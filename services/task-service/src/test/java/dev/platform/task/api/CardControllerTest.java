@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import dev.platform.task.application.port.in.*;
 import dev.platform.task.application.service.*;
 import dev.platform.task.application.exception.CardOperationUnavailableException;
@@ -19,7 +20,9 @@ class CardControllerTest {
         GetCardsPort reader = mock(GetCardsPort.class);
         ProjectAuthorizationGuard guard = mock(ProjectAuthorizationGuard.class);
         CardController controller = new CardController(mock(CreateCardPort.class), reader,
-                mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class), guard);
+                mock(GetCardPort.class), mock(MoveCardPort.class), mock(AssignCardPort.class),
+                mock(AddCommentPort.class), guard);
+        ReflectionTestUtils.setField(controller, "trustedGatewayIdentityEnabled", true);
         CardAggregate first = new CardAggregate(); first.setId(7L); first.setPosition(3);
         CardAggregate extra = new CardAggregate(); extra.setId(6L); extra.setPosition(3);
         when(reader.getByBoard(1L, 2L, 3L, null, null, 2)).thenReturn(List.of(first, extra));
@@ -32,12 +35,14 @@ class CardControllerTest {
     }
 
     @Test
-    void createFailsClosed() {
+    void createFailsClosedBeforeTrustedGatewayIdentity() {
         CreateCardPort writer = mock(CreateCardPort.class);
-        CardController controller = new CardController(writer, mock(GetCardsPort.class), mock(MoveCardPort.class),
-                mock(AssignCardPort.class), mock(AddCommentPort.class), mock(ProjectAuthorizationGuard.class));
+        CardController controller = new CardController(writer, mock(GetCardsPort.class), mock(GetCardPort.class),
+                mock(MoveCardPort.class), mock(AssignCardPort.class), mock(AddCommentPort.class),
+                mock(ProjectAuthorizationGuard.class));
         when(writer.create(any())).thenThrow(new CardOperationUnavailableException());
         assertThrows(CardOperationUnavailableException.class,
                 () -> controller.createCard(1L, 2L, new CreateCardRequest(3L, "Card", null, null, null), UUID.randomUUID()));
+        verify(writer, never()).create(any());
     }
 }

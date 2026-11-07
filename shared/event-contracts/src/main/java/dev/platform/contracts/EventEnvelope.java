@@ -3,7 +3,7 @@ package dev.platform.contracts;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/** Provisional event envelope shared by services. Payloads remain subject to contract review. */
+/** Shared event envelope; payload and version semantics are defined by each event contract. */
 public record EventEnvelope<T>(
         UUID eventId,
         String eventType,

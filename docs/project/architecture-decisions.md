@@ -1,6 +1,6 @@
 # Ghi chú quyết định kiến trúc Project-first
 
-**Cập nhật:** 2026-10-29
+**Cập nhật:** 2026-11-06
 
 **Trạng thái:** Ghi lại các quyết định đã thống nhất trong trao đổi. Những mục ở phần “Cần bàn tiếp” chưa phải hợp đồng cuối cùng.
 
@@ -109,13 +109,19 @@ Kỳ 1 không có endpoint, `DELETING` status, operation, consumer hoặc cascad
 | `MEMBERSHIP_CHANGED` | `project.membership.changed` | `PROJECT_MEMBERSHIP`, `aggregateId={projectId}:{userId}`, `aggregateVersion=authorizationVersion` | `projectId`, `userId`, `status`, `role`, `membershipVersion` |
 | `MEMBERSHIP_REMOVED` | `project.membership.removed` | `PROJECT_MEMBERSHIP`, `aggregateId={projectId}:{userId}`, `aggregateVersion=authorizationVersion` | `projectId`, `userId`, `membershipVersion` |
 | `MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED` | `member.assignments.cleanup-requested` | `PROJECT_MEMBERSHIP`, `aggregateId={projectId}:{userId}`, source `aggregateVersion=authorizationVersion` | `operationId`, `projectId`, `userId`, `boardIds`, `membershipVersion` |
+| `MEMBER_ASSIGNMENTS_CLEANED` | `member.assignments.cleaned` | `PROJECT_MEMBERSHIP`, `aggregateId={projectId}:{userId}`, source `aggregateVersion` unchanged | `operationId`, `projectId`, `userId`, `membershipVersion` |
+| `CARD_ASSIGNED` | `card.assigned` | `TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1` | `projectId`, `boardId`, `cardId`, `recipientUserId` |
+| `COMMENT_MENTIONED` | `comment.mentioned` | `TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1` | `projectId`, `boardId`, `cardId`, `commentId`, `recipientUserIds` |
+
+- #25 dùng hai Notification intent trên; Notification consumer ánh xạ chúng lần lượt sang `ASSIGNED` và `MENTIONED`. Không phát `MOVED` trong Kỳ 1. `card.assigned` chỉ báo assignee mới khác actor; không phát khi bỏ gán, tự gán, request không đổi recipient hoặc chỉ đổi membership generation. `comment.mentioned` mang danh sách recipient duy nhất có Account ACTIVE và Project Membership ACTIVE tại lúc ghi Comment, loại tác giả; danh sách recipient được đóng băng trong event. Không gửi actor ID, membership version, Card title hoặc Comment body.
+- Các Notification intent độc lập, không biểu diễn phiên bản trạng thái Card và không cần ordering/gap detection theo Card. Dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`; `eventId`/Inbox xử lý duplicate. `EventEnvelope.aggregateVersion` và `outbox_events.aggregate_version` đã có, không phải cột version trên `cards`; không thêm migration/cột Card cho contract này.
 
 - `authVersion` là version trạng thái Account; `membershipVersion` là generation của lần Membership đang hoạt động; `authorizationVersion` là version trạng thái phân quyền của cặp Project/User. Event không thay thế snapshot-sync job.
 - Với Membership, mỗi lần quyền đổi làm tăng `authorizationVersion`, và nó là `aggregateVersion`; `membershipVersion` giữ nguyên khi remove, chỉ tăng khi rejoin tạo generation mới. Snapshot Redis CAS và unique key của snapshot-sync job dùng `authorizationVersion`, tránh retry trạng thái ACTIVE cũ ghi đè REMOVED cùng generation.
 - Completion cleanup có `eventId` mới nhưng giữ `operationId`, `membershipVersion` và `aggregateVersion` nguồn; worker không tạo thay đổi Membership mới.
-- `aggregateVersion` tăng theo thay đổi nghiệp vụ của từng aggregate, không tăng khi retry. Dùng nó để phát hiện event cũ, sai thứ tự hoặc thiếu phiên bản; không bỏ qua mù quáng mọi version thấp hơn. Với event delta cần xử lý gap theo thứ tự/retry hoặc đồng bộ trạng thái chuẩn; snapshot thay thế trạng thái hiện tại có thể dùng quy tắc khác.
+- Với event stream thể hiện trạng thái aggregate, `aggregateVersion` tăng theo thay đổi nghiệp vụ, không tăng khi retry; consumer xử lý event cũ/gap theo contract, không bỏ qua mù quáng mọi version thấp hơn. Notification intent ở trên là event độc lập nên dùng version cố định 1 và không mang semantics thứ tự Card.
 - `operationId` nhận diện một quy trình nghiệp vụ nhiều event, ví dụ membership revoke đang chờ Redis apply; nó không thay cho `eventId`. Consumer cũng cần thao tác idempotent nếu cùng operation được phát thành event mới.
-- Schema chi tiết của snapshot/event chưa thiết kế; version là bắt buộc để phát hiện dữ liệu cũ/lệch và hỗ trợ xử lý idempotent.
+- `EventEnvelope` đã có `aggregateVersion` và Outbox đã lưu trường này; mỗi event contract xác định aggregate identity/value semantics nếu Consumer cần ordering hoặc gap detection. Điều đó không tự yêu cầu thêm version column vào từng domain table.
 - Hiện chưa đặt mục tiêu tối ưu độ trễ. Khi Redis lỗi hoặc snapshot cũ/không xác minh được, trả lỗi và fail closed; không cho phép dựa vào trạng thái phân quyền chưa xác minh.
 - Khi RabbitMQ lỗi nhưng nghiệp vụ và Outbox đã commit thành công, API trả thành công cho phần nghiệp vụ đã commit; Outbox Relay tiếp tục retry nền. Với membership revoke, `202 Accepted` kèm `operationId`/`statusUrl` cho biết Redis snapshot đang chờ apply, không chờ Task assignment cleanup.
 
@@ -175,6 +181,15 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 - Account mang `SYSTEM_ADMIN` không được thao tác hoặc tham gia Project. Người cần làm việc trong Project phải dùng Account nghiệp vụ không mang role này; role từ request body/header không được tin cậy.
 - `board-service` là nơi có dữ liệu chuẩn để quyết định quyền theo membership Project. Internal REST từ `task-service` để hỏi/kiểm tra dữ liệu này sẽ triển khai sau khi có bảo mật giao tiếp nội bộ.
 - Cơ chế bảo vệ danh tính/ngữ cảnh chuyển tiếp, xử lý header do client gửi và giới hạn truy cập trực tiếp đến service cần được cụ thể hóa khi triển khai.
+
+### Board WebSocket — issue #24
+
+- **Kiến trúc đã duyệt; runtime chờ tích hợp.** Giữ route, event names và payload như [Kanban API](../api/kanban-api.md); chưa đăng ký WebSocket handler hoặc phát frame trước khi Gateway identity, trusted Board lookup và Gateway WebSocket proxy sẵn sàng.
+- Gateway xác thực handshake và chỉ chuyển identity đã xác thực; Task không tin `X-User-Id`/`projectId` do client gửi. Gateway chỉ proxy WebSocket, không quyết định Project membership.
+- Task lấy Project của Board từ nguồn Board đáng tin cậy rồi kiểm tra Account/Membership bằng authorization snapshot. Kiểm tra quyền ở handshake, định kỳ khi socket mở và ngay trước mỗi event; đóng socket khi membership bị thu hồi, Board đổi Project hoặc không xác minh được quyền.
+- Phân phối trong cùng Task instance. Chỉ phát sau khi thay đổi Card/Comment commit; fanout best-effort, không ghi bền, retry/replay hoặc bảo đảm thứ tự/nhận đủ.
+- Khi mất kết nối/event bị bỏ, client refetch REST; REST/SQL Server vẫn là trạng thái chuẩn. WebSocket #24 không thay thế durable Task events/Outbox #25.
+- Điều kiện triển khai: Gateway identity propagation (#34), secured Board-to-Project lookup và Gateway WebSocket proxy (#31); sau đó kiểm thử E2E theo #35. Không dùng mock quan hệ Board.
 
 ## 7. Các điểm cần bàn tiếp
 
