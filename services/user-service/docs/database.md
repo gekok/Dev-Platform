@@ -31,7 +31,7 @@
 | `users` | `auth_version` | Version tăng khi Account status hoặc SystemRoles đổi |
 | `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; script khởi tạo local tạo bảng rỗng |
 
-Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. API cấp/thu hồi role vẫn còn mở.
+Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. API cấp/thu hồi role và tạo tài khoản đã được chốt và hiện thực hóa tại `AdminUserController` theo quyết định #54.
 
 ## Bảng messaging dùng chung
 
@@ -53,7 +53,7 @@ Mỗi service lưu Outbox/Inbox trong database do chính service sở hữu; mod
 
 user-service khai báo `messaging-support`, import `MessagingSupportConfiguration` và scan entity/repository của shared. Vì vậy `outbox_events` và `inbox_events` được map vào `user_db`, không phải database riêng của shared.
 
-- Snapshot recorder và Redis worker có skeleton; recorder chưa được gọi từ Account mutation use case. Khi nối lifecycle, recorder phải lưu Account/status/role Outbox event cùng durable sync job trong transaction nguồn. Worker retry Redis apply theo `auth_version` và chỉ chạy khi bật property.
+- Snapshot recorder và Redis worker đã có triển khai hoàn chỉnh: recorder được gọi trực tiếp từ các Account mutation use case (`AdminCreateAccountService`, `ChangeUserStatusService`). Thao tác lưu Account/status/role Outbox event cùng durable sync job luôn nằm trong cùng transaction nguồn. Worker retry Redis apply theo `auth_version` và chạy khi bật cờ cấu hình `dev-platform.snapshot-sync.user.enabled`.
 - Outbox Relay dùng lại cùng event ID/version/payload khi retry. Mọi consumer tương lai ghi Inbox cùng thay đổi nghiệp vụ/job trước ACK.
 - Các cờ messaging mặc định là `false`; cấu hình relay/consumer không đồng nghĩa snapshot sync đã chạy end-to-end.
 

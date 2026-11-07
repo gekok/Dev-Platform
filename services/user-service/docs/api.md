@@ -110,14 +110,18 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 | Tình huống được handler bắt | HTTP | Mã code | Body |
 |---|---:|---|---|
-| Thiếu hoặc sai định dạng `Authorization` header, token sai chữ ký hoặc hết hạn (`AuthenticationException`) | `401` | `UNAUTHORIZED` | `{ "code": "UNAUTHORIZED", "message": "...", "timestamp": "...", "path": "..." }` |
-| Tài khoản không ở trạng thái ACTIVE (`IllegalStateException`) | `403` | `FORBIDDEN` | `{ "code": "FORBIDDEN", "message": "Account is not active", "timestamp": "...", "path": "..." }` |
-| Không tìm thấy tài khoản trong DB (`NoSuchElementException`) | `404` | `USER_NOT_FOUND` | `{ "code": "USER_NOT_FOUND", "message": "User not found: ...", "timestamp": "...", "path": "..." }` |
-| Tham số không hợp lệ (`IllegalArgumentException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
-| Dữ liệu DTO không hợp lệ (`MethodArgumentNotValidException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Thiếu hoặc sai định dạng `Authorization` header, token sai chữ ký hoặc hết hạn (`AuthenticationException`) | `401` | `INVALID_CREDENTIALS` | `{ "code": "INVALID_CREDENTIALS", "message": "...", "timestamp": "...", "path": "..." }` |
+| Người gọi không có quyền System Admin (`AccessDeniedException`) | `403` | `SYSTEM_ADMIN_REQUIRED` | `{ "code": "SYSTEM_ADMIN_REQUIRED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Không tìm thấy tài khoản trong DB (`AccountNotFoundException`) | `404` | `ACCOUNT_NOT_FOUND` | `{ "code": "ACCOUNT_NOT_FOUND", "message": "...", "timestamp": "...", "path": "..." }` |
+| Email đã tồn tại hoặc trùng lặp đồng thời (`EmailAlreadyExistsException`, `DataIntegrityViolationException`) | `409` | `EMAIL_ALREADY_EXISTS` | `{ "code": "EMAIL_ALREADY_EXISTS", "message": "...", "timestamp": "...", "path": "..." }` |
+| Dữ liệu DTO không hợp lệ, payload JSON hỏng hoặc sai kiểu tham số (`MethodArgumentNotValidException`, `HttpMessageNotReadableException`, `MethodArgumentTypeMismatchException`) | `400` | `VALIDATION_FAILED` | `{ "code": "VALIDATION_FAILED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Tham số hoặc trạng thái không hợp lệ (`IllegalArgumentException`, `IllegalStateException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
 | Thao tác không được hỗ trợ như tự đăng ký (`UnsupportedOperationException`) | `400` | `OPERATION_NOT_SUPPORTED` | `{ "code": "OPERATION_NOT_SUPPORTED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Phương thức HTTP không được hỗ trợ (`HttpRequestMethodNotSupportedException`) | `405` | `METHOD_NOT_ALLOWED` | `{ "code": "METHOD_NOT_ALLOWED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Kiểu nội dung không được hỗ trợ (`HttpMediaTypeNotSupportedException`) | `415` | `UNSUPPORTED_MEDIA_TYPE` | `{ "code": "UNSUPPORTED_MEDIA_TYPE", "message": "...", "timestamp": "...", "path": "..." }` |
+| Lỗi nội bộ không xác định (`Exception`) | `500` | `INTERNAL_SERVER_ERROR` | `{ "code": "INTERNAL_SERVER_ERROR", "message": "An unexpected internal error occurred", "timestamp": "...", "path": "..." }` |
 
-`UserController` đã được trang bị đầy đủ bean: `LoginUserService` cho đăng nhập, `GetCurrentUserService` cho truy vấn hồ sơ, và `JwtTokenAdapter` cho ký/xác thực token RSA256. `RegisterUserPort` được đánh dấu deprecated theo quyết định #7.
+`UserController` và `AdminUserController` đã được trang bị đầy đủ bean: `LoginUserService` cho đăng nhập, `GetCurrentUserService` cho truy vấn hồ sơ, `AdminCreateAccountService` cho tạo tài khoản quản trị, `ChangeUserStatusService` cho quản lý trạng thái/vai trò, và `JwtTokenAdapter` cho ký/xác thực token RSA256. `RegisterUserPort` được đánh dấu deprecated theo quyết định #7. Khả năng phòng vệ production bao gồm: bảo vệ chống lộ metadata database (CWE-209), in-memory fallback cho filesystem chỉ đọc trong container, và chuẩn hóa escape newline cho biến môi trường JWT.
 
 ## API mục tiêu thuộc user-service
 
