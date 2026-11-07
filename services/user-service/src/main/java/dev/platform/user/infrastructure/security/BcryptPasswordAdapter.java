@@ -10,7 +10,8 @@ import java.util.Objects;
 @Component
 public class BcryptPasswordAdapter implements PasswordEncoderPort {
 
-    private final BCryptPasswordEncoder passwordEncoder= new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder =
+            new BCryptPasswordEncoder(BcryptPasswordPolicy.BCRYPT_STRENGTH);
     @Override
     public String encode(String raw) {
         if (raw == null) {

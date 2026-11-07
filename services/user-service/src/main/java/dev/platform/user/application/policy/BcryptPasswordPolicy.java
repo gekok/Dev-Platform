@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 public final class BcryptPasswordPolicy {
 
+    public static final int BCRYPT_STRENGTH = 12;
     public static final int MAX_PASSWORD_UTF8_BYTES = 72;
     public static final String PASSWORD_TOO_LONG_MESSAGE =
             "Password must not exceed " + MAX_PASSWORD_UTF8_BYTES + " UTF-8 bytes";
