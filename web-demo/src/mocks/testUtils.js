@@ -1,10 +1,11 @@
 import { setupServer } from 'msw/node';
 import { createMockRepository } from './data/databaseRepository.js';
-import { DEMO_OWNER_ID } from './data/seed.js';
-import { DEMO_ACCESS_TOKEN } from './handlers/auth.js';
+import { DEMO_ADMIN_ID, DEMO_OWNER_ID } from './data/seed.js';
+import { DEMO_ACCESS_TOKEN, DEMO_ADMIN_ACCESS_TOKEN } from './handlers/auth.js';
 import { createHandlers } from './handlers/index.js';
 
 export const OWNER_TOKEN = DEMO_ACCESS_TOKEN;
+export const ADMIN_TOKEN = DEMO_ADMIN_ACCESS_TOKEN;
 export const MEMBER_TOKEN = 'demo-member-token';
 export const OUTSIDER_TOKEN = 'demo-outsider-token';
 export const MEMBER_ID = 'a1000000-0000-4000-8000-000000000002';
@@ -30,6 +31,7 @@ export async function withMockServer(run) {
   const repository = createMockRepository(createMemoryStorage());
   const usersByToken = new Map([
     [OWNER_TOKEN, DEMO_OWNER_ID],
+    [ADMIN_TOKEN, DEMO_ADMIN_ID],
     [MEMBER_TOKEN, MEMBER_ID],
     [OUTSIDER_TOKEN, OUTSIDER_ID],
   ]);
