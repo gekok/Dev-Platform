@@ -50,5 +50,7 @@
 - Command recorded before adding the Rabbit listener: `mvn -pl services/task-service -am '-Dtask.sqlserver.integration=true' test`
 - Result on 2026-11-06 before the listener change: `BUILD SUCCESS`; task-service: 18 tests, 0 failures, 0 errors, 0 skipped. SQL Server 16.0 database `kanban_task_db` was reached by opt-in integration tests. This result predates the listener and does not verify its runtime behavior.
 - Compile after adding the listener: `mvn -pl services/task-service -am -DskipTests compile` — `BUILD SUCCESS`, 63 task-service source files compiled. This is compile evidence only, not broker/ACK or test evidence.
+- Command after the listener change: `mvn -pl services/task-service -am test`
+- Result on 2026-11-07: `BUILD SUCCESS`; task-service: 24 tests, 0 failures, 0 errors, 7 skipped. The five new listener unit tests passed. The skipped tests require opt-in SQL Server integration; no Rabbit broker was used.
 - `MemberAssignmentCleanupSqlServerTest.outboxFailureRollsBackSqlDeleteBeforePersistingRetry` uses SQL Server repositories and transaction manager. It injects an Outbox failure after the assignment delete, then reads persisted state: assignment remains, Comment remains, and job is `PENDING` with retry attempt 1 and the failure message.
-- Remaining evidence: rerun tests after the listener change; broker ACK/redelivery, Redis/Gateway identity and latest-snapshot behavior, board-service cleanup delivery, and concurrent multi-worker execution.
+- Remaining evidence: bounded Rabbit retry/backoff and DLQ routing, poison-message broker verification, Redis/Gateway identity and latest-snapshot behavior, board-service cleanup delivery, and concurrent multi-worker execution.
