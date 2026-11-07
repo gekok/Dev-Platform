@@ -57,7 +57,7 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 }
 ```
 
-`email` phải đúng định dạng email và không rỗng; `password` dài 6–100 ký tự; `fullName` không rỗng. Response không bao giờ gồm password/hash:
+`email` phải đúng định dạng email và không rỗng; `password` dài 6–100 ký tự và tối đa 72 byte UTF-8 theo giới hạn của BCrypt; `fullName` không rỗng. Response không bao giờ gồm password/hash:
 
 ```json
 {"id":"550e8400-e29b-41d4-a716-446655440000","email":"alex@example.com","fullName":"Alex Morgan"}
@@ -66,7 +66,7 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 | Field | Kiểu JSON | Bắt buộc/validation | Ghi chú |
 |---|---|---|---|
 | `email` | string | Có; `@NotBlank`, `@Email` | Không có quy tắc chuẩn hóa chữ hoa/thường được khai báo ở DTO. |
-| `password` | string | Có; `@NotBlank`, 6–100 ký tự | Chỉ nhận plaintext ở request; không trả password/hash trong response. |
+| `password` | string | Có; `@NotBlank`, 6–100 ký tự, tối đa 72 byte UTF-8 | Chỉ nhận plaintext ở request; không trả password/hash trong response. |
 | `fullName` | string | Có; `@NotBlank` | DTO không đặt giới hạn độ dài; cột JPA hiện là varchar(255). |
 
 `UserResponse` có `id` (UUID), `email` (string), `fullName` (string). Status thành công là `201 Created`.
@@ -84,7 +84,7 @@ Source hiện chưa định nghĩa expiry, refresh token hay JWT claims trong re
 | Field | Kiểu JSON | Bắt buộc/validation |
 |---|---|---|
 | `email` | string | Có; `@NotBlank`, `@Email` |
-| `password` | string | Có; `@NotBlank`; DTO không đặt giới hạn độ dài |
+| `password` | string | Có; `@NotBlank`; DTO không đặt giới hạn độ dài, adapter từ chối xác thực nếu vượt 72 byte UTF-8 |
 
 Response `TokenResponse` có `accessToken` (string) và `tokenType` (string, hiện luôn là `Bearer`); status thành công là `200 OK`.
 
@@ -151,7 +151,7 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 | Actor không phải System Admin | `403` | `SYSTEM_ADMIN_REQUIRED` |
 | Email đã được dùng | `409` | `EMAIL_ALREADY_EXISTS` |
 
-Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, System Admin role storage/cấp-thu hồi và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
+Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, cấp-thu hồi System Role và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
 
 `SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route cấp/thu hồi role, Admin account API contract và credential provisioning còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 

@@ -15,11 +15,12 @@
 
 ## Điều kiện trước khi chạy tích hợp
 
+- [ ] Khởi động RabbitMQ và Redis bằng Docker Compose, kiểm tra readiness theo [README](../../README.md#6-chạy-môi-trường-local); SQL Server chạy local riêng.
 - [x] Chốt theo issue #7: chỉ System Admin được tạo Account, không mở public self-registration; Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Một cá nhân cần cả hai phạm vi dùng Account quản trị riêng và Account nghiệp vụ không mang `SYSTEM_ADMIN`.
 - [x] Ghi nhận SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Cách bootstrap cho môi trường triển khai được để bàn sau Kỳ 2.
 - [ ] Chốt User directory/profile API, field được lộ và cách UI compose identity, Membership, Comment author.
 - [ ] Chốt nguồn xác minh Account tồn tại/ACTIVE khi tạo hoặc Accept Invitation do internal REST chưa được bảo mật; hoàn thiện directory/profile API và field được lộ.
-- [ ] Chốt Invitation expiry/cancel/reject policy, mã lỗi nghiệp vụ, Project/Board transition graph, retry/DLQ và Board preference ownership/storage.
+- [ ] Chốt Invitation expiry/cancel/reject policy, mã lỗi nghiệp vụ, Project/Board transition graph, chi tiết queue/DLQ và Board preference ownership/storage.
 - [ ] Nối source DB + Outbox + durable snapshot-sync job tới Redis. Redis apply là mốc revoke có hiệu lực; snapshot cũ/không xác minh được phải fail closed.
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
@@ -60,7 +61,7 @@ Kỳ 1 không có Account deletion, `DELETING` status hay cascade Project. Kỳ 
 - [ ] Relay đánh dấu SENT khi có Publisher Confirm và không có Publisher Return; khi chưa xác định publish outcome, retry cùng eventId, aggregateVersion, payload.
 - [ ] Consumer commit Inbox `(consumerName,eventId)` cùng business state hoặc durable job/checkpoint trước ACK.
 - [ ] ACK mất gây redelivery cùng event; Inbox chống side effect lần hai. Durable job và thao tác idempotent xử lý retry nền.
-- [ ] Thử broker không nhận, confirm mất, consumer rollback/commit, ACK mất/redelivery, retry hết hạn và DLQ theo policy sau khi chốt.
+- [ ] Thử broker không nhận, confirm mất, consumer rollback/commit, ACK mất/redelivery; consumer retry tối đa 3 lần, cách nhau 5 giây rồi chuyển DLQ. Chính sách chưa được nối runtime.
 
 ## Tiêu chí tích hợp
 

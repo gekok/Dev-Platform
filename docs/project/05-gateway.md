@@ -11,7 +11,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 - Gateway hiện route **/api/v1/auth/** và **/api/v1/users/** sang user-service.
 - Route hiện tại đưa Project-scoped Card path cụ thể tới task-service trước `/api/v1/projects/**`; Board-first Board routes vẫn đi board-service.
 - Cấu hình route không có bằng chứng Gateway đang xác thực JWT hoặc xóa header identity giả mạo.
-- RabbitMQ có trong Compose; route HTTP không đồng nghĩa service event consumer đã kết nối.
+- RabbitMQ và Redis được cấu hình trong Compose; route HTTP không đồng nghĩa service event consumer đã kết nối.
 
 ## Thiết kế đích
 

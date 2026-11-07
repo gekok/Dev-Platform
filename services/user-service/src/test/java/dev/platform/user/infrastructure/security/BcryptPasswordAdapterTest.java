@@ -86,4 +86,24 @@ class BcryptPasswordAdapterTest {
         assertThatThrownBy(() -> adapter.encode(null))
                 .isInstanceOf(RuntimeException.class);
     }
+
+    @Test
+    void shouldAcceptPasswordsAtBcryptUtf8ByteLimit() {
+        String raw = "a".repeat(72);
+
+        String hash = adapter.encode(raw);
+
+        assertThat(adapter.matches(raw, hash)).isTrue();
+    }
+
+    @Test
+    void shouldRejectPasswordsOverBcryptUtf8ByteLimit() {
+        String validHash = adapter.encode("valid-password");
+        String oversizedPassword = "a".repeat(73);
+
+        assertThatThrownBy(() -> adapter.encode(oversizedPassword))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Password must not exceed 72 UTF-8 bytes");
+        assertThat(adapter.matches(oversizedPassword, validHash)).isFalse();
+    }
 }

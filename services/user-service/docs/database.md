@@ -40,7 +40,7 @@ Mỗi service lưu Outbox/Inbox trong database do chính service sở hữu; mod
 - `outbox_events`: `event_id` (PK), `event_type`, `aggregate_type`, `aggregate_id`, `aggregate_version`, `payload`, `status`, `attempt_count`, `created_at`, `next_attempt_at`, `sent_at`, `last_error`. Có index cho trạng thái/thời điểm retry.
 - `inbox_events`: composite key `(consumer_name, event_id)`, kèm `event_type` và `received_at`.
 - `OutboxEventWriter` yêu cầu transaction đang tồn tại; `InboxEventRecorder` cũng yêu cầu transaction đang tồn tại.
-- Outbox Relay hiện dùng confirm/return và retry theo cấu hình; relay/listener không mặc định bật và chưa phải policy retry/DLQ đã chốt.
+- Outbox Relay hiện dùng confirm/return và retry theo cấu hình; relay/listener không mặc định bật. Chính sách consumer đã chốt là retry tối đa 3 lần cách nhau 5 giây rồi chuyển DLQ, nhưng chưa được nối runtime; chi tiết queue và xử lý DLQ còn mở, không áp dụng giới hạn này cho Outbox Relay.
 - Bảng cột/kiểu/nullability đầy đủ của hai mapping chung nằm tại [shared README](../../../shared/README.md), mục `Physical table mappings`; cùng mapping này được tạo riêng trong `user_db`.
 
 ## Shared modules trong user-service
@@ -85,7 +85,7 @@ erDiagram
 |---|---|---|---|
 | `users` | `id` PK; `email` unique | Không có FK liên service | `password_hash` không trả qua API; `auth_version` tăng theo đổi status/system role |
 | `system_roles` | `role_code` PK | Không có index phụ | Danh mục role hệ thống; seed `USER`, `SYSTEM_ADMIN` |
-| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; local SQL bootstrap seed Account System Admin mẫu |
+| `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; local SQL bootstrap seed Account System Admin mẫu với role `SYSTEM_ADMIN` |
 | `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; script khởi tạo local tạo bảng rỗng |
 | `outbox_events` | `event_id` PK | `idx_outbox_due(status, next_attempt_at, created_at)` | Do `shared/messaging-support` cung cấp và lưu ngay trong `user_db` |
 | `inbox_events` | Composite PK `(consumer_name, event_id)` | Không có index phụ khai báo | Một event được khử trùng theo từng consumer |
