@@ -1,4 +1,4 @@
-import { createSeedData } from './seed.js';
+import { createSeedData, DEMO_ADMIN_ID, DEMO_ADMIN_USER } from './seed.js';
 import {
   DATABASE_STORAGE_KEY,
   LEGACY_DATABASE_STORAGE_KEY,
@@ -256,6 +256,12 @@ function normalizeDefaultBoardPreferences(store) {
   return changed;
 }
 
+function normalizeDemoAdmin(store) {
+  if (store.data.users.some((user) => user.id === DEMO_ADMIN_ID)) return false;
+  store.data.users.push(structuredClone(DEMO_ADMIN_USER));
+  return true;
+}
+
 function removeLegacyStore(storage) {
   if (storage.getItem(LEGACY_DATABASE_STORAGE_KEY) !== null) {
     storage.removeItem(LEGACY_DATABASE_STORAGE_KEY);
@@ -273,7 +279,9 @@ function loadStore(storage) {
     }
 
     if (isValidStore(store)) {
-      if (normalizeDefaultBoardPreferences(store)) saveStore(storage, store);
+      const preferencesChanged = normalizeDefaultBoardPreferences(store);
+      const adminChanged = normalizeDemoAdmin(store);
+      if (preferencesChanged || adminChanged) saveStore(storage, store);
       removeLegacyStore(storage);
       return store;
     }

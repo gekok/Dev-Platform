@@ -3,7 +3,19 @@ export const DEMO_CREDENTIALS = Object.freeze({
   password: 'kanban-demo',
 });
 
+export const DEMO_ADMIN_CREDENTIALS = Object.freeze({
+  email: 'admin@devplatform.demo',
+  password: 'admin-demo',
+});
+
 export const DEMO_OWNER_ID = 'a1000000-0000-4000-8000-000000000001';
+export const DEMO_ADMIN_ID = 'a1000000-0000-4000-8000-000000000006';
+export const DEMO_ADMIN_USER = Object.freeze({
+  id: DEMO_ADMIN_ID,
+  email: DEMO_ADMIN_CREDENTIALS.email,
+  fullName: 'System Administrator',
+  systemRoles: ['SYSTEM_ADMIN'],
+});
 
 const RESOURCE_COLLECTIONS = Object.freeze({
   project: 'projects',
@@ -57,7 +69,7 @@ export function createSeedData() {
   ];
 
   const data = {
-    users: members,
+    users: [...members, { ...DEMO_ADMIN_USER }],
     projects: [
       {
         id: 1,
