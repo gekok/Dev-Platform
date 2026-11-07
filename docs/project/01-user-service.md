@@ -15,15 +15,14 @@
 ## Việc cần làm
 
 - [x] Chốt chính sách cấp Account: chỉ System Admin được tạo Account, không mở public signup (issue #7).
-- [ ] Chốt route, payload và cách cấp credential cho API tạo Account qua System Admin.
+- [x] Chốt route, payload và cách cấp credential cho API tạo Account qua System Admin (POST /api/v1/admin/accounts, PATCH /status, PUT /roles).
 - [x] Thêm JPA entity/repository target cho `SystemRoles`/`UserSystemRoles` trong user_db; role mutation API/authorization vẫn cần triển khai, không nhận role từ payload client và không dùng quyền Admin làm quyền Project.
-- [ ] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile/tombstone để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
+- [x] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
 - [x] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi (đã giải quyết tại issue #12 và #13).
 - [x] Thêm `auth_version` persistence và snapshot-sync job/recorder seam; cần nối Account/role mutation, Outbox và job trong cùng transaction.
 - [x] Thêm retry worker/Redis writer theo version; worker mặc định tắt và cần bật sau khi mutation flow được nối.
-- [ ] Giữ Directory/profile API là TODO cho tới khi field/authorization contract và cách board-service kiểm tra Account ACTIVE được chốt.
 - [ ] Không triển khai Account deletion, `DELETING`, deletion operation hay tombstone trong Kỳ 1; giữ định hướng soft delete/Owner succession ở ghi chú Kỳ 2.
-- [ ] Cập nhật [API docs riêng](../../services/user-service/docs/api.md) và [database docs riêng](../../services/user-service/docs/database.md) khi field/contract thay đổi.
+- [x] Cập nhật [API docs riêng](../../services/user-service/docs/api.md) và [database docs riêng](../../services/user-service/docs/database.md) khi field/contract thay đổi.
 
 ## Tiêu chí nghiệm thu khi triển khai
 

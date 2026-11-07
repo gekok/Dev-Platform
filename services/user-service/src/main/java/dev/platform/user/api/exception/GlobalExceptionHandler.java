@@ -1,80 +1,79 @@
 package dev.platform.user.api.exception;
 
+import dev.platform.user.api.dto.ErrorResponse;
+import dev.platform.user.domain.exception.AccessDeniedException;
+import dev.platform.user.domain.exception.AccountNotFoundException;
 import dev.platform.user.domain.exception.AuthenticationException;
+import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.OffsetDateTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
-
-/**
- * Global Exception Handler gom lỗi về envelope chuẩn:
- * { "code": "...", "message": "...", "timestamp": "...", "path": "..." }
- * theo kanban-api.md mục 6.
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Lỗi Bean Validation (@Valid) -> 400 BAD_REQUEST
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .findFirst()
-                .orElse("Du lieu khong hop le");
-        return body(HttpStatus.BAD_REQUEST, "BAD_REQUEST", message, request);
-    }
+  @ExceptionHandler(AuthenticationException.class)
+  public ResponseEntity<ErrorResponse> handleAuthentication(
+      AuthenticationException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(new ErrorResponse("INVALID_CREDENTIALS", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 
-    // Lỗi validate tham số nghiệp vụ -> 400 BAD_REQUEST
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleBadRequest(
-            IllegalArgumentException ex, HttpServletRequest request) {
-        return body(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request);
-    }
+  @ExceptionHandler(AccountNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleAccountNotFound(
+      AccountNotFoundException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(new ErrorResponse("ACCOUNT_NOT_FOUND", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 
-    // Lỗi xác thực JWT hoặc sai credential -> 401 UNAUTHORIZED hoặc INVALID_CREDENTIALS
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorized(
-            AuthenticationException ex, HttpServletRequest request) {
-        String code = "Invalid email or password".equals(ex.getMessage()) ? "INVALID_CREDENTIALS" : "UNAUTHORIZED";
-        return body(HttpStatus.UNAUTHORIZED, code, ex.getMessage(), request);
-    }
+  @ExceptionHandler(EmailAlreadyExistsException.class)
+  public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
+      EmailAlreadyExistsException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new ErrorResponse("EMAIL_ALREADY_EXISTS", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 
-    // Lỗi trạng thái tài khoản không được phép (ví dụ: tài khoản không ACTIVE) -> 403 FORBIDDEN
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, Object>> handleForbidden(
-            IllegalStateException ex, HttpServletRequest request) {
-        return body(HttpStatus.FORBIDDEN, "FORBIDDEN", ex.getMessage(), request);
-    }
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDenied(
+      AccessDeniedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(new ErrorResponse("SYSTEM_ADMIN_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 
-    // Không tìm thấy tài khoản trong cơ sở dữ liệu -> 404 USER_NOT_FOUND
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(
-            NoSuchElementException ex, HttpServletRequest request) {
-        return body(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", ex.getMessage(), request);
-    }
+  @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+  public ResponseEntity<ErrorResponse> handleBadRequest(
+      RuntimeException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("BAD_REQUEST", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 
-    // Thao tác không được hỗ trợ (ví dụ: route đăng ký tự do đã bị bãi bỏ) -> 400 BAD_REQUEST
-    @ExceptionHandler(UnsupportedOperationException.class)
-    public ResponseEntity<Map<String, Object>> handleUnsupported(
-            UnsupportedOperationException ex, HttpServletRequest request) {
-        return body(HttpStatus.BAD_REQUEST, "OPERATION_NOT_SUPPORTED", ex.getMessage(), request);
-    }
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ErrorResponse> handleValidation(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
+    String message = ex.getBindingResult().getFieldErrors().stream()
+        .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+        .reduce((a, b) -> a + "; " + b)
+        .orElse("Validation failed");
 
-    private ResponseEntity<Map<String, Object>> body(
-            HttpStatus status, String code, String message, HttpServletRequest request) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("code", code);
-        body.put("message", message != null ? message : status.getReasonPhrase());
-        body.put("timestamp", Instant.now().toString());
-        body.put("path", request.getRequestURI());
-        return ResponseEntity.status(status).body(body);
-    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("VALIDATION_FAILED", message, OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(UnsupportedOperationException.class)
+  public ResponseEntity<ErrorResponse> handleUnsupported(
+      UnsupportedOperationException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("OPERATION_NOT_SUPPORTED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<ErrorResponse> handleGeneric(
+      Exception ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(new ErrorResponse("INTERNAL_SERVER_ERROR", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
 }

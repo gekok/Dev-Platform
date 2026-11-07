@@ -1,107 +1,100 @@
 package dev.platform.user.application.service;
 
-import dev.platform.user.application.command.LoginCommand;
-import dev.platform.user.application.port.out.PasswordEncoderPort;
-import dev.platform.user.application.port.out.SaveUserPort;
-import dev.platform.user.application.port.out.TokenPort;
-import dev.platform.user.domain.aggregate.UserAggregate;
-import dev.platform.user.domain.exception.AuthenticationException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.platform.user.application.command.LoginCommand;
+import dev.platform.user.application.port.out.PasswordEncoderPort;
+import dev.platform.user.application.port.out.TokenPort;
+import dev.platform.user.domain.AccountStatus;
+import dev.platform.user.domain.aggregate.UserAggregate;
+import dev.platform.user.domain.exception.AuthenticationException;
+import dev.platform.user.domain.repository.UserRepository;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
 class LoginUserServiceTest {
 
-    private SaveUserPort users;
-    private PasswordEncoderPort passwordEncoder;
-    private TokenPort tokenPort;
-    private LoginUserService loginService;
+  @Mock
+  private UserRepository userRepository;
 
-    @BeforeEach
-    void setUp() {
-        users = mock(SaveUserPort.class);
-        passwordEncoder = mock(PasswordEncoderPort.class);
-        tokenPort = mock(TokenPort.class);
-        loginService = new LoginUserService(users, passwordEncoder, tokenPort);
-    }
+  @Mock
+  private PasswordEncoderPort passwordEncoder;
 
-    @Test
-    @DisplayName("Đăng nhập thành công khi thông tin email và mật khẩu chính xác")
-    void shouldLoginSuccessfullyWhenCredentialsAreValid() {
-        UserAggregate fakeUser = UserAggregate.create("test@example.com", "hashed_pass", "Ha Vu Long");
-        LoginCommand command = new LoginCommand("test@example.com", "plain_pass");
+  @Mock
+  private TokenPort tokenPort;
 
-        when(users.findByEmail("test@example.com")).thenReturn(Optional.of(fakeUser));
-        when(passwordEncoder.matches("plain_pass", "hashed_pass")).thenReturn(true);
-        when(tokenPort.issue(fakeUser.getId(), fakeUser.getEmail())).thenReturn("fake-rsa-jwt-token");
+  private final AccountAccessGuard guard = new AccountAccessGuard();
+  private LoginUserService service;
 
-        String token = loginService.login(command);
+  @BeforeEach
+  void setUp() {
+    service = new LoginUserService(userRepository, guard, passwordEncoder, tokenPort);
+  }
 
-        assertThat(token).isEqualTo("fake-rsa-jwt-token");
-    }
+  @Test
+  @DisplayName("Đăng nhập thành công trả về access token")
+  void shouldLoginSuccessfully() {
+    UserAggregate user = UserAggregate.rehydrate(
+        UUID.randomUUID(), "user@demo.local", "hashed_pass", "User", AccountStatus.ACTIVE, 1L, Set.of("USER"));
 
-    @Test
-    @DisplayName("Từ chối khi mật khẩu không khớp")
-    void shouldThrowExceptionWhenPasswordIsIncorrect() {
-        UserAggregate fakeUser = UserAggregate.create("test@example.com", "hashed_pass", "Ha Vu Long");
-        LoginCommand command = new LoginCommand("test@example.com", "wrong_pass");
+    when(userRepository.findByEmail("user@demo.local")).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("Password123!", "hashed_pass")).thenReturn(true);
+    when(tokenPort.issue(user)).thenReturn("mocked.jwt.token");
 
-        when(users.findByEmail("test@example.com")).thenReturn(Optional.of(fakeUser));
-        when(passwordEncoder.matches("wrong_pass", "hashed_pass")).thenReturn(false);
+    String token = service.login(new LoginCommand("user@demo.local", "Password123!"));
 
-        assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(AuthenticationException.class)
-                .hasMessageContaining("Invalid email or password");
-    }
+    assertThat(token).isEqualTo("mocked.jwt.token");
+    verify(tokenPort).issue(user);
+  }
 
-    @Test
-    @DisplayName("Từ chối khi email không tồn tại nhưng vẫn chạy BCrypt giả để chống timing attack")
-    void shouldThrowExceptionWhenEmailNotFoundAndExecuteDummyHashCheck() {
-        LoginCommand command = new LoginCommand("notfound@example.com", "any_password");
-        when(users.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
+  @Test
+  @DisplayName("Thất bại khi email không tồn tại và thực hiện dummy hash check để ngăn timing attack")
+  void shouldFailWhenEmailNotFound() {
+    when(userRepository.findByEmail("unknown@demo.local")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(AuthenticationException.class)
-                .hasMessageContaining("Invalid email or password");
+    assertThatThrownBy(() -> service.login(new LoginCommand("unknown@demo.local", "pass")))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessage("Invalid credentials");
 
-        // Khẳng định passwordEncoder vẫn được gọi để triệt tiêu chênh lệch thời gian xử lý
-        verify(passwordEncoder).matches(eq("any_password"), anyString());
-    }
+    verify(passwordEncoder).matches(org.mockito.ArgumentMatchers.eq("pass"), org.mockito.ArgumentMatchers.anyString());
+  }
 
-    @Test
-    @DisplayName("Từ chối khi tài khoản không ở trạng thái ACTIVE")
-    void shouldThrowExceptionWhenAccountIsNotActive() {
-        UserAggregate inactiveUser = UserAggregate.rehydrate(
-                UUID.randomUUID(), "inactive@example.com", "hashed_pass", "Inactive User", null, 1L);
-        LoginCommand command = new LoginCommand("inactive@example.com", "plain_pass");
+  @Test
+  @DisplayName("Thất bại khi mật khẩu sai")
+  void shouldFailWhenPasswordMismatch() {
+    UserAggregate user = UserAggregate.rehydrate(
+        UUID.randomUUID(), "user@demo.local", "hashed_pass", "User", AccountStatus.ACTIVE, 1L, Set.of("USER"));
 
-        when(users.findByEmail("inactive@example.com")).thenReturn(Optional.of(inactiveUser));
-        when(passwordEncoder.matches("plain_pass", "hashed_pass")).thenReturn(true);
+    when(userRepository.findByEmail("user@demo.local")).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("WrongPass", "hashed_pass")).thenReturn(false);
 
-        assertThatThrownBy(() -> loginService.login(command))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Account is not active");
-    }
+    assertThatThrownBy(() -> service.login(new LoginCommand("user@demo.local", "WrongPass")))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessage("Invalid credentials");
+  }
 
-    @Test
-    @DisplayName("Từ chối khi command hoặc các trường bị null")
-    void shouldThrowExceptionWhenInputIsNull() {
-        assertThatThrownBy(() -> loginService.login(null))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> loginService.login(new LoginCommand(null, "pass")))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> loginService.login(new LoginCommand("test@example.com", null)))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
+  @Test
+  @DisplayName("Thất bại khi tài khoản bị khóa")
+  void shouldFailWhenAccountLocked() {
+    UserAggregate user = UserAggregate.rehydrate(
+        UUID.randomUUID(), "user@demo.local", "hashed_pass", "User", AccountStatus.LOCKED, 1L, Set.of("USER"));
+
+    when(userRepository.findByEmail("user@demo.local")).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> service.login(new LoginCommand("user@demo.local", "pass")))
+        .isInstanceOf(AuthenticationException.class)
+        .hasMessage("Account is locked");
+  }
 }

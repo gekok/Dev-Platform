@@ -1,10 +1,8 @@
 package dev.platform.user.application.port.in;
 
-import dev.platform.user.domain.aggregate.UserAggregate;
-
+import dev.platform.user.application.dto.UserSummaryDto;
 import java.util.UUID;
 
-// Cổng vào: lấy hồ sơ của chính user.
 public interface GetCurrentUserPort {
-    UserAggregate me(UUID userId);
+  UserSummaryDto getCurrentUser(UUID userId);
 }

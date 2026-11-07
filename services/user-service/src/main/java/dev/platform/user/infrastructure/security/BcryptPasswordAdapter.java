@@ -2,30 +2,29 @@ package dev.platform.user.infrastructure.security;
 
 import dev.platform.user.application.policy.BcryptPasswordPolicy;
 import dev.platform.user.application.port.out.PasswordEncoderPort;
-import dev.platform.user.domain.exception.DomainException;
-import org.springframework.stereotype.Component;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import java.util.Objects;
+import org.springframework.stereotype.Component;
 
 @Component
 public class BcryptPasswordAdapter implements PasswordEncoderPort {
 
-    private final BCryptPasswordEncoder passwordEncoder =
-            new BCryptPasswordEncoder(BcryptPasswordPolicy.BCRYPT_STRENGTH);
-    @Override
-    public String encode(String raw) {
-        if (raw == null) {
-            throw new DomainException("Password cannot be null");
-        }
-        BcryptPasswordPolicy.requireWithinLimit(raw);
-        return passwordEncoder.encode(raw);
-    }
+  private final BCryptPasswordEncoder passwordEncoder =
+      new BCryptPasswordEncoder(BcryptPasswordPolicy.BCRYPT_STRENGTH);
 
-    @Override
-    public boolean matches(String raw, String hash) {
-        if (raw == null || hash == null || !BcryptPasswordPolicy.isWithinLimit(raw)) {
-            return false;
-        }
-        return passwordEncoder.matches(raw, hash);
+  @Override
+  public String encode(String rawPassword) {
+    if (rawPassword == null) {
+      throw new IllegalArgumentException("rawPassword cannot be null");
     }
+    BcryptPasswordPolicy.requireWithinLimit(rawPassword);
+    return passwordEncoder.encode(rawPassword);
+  }
+
+  @Override
+  public boolean matches(String rawPassword, String encodedPassword) {
+    if (rawPassword == null || encodedPassword == null || !BcryptPasswordPolicy.isWithinLimit(rawPassword)) {
+      return false;
+    }
+    return passwordEncoder.matches(rawPassword, encodedPassword);
+  }
 }
