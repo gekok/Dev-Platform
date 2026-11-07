@@ -2,7 +2,7 @@
 
 **Goal:** Hoàn thiện assignment theo Project và membership generation, đồng thời bảo đảm cleanup batch rollback trước khi ghi retry.
 
-**Architecture:** `AssignCardService` dùng application port để khóa và đọc Card theo Project, sau đó thay đổi assignment qua adapter hiện tại. Worker chạy batch trong transaction riêng; lỗi được xử lý sau rollback bằng một transaction mới. Consumer đã bind event cleanup được duyệt và manual ACK sau commit; broker E2E cùng retry/DLQ policy còn mở.
+**Architecture:** `AssignCardService` dùng application port để khóa và đọc Card theo Project, sau đó thay đổi assignment qua adapter hiện tại. Worker chạy batch trong transaction riêng; lỗi được xử lý sau rollback bằng một transaction mới. Consumer bind event cleanup được duyệt và dùng AUTO ACK sau commit; broker E2E cùng retry/DLQ policy còn mở.
 
 **Tech Stack:** Java 21, Spring Boot, JPA, SQL Server, Redis snapshot, Outbox/Inbox hiện có.
 
@@ -40,9 +40,10 @@
 
 - [x] Thêm unit cho thiếu fence và thứ tự rollback/retry; thêm SQL Server integration chứng minh Outbox lỗi sau delete rollback assignment, giữ Comment và lưu retry ở transaction sau. SQL Server test generation kiểm tra query cleanup giới hạn đúng version.
 - [x] Implement transaction boundary và locking; giữ Outbox completion cùng transaction batch thành công.
-- [x] Nối durable queue/routing key của event cleanup đã có trong catalog; listener dùng manual ACK sau khi recorder transaction commit và Inbox dedupe khi redelivery.
+- [x] Nối durable queue/routing key của event cleanup đã có trong catalog; listener dùng AUTO ACK sau khi recorder transaction commit và Inbox dedupe khi redelivery.
 - [x] Consumer chỉ đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều bật; cờ cuối mặc định false.
-- [ ] Chưa kiểm chứng broker redelivery/ACK end-to-end hoặc nhiều worker cạnh tranh. Giữ consumer tắt cho tới khi integration task cấu hình bounded retry/backoff và DLQ tương thích với NACK/requeue.
+- [x] Listener phân loại JSON/contract poison bằng `AmqpRejectAndDontRequeueException`; lỗi recorder được chuyển lên container retry policy; thêm unit coverage cho ACK sau handler, poison, handler failure và message hợp lệ sau poison.
+- [ ] Chưa kiểm chứng broker redelivery/ACK, bounded retry/backoff, DLQ routing, thứ tự poison/message kế tiếp hoặc nhiều worker cạnh tranh. Giữ consumer tắt cho tới khi integration cung cấp policy Rabbit chung và xác minh broker behavior.
 
 ## Verification evidence
 

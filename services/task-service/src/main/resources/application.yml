@@ -56,7 +56,7 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
       member-assignment-cleanup:
         queue: ${MEMBER_ASSIGNMENT_CLEANUP_QUEUE:task-service.member-assignment-cleanup}
-        # Keep disabled until shared retry/backoff/DLQ topology and Task ACK/NACK behavior are verified.
+        # Keep all three messaging/consumer gates false until shared retry/backoff/DLQ and Task behavior are verified.
         retry-dlq-ready: ${MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY:false}
   assignment-cleanup:
     enabled: ${MEMBER_ASSIGNMENT_CLEANUP_ENABLED:false}

@@ -5,13 +5,13 @@ import java.util.HashSet;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rabbitmq.client.Channel;
 import dev.platform.contracts.EventEnvelope;
 import dev.platform.contracts.EventTypes;
 import dev.platform.contracts.event.MemberAssignmentsCleanupRequested;
 import dev.platform.shared.messaging.OutboxRelay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.Exchange;
@@ -21,7 +21,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/** Consumes the approved Membership cleanup request and ACKs only after the recorder commits. */
+/** Consumes the approved Membership cleanup request; the container ACKs after the recorder commits. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -50,23 +50,25 @@ public class MemberAssignmentCleanupListener {
                     type = ExchangeTypes.TOPIC,
                     durable = "true"),
             key = EventTypes.MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED),
-            ackMode = "MANUAL")
-    public void receive(Message message, Channel channel) throws IOException {
-        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+            ackMode = "AUTO")
+    public void receive(Message message) {
+        EventEnvelope<MemberAssignmentsCleanupRequested> event;
         try {
-            EventEnvelope<MemberAssignmentsCleanupRequested> event = objectMapper.readValue(
+            event = objectMapper.readValue(
                     message.getBody(), EVENT_TYPE);
             validate(event);
-            // The recorder's transaction commits before this proxied call returns.
-            handler.requestMemberAssignmentCleanup(event);
-        } catch (RuntimeException | IOException exception) {
-            log.error("Assignment cleanup delivery failed; requeueing message {}: {}",
-                    message.getMessageProperties().getMessageId(), exception.getMessage(), exception);
-            channel.basicNack(deliveryTag, false, true);
-            return;
+        } catch (IOException | IllegalArgumentException exception) {
+            log.warn("Rejecting invalid assignment cleanup message {} without requeue: {}",
+                    message.getMessageProperties().getMessageId(), exception.getMessage());
+            // Spring/container and the broker's shared DLX policy must route this poison message.
+            throw new AmqpRejectAndDontRequeueException(
+                    "Invalid member assignment cleanup message", exception);
         }
-        // If ACK fails, RabbitMQ can redeliver; the Inbox makes that delivery idempotent.
-        channel.basicAck(deliveryTag, false);
+
+        // Do not settle processing failures here. The shared listener retry policy owns bounded
+        // retry/backoff and terminal DLQ routing; this consumer must remain disabled until it exists.
+        // The recorder's transaction commits before this proxied call returns; AUTO mode then ACKs.
+        handler.requestMemberAssignmentCleanup(event);
     }
 
     private static void validate(EventEnvelope<MemberAssignmentsCleanupRequested> event) {
