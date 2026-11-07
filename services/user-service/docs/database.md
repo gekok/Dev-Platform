@@ -122,7 +122,7 @@ Các bảng dưới đây mô tả dữ liệu theo nghiệp vụ Kỳ 1. Entity
 
 Không thêm `project_id`, `project_role` hay FK sang `board_db`. Account deletion/Owner succession được hoãn sang Kỳ 2; Kỳ 1 không cascade/xóa Project khi Account thay đổi.
 
-Chỉ System Admin được tạo Account; không mở public self-registration. Payload credential/provisioning (Admin đặt mật khẩu, mật khẩu tạm, hay flow reset lần đầu) chưa chốt. Không lưu plaintext password; API tạo tài khoản phải đi qua cùng quy tắc hash với login. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Việc tạo Account không tự cấp `SYSTEM_ADMIN`; API cấp/thu hồi role vẫn còn mở.
+Chỉ System Admin được tạo Account qua `POST /api/v1/admin/accounts` (chốt theo issue #54); không mở public self-registration. Trong Kỳ 1, áp dụng phương án Admin đặt mật khẩu ban đầu, mật khẩu được giới hạn tối đa 72 byte UTF-8 và băm bằng BCrypt (strength 12) cùng quy tắc với login. Không lưu hoặc trả plaintext password/hash. Tài khoản mới tạo luôn nhận role mặc định `USER` và trạng thái `ACTIVE`. Không nhận role do client gửi trong payload tạo Account. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Việc tạo Account không tự cấp `SYSTEM_ADMIN`.
 
 ### Account deletion — Kỳ 2
 

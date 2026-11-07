@@ -120,6 +120,26 @@ class AdminUserControllerTest {
   }
 
   @Test
+  @DisplayName("POST /api/v1/admin/accounts trả về 400 Bad Request khi mật khẩu vượt quá 72 bytes UTF-8")
+  void shouldReturn400WhenPasswordExceeds72Bytes() throws Exception {
+    String oversizedPassword = "a".repeat(73);
+    String requestJson = String.format("""
+        {
+          "email": "new@demo.local",
+          "password": "%s",
+          "fullName": "New User"
+        }
+        """, oversizedPassword);
+
+    mockMvc.perform(post("/api/v1/admin/accounts")
+            .header("Authorization", "Bearer admin.token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
   @DisplayName("PATCH /api/v1/admin/users/{userId}/status đổi trạng thái thành công")
   void shouldChangeStatusSuccessfully() throws Exception {
     UUID adminId = UUID.randomUUID();

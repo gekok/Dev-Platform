@@ -37,7 +37,7 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Comment | `GET`, `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Xem và tạo Comment |
 | Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
 | Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
-| Account Admin | `POST` | `/api/v1/admin/accounts` | Tạo Account hệ thống; route/payload đề xuất, chờ chốt |
+| Account Admin | `POST` | `/api/v1/admin/accounts` | Tạo Account hệ thống bởi System Admin; đã chốt theo issue #54 |
 | Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
 | Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
 
@@ -78,7 +78,7 @@ Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộ
 | `GET` | `/api/v1/users/me` | Không body | `200 { "id": "uuid", "email": "...", "fullName": "..." }` | Chỉ Account hiện tại |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tìm theo tên/email | `200 UserCandidate[]` (đề xuất) | User đã xác thực; chỉ trả Account đang hoạt động; privacy/limit còn mở |
 | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID batch trong query | `200 UserProfile[]` (đề xuất) | User đã xác thực; field tối thiểu phục vụ tên tác giả/member và tombstone |
-| `POST` | `/api/v1/admin/accounts` | Payload tạo Account **còn mở** | `201 AccountSummary` (đề xuất) | Chỉ System Admin; route/status/payload còn mở |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` | Chỉ System Admin; role mặc định USER, không nhận role từ payload (#54) |
 
 `UserCandidate` đề xuất chỉ gồm `id`, `fullName`, `email`; `UserProfile` đề xuất gồm `id`, `displayName`, `accountDeleted`. Email chỉ trả trong luồng chọn người mời nếu quyền directory được duyệt. Bulk profile trả dấu tombstone cho UUID đã xóa để UI giữ attribution. “Không còn trong Project” được xác định bằng đối chiếu với Membership hiện tại do board-service sở hữu. Cách client compose hai API, quyền tra cứu directory, query syntax và giới hạn batch còn mở.
 

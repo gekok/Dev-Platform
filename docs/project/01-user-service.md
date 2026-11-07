@@ -15,7 +15,7 @@
 ## Việc cần làm
 
 - [x] Chốt chính sách cấp Account: chỉ System Admin được tạo Account, không mở public signup (issue #7).
-- [x] Chốt route, payload và cách cấp credential cho API tạo Account qua System Admin (POST /api/v1/admin/accounts, PATCH /status, PUT /roles).
+- [x] Chốt route, payload và cách cấp credential cho API tạo Account qua System Admin (POST /api/v1/admin/accounts, PATCH /status, PUT /roles) theo quyết định #54.
 - [x] Thêm JPA entity/repository target cho `SystemRoles`/`UserSystemRoles` trong user_db; role mutation API/authorization vẫn cần triển khai, không nhận role từ payload client và không dùng quyền Admin làm quyền Project.
 - [x] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
 - [x] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi (đã giải quyết tại issue #12 và #13).

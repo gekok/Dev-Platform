@@ -51,8 +51,7 @@ public class AdminUserController {
     AdminCreateAccountCommand cmd = new AdminCreateAccountCommand(
         req.email(),
         req.password(),
-        req.fullName(),
-        req.roles()
+        req.fullName()
     );
 
     UserSummaryDto summary = adminCreateAccountPort.createAccount(cmd);

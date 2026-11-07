@@ -41,10 +41,10 @@ class AdminCreateAccountServiceTest {
   }
 
   @Test
-  @DisplayName("Admin tạo tài khoản mới thành công và đồng bộ snapshot")
+  @DisplayName("Admin tạo tài khoản mới thành công và đồng bộ snapshot với role USER mặc định")
   void shouldCreateAccountSuccessfully() {
     AdminCreateAccountCommand cmd = new AdminCreateAccountCommand(
-        "newuser@demo.local", "PlainPassword123", "New User", Set.of("USER"));
+        "newuser@demo.local", "PlainPassword123", "New User");
 
     when(userRepository.existsByEmail("newuser@demo.local")).thenReturn(false);
     when(passwordEncoder.encode("PlainPassword123")).thenReturn("bcrypt_hash");
@@ -63,7 +63,7 @@ class AdminCreateAccountServiceTest {
   @DisplayName("Thất bại khi email đã tồn tại")
   void shouldThrowWhenEmailAlreadyExists() {
     AdminCreateAccountCommand cmd = new AdminCreateAccountCommand(
-        "existing@demo.local", "pass", "Existing", Set.of("USER"));
+        "existing@demo.local", "pass", "Existing");
 
     when(userRepository.existsByEmail("existing@demo.local")).thenReturn(true);
 

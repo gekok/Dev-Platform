@@ -8,6 +8,7 @@ import dev.platform.user.application.port.out.PasswordEncoderPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import dev.platform.user.domain.repository.UserRepository;
+import java.util.Collections;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,8 +35,9 @@ public class AdminCreateAccountService implements AdminCreateAccountPort {
     }
     String passwordHash = passwordEncoder.encode(cmd.rawPassword());
 
+    // Role mặc định luôn là USER, không nhận từ payload tạo account để chống tự cấp SYSTEM_ADMIN
     UserAggregate newUser =
-        UserAggregate.create(normalizedEmail, passwordHash, cmd.fullName(), cmd.roles());
+        UserAggregate.create(normalizedEmail, passwordHash, cmd.fullName(), Collections.singleton("USER"));
 
     UserAggregate saved = userRepository.save(newUser);
     accountSnapshotSyncPort.recordStatusChange(

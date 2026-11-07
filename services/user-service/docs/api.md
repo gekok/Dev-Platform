@@ -123,7 +123,7 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 User-service sở hữu Account/Auth và system role. Các route dưới đây là bản thiết kế, không phải controller runtime:
 
-`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Route/payload và cách cấp credential cho API Admin vẫn còn mở; không suy ra chi tiết contract từ controller cũ.
+`POST /api/v1/auth/register` đã chính thức bãi bỏ theo quyết định #7 và #54. Chỉ System Admin mới được tạo Account qua route chính thức `POST /api/v1/admin/accounts` (chốt theo issue #54).
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
@@ -131,7 +131,24 @@ User-service sở hữu Account/Auth và system role. Các route dưới đây l
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email | `200 UserCandidate[]` (đề xuất) | Account đã xác thực; chỉ tìm Account `ACTIVE`; quyền directory/privacy và giới hạn cần chốt |
 | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list | `200 UserProfile[]` (đề xuất) | Account đã xác thực; batch profile tối thiểu |
-| `POST` | `/api/v1/admin/accounts` | Payload chưa chốt | `201 AccountSummary` (đề xuất) | System Admin |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` | System Admin; role mặc định USER, đã chốt theo issue #54 |
+
+### Tạo Account qua System Admin (`POST /api/v1/admin/accounts`)
+
+Quyết định #54 chốt hợp đồng API tạo tài khoản:
+* **Caller:** Yêu cầu header `Authorization: Bearer <accessToken>` của tài khoản mang role `SYSTEM_ADMIN`.
+* **Request DTO (`AdminCreateAccountRequest`):**
+  * `email` (string): Bắt buộc, `@NotBlank`, `@Email`.
+  * `password` (string): Bắt buộc, `@NotBlank`, 6–100 ký tự và tối đa 72 byte UTF-8 theo giới hạn BCrypt.
+  * `fullName` (string): Bắt buộc, `@NotBlank`.
+  * *Không nhận trường `roles` từ request payload*. Mọi tài khoản mới tạo luôn nhận vai trò mặc định là `USER` (hoặc `MEMBER`) và trạng thái `ACTIVE`.
+* **Response DTO (`UserResponse`):** `id` (UUID), `email` (string), `fullName` (string), `status` (`ACTIVE`), `roles` (`["USER"]`), `authVersion` (`1`). Tuyệt đối không trả mật khẩu hoặc hash. Status trả về: `201 Created`.
+* **Credential Provisioning:** Kỳ 1 áp dụng phương án Admin đặt mật khẩu ban đầu được băm bằng BCrypt (strength 12). Kỳ 2 đánh giá link một lần hoặc bắt buộc đổi mật khẩu lần đầu.
+* **Mã lỗi:**
+  * `400 Bad Request`: `VALIDATION_FAILED` (Dữ liệu không hợp lệ hoặc mật khẩu vượt quá 72 byte UTF-8).
+  * `401 Unauthorized`: `INVALID_CREDENTIALS` (Thiếu hoặc token không hợp lệ).
+  * `403 Forbidden`: `SYSTEM_ADMIN_REQUIRED` (Caller không có role `SYSTEM_ADMIN`).
+  * `409 Conflict`: `EMAIL_ALREADY_EXISTS` (Email đã tồn tại).
 
 `UserCandidate` đề xuất gồm `id`, `fullName`, `email`; email chỉ được trả trong luồng chọn người mời nếu quyền tra cứu directory được duyệt. `UserProfile` đề xuất gồm `id`, `displayName`. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
 
