@@ -22,15 +22,17 @@ public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
   @Query("SELECT u FROM UserEntity u WHERE u.id = :id")
   Optional<UserEntity> findByIdForUpdate(@Param("id") UUID id);
 
+  List<UserEntity> findByStatusOrderByFullNameAsc(AccountStatus status, Pageable pageable);
+
   @Query("""
       SELECT u FROM UserEntity u
       WHERE u.status = :status
-        AND (:query IS NULL OR :query = '' OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%')))
+        AND (LOWER(u.email) LIKE LOWER(:pattern) OR LOWER(u.fullName) LIKE LOWER(:pattern))
       ORDER BY u.fullName ASC
       """)
-  List<UserEntity> searchActiveUsers(
+  List<UserEntity> searchActiveUsersByPattern(
       @Param("status") AccountStatus status,
-      @Param("query") String query,
+      @Param("pattern") String pattern,
       Pageable pageable);
 
   List<UserEntity> findByIdIn(Collection<UUID> ids);

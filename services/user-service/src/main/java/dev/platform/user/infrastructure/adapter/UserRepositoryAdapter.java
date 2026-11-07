@@ -103,7 +103,9 @@ public class UserRepositoryAdapter implements UserRepository {
     int effectiveLimit = (limit <= 0) ? 20 : Math.min(limit, 100);
     Pageable pageable = PageRequest.of(0, effectiveLimit);
     String q = (query == null) ? "" : query.trim();
-    List<UserEntity> entities = userJpaRepository.searchActiveUsers(AccountStatus.ACTIVE, q, pageable);
+    List<UserEntity> entities = q.isEmpty()
+        ? userJpaRepository.findByStatusOrderByFullNameAsc(AccountStatus.ACTIVE, pageable)
+        : userJpaRepository.searchActiveUsersByPattern(AccountStatus.ACTIVE, "%" + q + "%", pageable);
     return toAggregatesBatch(entities);
   }
 

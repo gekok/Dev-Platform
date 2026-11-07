@@ -53,7 +53,11 @@ public class UserController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "ids", required = false) Set<UUID> ids) {
     verifyAuthenticated(authorization);
-    List<UserProfileResponse> profiles = userDirectoryPort.getProfiles(ids).stream()
+    if (ids == null || ids.isEmpty()) {
+      return ResponseEntity.ok(List.of());
+    }
+    Set<UUID> cappedIds = ids.stream().limit(100).collect(java.util.stream.Collectors.toSet());
+    List<UserProfileResponse> profiles = userDirectoryPort.getProfiles(cappedIds).stream()
         .map(UserProfileResponse::from)
         .toList();
     return ResponseEntity.ok(profiles);
