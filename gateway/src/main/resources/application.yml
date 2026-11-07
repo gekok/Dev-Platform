@@ -10,24 +10,24 @@ spring:
         webflux:
           routes:
             - id: user-service
-              uri: http://localhost:8081
+              uri: ${gateway.upstream.user:http://localhost:8081}
               predicates:
                 - Path=/api/v1/users/**,/api/v1/auth/**
             # Đặt trước board-service vì Card API mang Project scope nhưng do task-service sở hữu.
             - id: task-service
-              uri: http://localhost:8083
+              uri: ${gateway.upstream.task:http://localhost:8083}
               predicates:
                 - Path=/api/v1/projects/*/boards/*/cards/**,/api/v1/projects/*/cards/**
             - id: board-service
-              uri: http://localhost:8082
+              uri: ${gateway.upstream.board:http://localhost:8082}
               predicates:
                 - Path=/api/v1/projects/**,/api/v1/boards/**
             # Kênh sống của bảng do task-service bắn event card.moved / card.created.
             - id: task-service-ws
-              uri: http://localhost:8083
+              uri: ${gateway.upstream.task:http://localhost:8083}
               predicates:
                 - Path=/ws/**
             - id: notification-service
-              uri: http://localhost:8084
+              uri: ${gateway.upstream.notification:http://localhost:8084}
               predicates:
                 - Path=/api/v1/notifications/**
