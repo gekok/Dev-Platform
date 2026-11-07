@@ -1,8 +1,7 @@
 package dev.platform.user.application.port.out;
 
-// Cổng ra: mã hoá mật khẩu, tách khỏi thư viện cụ thể.
 public interface PasswordEncoderPort {
-    String encode(String raw);
+  String encode(String rawPassword);
 
-    boolean matches(String raw, String hash);
+  boolean matches(String rawPassword, String encodedPassword);
 }

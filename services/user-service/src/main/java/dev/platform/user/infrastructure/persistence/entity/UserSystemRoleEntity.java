@@ -1,8 +1,5 @@
 package dev.platform.user.infrastructure.persistence.entity;
 
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -11,6 +8,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,26 +18,26 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "user_system_roles")
 public class UserSystemRoleEntity {
 
-    @EmbeddedId
-    private UserSystemRoleId id;
+  @EmbeddedId private UserSystemRoleId id;
 
-    @MapsId("userId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private UserEntity user;
+  @MapsId("userId")
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "user_id", nullable = false)
+  private UserEntity user;
 
-    @MapsId("roleCode")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "role_code", nullable = false)
-    private SystemRoleEntity role;
+  @MapsId("roleCode")
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "role_code", nullable = false)
+  private SystemRoleEntity role;
 
-    @Column(name = "granted_at", nullable = false, columnDefinition = "datetimeoffset")
-    private OffsetDateTime grantedAt;
+  @Column(name = "granted_at", nullable = false)
+  private OffsetDateTime grantedAt;
 
-    @Column(name = "granted_by", columnDefinition = "uniqueidentifier")
-    private UUID grantedBy;
+  @Column(name = "granted_by")
+  private UUID grantedBy;
 }

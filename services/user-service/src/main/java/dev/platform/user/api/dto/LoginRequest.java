@@ -3,8 +3,12 @@ package dev.platform.user.api.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
-// DTO đăng nhập.
 public record LoginRequest(
-        @Email @NotBlank String email,
-        @NotBlank String password) {
+    @NotBlank(message = "Email must not be blank")
+    @Email(message = "Email must be valid")
+    String email,
+
+    @NotBlank(message = "Password must not be blank")
+    String password
+) {
 }
