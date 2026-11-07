@@ -28,15 +28,15 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Chưa triển khai hoặc cần chốt
 
-- Login, provisioning Account qua Admin và phát token chưa đủ để coi Auth hoàn chỉnh.
-- Entity/repository `SystemRoles`/`UserSystemRoles` và Account snapshot recorder/Redis worker đã có skeleton; use case/API tạo Account qua Admin và quản lý role cần triển khai. SQL bootstrap local đã có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
-- Recorder chưa được nối vào các luồng tạo/thay đổi Account để ghi snapshot job cùng transaction; Redis worker chỉ chạy khi bật property. Vì vậy Account snapshot sync chưa hoạt động end-to-end. Gateway auth và Directory/profile controller cũng chưa có.
+- Login, provisioning Account qua Admin, quản lý system role và phát token đã có implementation source. Điều này chưa đồng nghĩa Gateway→Redis snapshot đã được tích hợp end-to-end.
+- Account create/status/role mutation gọi snapshot recorder trong cùng DB transaction với thay đổi Account, Outbox và durable snapshot-sync job. SQL bootstrap local có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
+- Redis snapshot-sync worker chỉ chạy khi bật `USER_AUTH_SNAPSHOT_SYNC_ENABLED=true` (mặc định `false`). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
 - Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project, chỉ System Admin tạo Account và không public self-registration. Nếu cùng một cá nhân cần làm việc trong Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`. Directory privacy và Account validation từ board-service vẫn còn mở.
 - Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 
 ## Nguồn code
 
-`UserController`, Account/role persistence cùng snapshot recorder/worker skeleton nằm trong `services/user-service/src/main/java`. Snapshot sync chưa được nối với lifecycle Account; Account deletion classes thuộc phạm vi Kỳ 2 và không nằm trong runtime Kỳ 1.
+`UserController`, `AdminUserController`, Account/role persistence, snapshot recorder và Redis worker nằm trong `services/user-service/src/main/java`. Snapshot sync cần bật worker để apply vào Redis; Account deletion classes thuộc phạm vi Kỳ 2 và không nằm trong runtime Kỳ 1.
 
 ## Chi tiết contract được khai báo trong source
 
@@ -89,7 +89,7 @@ Request gồm `email` hợp lệ và `password` không rỗng. Response:
 {"accessToken":"<token returned by login port>","tokenType":"Bearer"}
 ```
 
-Source hiện chưa định nghĩa expiry, refresh token hay JWT claims trong response contract.
+JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot.
 
 | Field | Kiểu JSON | Bắt buộc/validation |
 |---|---|---|
@@ -104,7 +104,7 @@ Controller xác thực danh tính trực tiếp từ header `Authorization: Bear
 
 Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), status thành công là `200 OK`. Không trả về mật khẩu, hash hay dữ liệu nhạy cảm.
 
-*Ghi chú về ranh giới xác thực:* Theo quyết định kiến trúc (`architecture-decisions.md` mục 6), API Gateway sẽ là ranh giới xác thực chính và forward identity context tin cậy cho service phía sau. Việc `UserController.me()` tự xác thực Bearer token qua RSA256 hiện tại là giải pháp phòng vệ tạm thời khi service còn truy cập trực tiếp độc lập mà chưa có Gateway bảo vệ (Issue #34). Endpoint `GET /api/v1/auth/public-key` cung cấp Public Key cho Gateway để Gateway thực hiện xác thực tập trung.
+*Ghi chú về ranh giới xác thực:* Gateway hiện xác thực Bearer token qua RSA256, kiểm tra issuer/thời hạn/subject, đọc Account snapshot Redis rồi ghi đè `X-User-Id` cho request proxy. `UserController.me()` và Admin controller vẫn tự kiểm tra Bearer token; Gateway giữ nguyên Authorization header khi forward. Endpoint `GET /api/v1/auth/public-key` cung cấp public key, được Gateway cache đến khi process restart. Direct-service ingress chưa bị chặn, nên service gọi thẳng vẫn chưa nằm sau boundary Gateway.
 
 ### Error mapping và khả năng khởi chạy
 

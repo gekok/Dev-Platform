@@ -10,7 +10,7 @@ Cho phép gán/bỏ gán Card trong Project, lưu membership generation và gi�
 
 ## Assignment
 
-- Controller giữ guard actor và lấy `membershipVersion` của assignee ACTIVE từ snapshot; body không nhận version hay actor. Snapshot thiếu/hỏng/lỗi từ chối; identity `X-User-Id` chỉ đáng tin khi Gateway hoàn thành hardening.
+- Controller giữ guard actor và lấy `membershipVersion` của assignee ACTIVE từ snapshot; body không nhận version hay actor. Snapshot thiếu/hỏng/lỗi từ chối; Gateway hiện ghi đè `X-User-Id` cho request qua cổng, nhưng direct-service ingress chưa bị chặn nên Task trusted identity gate vẫn chưa được bật.
 - Application service xử lý `AssignCardPort`: tìm Card theo projectId/cardId; không thấy trả 404; thực hiện assign/unassign và lưu qua persistence port trong transaction. Null assignee là bỏ gán; assignment giống hệt là idempotent. Runtime service chỉ được bật khi trusted Gateway identity đã sẵn sàng; trước đó endpoint dùng fallback fail-closed.
 - Persistence phải serialize theo Project/User và kiểm tra fence trước khi ghi assignment generation tương ứng. Giữ attribution người gán và generation; không ghi đè Card cũ làm mất cập nhật move đồng thời. Xác định thứ tự lock nhất quán giữa assignment và cleanup để tránh deadlock.
 - Cleanup Membership chỉ phát completion event đã có trong catalog; không phát `card.assigned` hoặc `comment.mentioned`. Hai Notification intent của #25 được ghi bởi các use case Card/Comment riêng.

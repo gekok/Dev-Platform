@@ -41,7 +41,7 @@ public class BoardController {
     private final ReorderColumnsPort reorderColumnsPort;
     private final GetBoardPort getBoardPort;
 
-    // TODO kỳ 1: parse JWT sub, hiện stub lấy X-User-Id.
+    // Gateway chuyển JWT sub đã xác thực qua X-User-Id; gọi thẳng service vẫn có thể giả mạo khi ingress còn mở.
     private UUID currentUserId(UUID userId) {
         if (userId == null) {
             throw new IllegalArgumentException("Thieu X-User-Id");

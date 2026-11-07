@@ -180,16 +180,17 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 - `POST /api/v1/projects` chỉ nhận Account nghiệp vụ đang `ACTIVE`. Gateway cung cấp identity đã xác thực; `board-service` dùng identity đó làm Owner và ghi Project cùng Owner membership trong một transaction. Client không được chọn `ownerId`/`userId` trong payload để giả danh.
 - Account mang `SYSTEM_ADMIN` không được thao tác hoặc tham gia Project. Người cần làm việc trong Project phải dùng Account nghiệp vụ không mang role này; role từ request body/header không được tin cậy.
 - `board-service` là nơi có dữ liệu chuẩn để quyết định quyền theo membership Project. Internal REST từ `task-service` để hỏi/kiểm tra dữ liệu này sẽ triển khai sau khi có bảo mật giao tiếp nội bộ.
-- Cơ chế bảo vệ danh tính/ngữ cảnh chuyển tiếp, xử lý header do client gửi và giới hạn truy cập trực tiếp đến service cần được cụ thể hóa khi triển khai.
+- Gateway hiện xác thực JWT RSA256 theo issuer cấu hình, `exp`, `iat` hiện diện và UUID `sub`; đọc Account snapshot Redis; xóa `X-User-Id` do client gửi rồi đặt lại từ `sub`; giữ nguyên Bearer token khi forward. Gateway không dùng token role để cấp quyền Project.
+- Account snapshot-sync worker của user-service mặc định tắt; Redis không có snapshot hợp lệ thì Gateway fail-closed `503`. Direct-service ingress chưa bị chặn theo phạm vi đã thống nhất, CORS chưa cấu hình và public-key rotation/refresh còn mở. Vì vậy không bật Task trusted-identity gate cho tới khi đường gọi thẳng service được bảo vệ.
 
 ### Board WebSocket — issue #24
 
-- **Kiến trúc đã duyệt; runtime chờ tích hợp.** Giữ route, event names và payload như [Kanban API](../api/kanban-api.md); chưa đăng ký WebSocket handler hoặc phát frame trước khi Gateway identity, trusted Board lookup và Gateway WebSocket proxy sẵn sàng.
+- **Kiến trúc đã duyệt; runtime chờ tích hợp.** Giữ route, event names và payload như [Kanban API](../api/kanban-api.md); chưa đăng ký WebSocket handler hoặc phát frame trước khi direct-service boundary, trusted Board lookup và Gateway WebSocket proxy sẵn sàng.
 - Gateway xác thực handshake và chỉ chuyển identity đã xác thực; Task không tin `X-User-Id`/`projectId` do client gửi. Gateway chỉ proxy WebSocket, không quyết định Project membership.
 - Task lấy Project của Board từ nguồn Board đáng tin cậy rồi kiểm tra Account/Membership bằng authorization snapshot. Kiểm tra quyền ở handshake, định kỳ khi socket mở và ngay trước mỗi event; đóng socket khi membership bị thu hồi, Board đổi Project hoặc không xác minh được quyền.
 - Phân phối trong cùng Task instance. Chỉ phát sau khi thay đổi Card/Comment commit; fanout best-effort, không ghi bền, retry/replay hoặc bảo đảm thứ tự/nhận đủ.
 - Khi mất kết nối/event bị bỏ, client refetch REST; REST/SQL Server vẫn là trạng thái chuẩn. WebSocket #24 không thay thế durable Task events/Outbox #25.
-- Điều kiện triển khai: Gateway identity propagation (#34), secured Board-to-Project lookup và Gateway WebSocket proxy (#31); sau đó kiểm thử E2E theo #35. Không dùng mock quan hệ Board.
+- Điều kiện triển khai: bảo vệ direct-service ingress, secured Board-to-Project lookup và Gateway WebSocket proxy (#31); identity propagation HTTP đã có source nhưng cần nghiệm thu cùng E2E theo #35. Không dùng mock quan hệ Board.
 
 ## 7. Các điểm cần bàn tiếp
 

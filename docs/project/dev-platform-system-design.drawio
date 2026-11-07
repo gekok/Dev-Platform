@@ -64,7 +64,7 @@
         <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" value="&lt;b&gt;Web / Mobile&lt;/b&gt;&lt;br/&gt;Bearer token / REST / WebSocket" vertex="1">
           <mxGeometry height="70" width="420" x="680" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;API Gateway :8080&lt;/b&gt;&lt;br/&gt;Target: xác thực + định tuyến + identity forwarding&lt;br/&gt;Runtime: chưa có JWT/header sanitization" vertex="1">
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;API Gateway :8080&lt;/b&gt;&lt;br/&gt;Runtime: JWT RSA256 + Account snapshot Redis + identity forwarding&lt;br/&gt;Direct-service ingress chưa bị chặn" vertex="1">
           <mxGeometry height="90" width="480" x="650" y="255" as="geometry" />
         </mxCell>
         <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=13;strokeColor=#6c8ebf;fillColor=#dae8fc;" value="&lt;b&gt;user-service :8081&lt;/b&gt;&lt;br/&gt;Account/Auth + SystemRoles" vertex="1">
@@ -281,7 +281,7 @@
         <mxCell id="2" value="&lt;b&gt;Account/Auth/System Admin — HTTP và snapshot&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=23;fontStyle=1;fontColor=#17365d;" vertex="1" parent="1">
           <mxGeometry x="38" y="18" width="1644" height="42" as="geometry" />
         </mxCell>
-        <mxCell id="3" value="Target Kỳ 1 phân biệt runtime register/login/me với Admin provisioning và JWT/identity forwarding chưa hoàn chỉnh." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
+        <mxCell id="3" value="Runtime Kỳ 1 có Admin provisioning, login và Gateway JWT/identity forwarding; snapshot-sync worker mặc định tắt nên Redis apply chưa tự chạy." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#52677d;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="40" y="62" width="1640" height="44" as="geometry" />
         </mxCell>
         <mxCell id="23" value="&lt;b&gt;User / Admin&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
@@ -302,7 +302,7 @@
         <mxCell id="28" value="&lt;b&gt;RabbitMQ&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=12;strokeColor=#6c8ebf;fillColor=#f5f8fb;" vertex="1" parent="1">
           <mxGeometry x="1480" y="110" width="200" height="54" as="geometry" />
         </mxCell>
-        <mxCell id="29" value="• Runtime có POST /auth/register, POST /auth/login, GET /users/me; inbound ports chưa đủ implementation. Public self-registration không phải target Kỳ 1.&lt;br/&gt;• Target dùng SystemRoles/UserSystemRoles; chỉ System Admin được tạo Account. Account mang SYSTEM_ADMIN không được làm Owner/Member Project; nếu một người cần cả hai phạm vi thì dùng Account riêng. SQL bootstrap local seed Admin mẫu, Kỳ 1 không dùng Flyway; bootstrap môi trường triển khai để sau Kỳ 2. Admin API/credential provisioning và role routes còn mở.&lt;br/&gt;• Gateway JWT/header sanitization và cách xác minh Account ACTIVE chưa nối; user-service sở hữu snapshot, Gateway không sở hữu Authorization Snapshot." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
+        <mxCell id="29" value="• Runtime có POST /auth/register, POST /auth/login, GET /users/me; Auth/Admin endpoints có implementation trong source. Public self-registration không phải target Kỳ 1.&lt;br/&gt;• Target dùng SystemRoles/UserSystemRoles; chỉ System Admin được tạo Account. Account mang SYSTEM_ADMIN không được làm Owner/Member Project; nếu một người cần cả hai phạm vi thì dùng Account riêng. SQL bootstrap local seed Admin mẫu, Kỳ 1 không dùng Flyway; bootstrap môi trường triển khai để sau Kỳ 2. Admin API, status và role routes đã có source.&lt;br/&gt;• Gateway JWT/header sanitization đã có; Redis snapshot apply mặc định tắt; user-service sở hữu snapshot, Gateway không sở hữu Authorization Snapshot." style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" vertex="1" parent="1">
           <mxGeometry x="40" y="911" width="1640" height="156" as="geometry" />
         </mxCell>
         <mxCell id="30" value="Runtime/JPA skeleton" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontSize=10;strokeColor=#6c8ebf;fillColor=#dae8fc;" vertex="1" parent="1">

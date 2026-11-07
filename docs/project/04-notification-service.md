@@ -9,11 +9,11 @@
 - **NotificationController** khai báo GET list và PATCH mark-read theo **X-User-Id**.
 - **InternalNotificationController** là skeleton cho **POST /internal/v1/notifications**, bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì chưa có authentication enforcement. Không coi route này là giao tiếp service-to-service an toàn.
 - **TaskEventListener** là placeholder; chưa có event consumer tạo Notification end-to-end.
-- `NotificationEntity` hiện có nullable `project_id` cùng recipient Account và Board/Card context. List/mark-read inbound ports đã có application service; identity vẫn dùng X-User-Id dạng stub. Create/event producer-consumer flow chưa nối hoàn chỉnh. Account/Project deletion jobs không thuộc Kỳ 1.
+- `NotificationEntity` hiện có nullable `project_id` cùng recipient Account và Board/Card context. List/mark-read inbound ports đã có application service; controller vẫn đọc `X-User-Id`, được Gateway xác thực và ghi đè cho request đi qua Gateway. Direct-service ingress và producer/consumer flow chưa nối hoàn chỉnh. Account/Project deletion jobs không thuộc Kỳ 1.
 
 ## Việc cần làm
 
-- [ ] Hoàn thiện list/mark-read chỉ cho Account hiện tại theo Gateway identity, không tin header do client tự gửi.
+- [ ] Nghiệm thu end-to-end list/mark-read chỉ cho Account hiện tại theo Gateway identity; không tin header do client tự gửi ngoài Gateway.
 - [ ] Chốt phương thức giao tiếp producer→notification-service; internal REST chưa đưa vào integration path khi chưa có bảo mật service-to-service.
 - [ ] Nối các loại event/tạo Notification theo event contract đã duyệt; bỏ mô tả PR_REVIEWED như một tính năng Kỳ 2 đã chốt.
 - [x] Thêm nullable `project_id` vào NotificationEntity/DTO; giữ recipient `user_id` và nullable Board/Card context, tất cả là scalar reference không FK chéo DB.

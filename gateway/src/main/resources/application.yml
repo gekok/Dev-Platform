@@ -2,15 +2,21 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: optional:file:../.env[.properties],optional:file:.env[.properties]
   application:
     name: gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   cloud:
     gateway:
       server:
         webflux:
           routes:
             - id: user-service
-              uri: ${gateway.upstream.user:http://localhost:8081}
+              uri: ${gateway.upstream.user}
               predicates:
                 - Path=/api/v1/users/**,/api/v1/auth/**
             # Đặt trước board-service vì Card API mang Project scope nhưng do task-service sở hữu.
@@ -31,3 +37,17 @@ spring:
               uri: ${gateway.upstream.notification:http://localhost:8084}
               predicates:
                 - Path=/api/v1/notifications/**
+
+app:
+  jwt:
+    issuer: ${USER_JWT_ISSUER:dev-platform-user-service}
+
+gateway:
+  upstream:
+    user: ${GATEWAY_UPSTREAM_USER:http://localhost:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

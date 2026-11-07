@@ -33,9 +33,11 @@ import org.springframework.stereotype.Component;
 public class JwtTokenAdapter implements TokenPort {
 
   private static final String DEFAULT_DEV_KEY_FILE = ".keys/dev-rsa-jwt.key";
+  private static final String DEFAULT_ISSUER = "dev-platform-user-service";
 
   private final Algorithm algorithm;
   private final long expirationMillis;
+  private final String issuer;
   private final RSAPublicKey publicKey;
   private final RSAPrivateKey privateKey;
 
@@ -44,21 +46,44 @@ public class JwtTokenAdapter implements TokenPort {
       @Value("${app.jwt.expiration-ms:3600000}") long expirationMillis,
       @Value("${app.jwt.private-key:}") String privateKeyPem,
       @Value("${app.jwt.public-key:}") String publicKeyPem,
-      @Value("${app.jwt.key-file:}") String keyFilePath) {
-    this(resolveKeyPair(privateKeyPem, publicKeyPem, keyFilePath), expirationMillis);
+      @Value("${app.jwt.key-file:}") String keyFilePath,
+      @Value("${app.jwt.issuer:dev-platform-user-service}") String issuer) {
+    this(resolveKeyPair(privateKeyPem, publicKeyPem, keyFilePath), expirationMillis, issuer);
+  }
+
+  public JwtTokenAdapter(
+      long expirationMillis, String privateKeyPem, String publicKeyPem, String keyFilePath) {
+    this(expirationMillis, privateKeyPem, publicKeyPem, keyFilePath, DEFAULT_ISSUER);
+  }
+
+  public JwtTokenAdapter(
+      long expirationMillis,
+      String privateKeyPem,
+      String publicKeyPem,
+      String keyFilePath,
+      String issuer) {
+    this(resolveKeyPair(privateKeyPem, publicKeyPem, keyFilePath), expirationMillis, issuer);
   }
 
   public JwtTokenAdapter(long expirationMillis) {
-    this(generateRsaKeyPair(), expirationMillis);
+    this(generateRsaKeyPair(), expirationMillis, DEFAULT_ISSUER);
   }
 
   public JwtTokenAdapter(KeyPair keyPair, long expirationMillis) {
+    this(keyPair, expirationMillis, DEFAULT_ISSUER);
+  }
+
+  public JwtTokenAdapter(KeyPair keyPair, long expirationMillis, String issuer) {
     Objects.requireNonNull(keyPair, "keyPair cannot be null");
+    if (issuer == null || issuer.isBlank()) {
+      throw new IllegalArgumentException("issuer cannot be blank");
+    }
     validateKeyPair(keyPair);
     this.publicKey = (RSAPublicKey) keyPair.getPublic();
     this.privateKey = (RSAPrivateKey) keyPair.getPrivate();
     this.algorithm = Algorithm.RSA256(this.publicKey, this.privateKey);
     this.expirationMillis = expirationMillis;
+    this.issuer = issuer;
   }
 
   @Override
@@ -68,6 +93,7 @@ public class JwtTokenAdapter implements TokenPort {
     Date expiresAt = new Date(now.getTime() + expirationMillis);
 
     return JWT.create()
+        .withIssuer(issuer)
         .withSubject(user.getId().toString())
         .withClaim("email", user.getEmail())
         .withClaim("fullName", user.getFullName())
@@ -84,7 +110,7 @@ public class JwtTokenAdapter implements TokenPort {
       throw new AuthenticationException("Token cannot be blank");
     }
     try {
-      DecodedJWT jwt = JWT.require(algorithm).build().verify(token);
+      DecodedJWT jwt = JWT.require(algorithm).withIssuer(issuer).build().verify(token);
 
       String sub = jwt.getSubject();
       if (sub == null || sub.isBlank()) {

@@ -1,6 +1,6 @@
 # Tích hợp Kỳ 1 theo Project-first
 
-**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Task controller đã có Project-scoped routes, Redis guard và assignment-cleanup consumer source; Project/Membership mutation, Gateway authentication, broker delivery/ACK và DB migrations chưa được nghiệm thu end-to-end.
+**Trạng thái:** Checklist tích hợp mục tiêu Kỳ 1, chưa phải báo cáo end-to-end. Gateway JWT filter và header forwarding đã có trong source; Task controller có Project-scoped routes, Redis guard và assignment-cleanup consumer source. Snapshot-sync worker mặc định tắt, Project/Membership mutation, broker delivery/ACK, direct-service boundary và DB migrations chưa được nghiệm thu end-to-end.
 
 **Nguồn chuẩn:** [architecture decisions](architecture-decisions.md), [API Kỳ 1](../api/kanban-api.md), [chỉ mục tài liệu](../README.md).
 
@@ -21,10 +21,11 @@
 - [ ] Chốt User directory/profile API, field được lộ và cách UI compose identity, Membership, Comment author.
 - [ ] Chốt nguồn xác minh Account tồn tại/ACTIVE khi tạo hoặc Accept Invitation do internal REST chưa được bảo mật; hoàn thiện directory/profile API và field được lộ.
 - [ ] Chốt Invitation expiry/cancel/reject policy, mã lỗi nghiệp vụ, Project/Board transition graph, chi tiết queue/DLQ và Board preference ownership/storage.
-- [ ] Nối source DB + Outbox + durable snapshot-sync job tới Redis. Redis apply là mốc revoke có hiệu lực; snapshot cũ/không xác minh được phải fail closed.
+- [x] User-service ghi Account change, Outbox và durable snapshot-sync job cùng transaction; worker có cơ chế Redis apply theo version.
+- [ ] Bật `USER_AUTH_SNAPSHOT_SYNC_ENABLED` và nghiệm thu Redis apply/retry; Gateway từ chối `503` khi snapshot chưa có hoặc không xác minh được.
 - [x] Cập nhật task sheets và API/database docs riêng để cùng phân biệt thiết kế mục tiêu với runtime hiện tại.
 - [ ] Implement Project/Membership/Invitation persistence, Board→Project và authorization trong board-service.
-- [ ] Gateway có JWT auth/identity forwarding an toàn; bỏ/ghi đè `X-User-Id` do client gửi và không tin role/actor ID trong request body/header.
+- [x] Gateway có JWT validation, Account snapshot gate và ghi đè `X-User-Id`; không tin role/actor ID trong request body/header. Snapshot-sync runtime, tích hợp E2E và direct-service ingress còn mở.
 - [ ] Trước khi bật #24: hoàn tất Gateway identity propagation, secured Board-to-Project lookup và WebSocket proxy; kiểm thử revoke khi socket đang mở.
 - [ ] Task authorization guard đọc Account/Project snapshots từ Redis trên mọi Card/Comment route có bảo vệ.
 - [ ] Membership cleanup worker, Inbox transaction, fence và Outbox completion được nối; cleanup không chặn revoke completion.
@@ -45,7 +46,7 @@
 ### 2. Card, Comment, realtime và Notification
 
 - [ ] Card route mang `projectId`, Task lưu `cards.project_id` và đối chiếu project path với Card khi đọc/sửa. Kiểm tra Board/Column thuộc Project vẫn là integration TODO vì internal REST chưa được bảo mật.
-- [ ] Move Card cập nhật thứ tự; #24 giữ nguyên route/payload đã duyệt nhưng runtime chưa triển khai trước khi Gateway identity, Board lookup và WS proxy sẵn sàng.
+- [ ] Move Card cập nhật thứ tự; #24 giữ nguyên route/payload đã duyệt nhưng runtime chưa triển khai trước khi direct-service boundary, Board lookup và WS proxy sẵn sàng.
 - [ ] Comment/mention giữ đúng author và phạm vi Project.
 - [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Wire proposal per-Column yêu cầu columnId và cursor gắn Board/Column/sort; khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.
 - [ ] Notification list/read chỉ trả dữ liệu của Account tương ứng.
@@ -75,7 +76,7 @@ Task producer #25 ghi `card.assigned` và `comment.mentioned` vào shared Outbox
 - [ ] Mỗi service chỉ sửa dữ liệu do mình sở hữu.
 - [ ] Membership revoke không báo hoàn tất trước Redis apply; assignment cleanup tiếp tục retry riêng và không làm sống lại quyền.
 - [ ] Đối chiếu HTTP/event/error/status với tài liệu chung và docs service.
-- [ ] Chỉ bật `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED` sau khi Gateway xác thực JWT, ghi đè `X-User-Id` từ principal và chặn truy cập trực tiếp tới task-service; kiểm tra actor giả mạo bị từ chối.
+- [ ] Chỉ bật `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED` sau khi chặn truy cập trực tiếp tới task-service; Gateway đã xác thực JWT và ghi đè `X-User-Id`, nhưng direct-service ingress chưa được bảo vệ.
 - [ ] Chỉ bật `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` sau khi queue có bounded retry/backoff và DLQ tương thích với NACK/requeue; kiểm tra poison message không quay vòng vô hạn.
 - [ ] Chạy end-to-end với DB/RabbitMQ, lưu response/log/event/DB evidence cho happy path và lỗi.
 
