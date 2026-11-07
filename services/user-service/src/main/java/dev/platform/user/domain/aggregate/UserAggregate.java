@@ -110,7 +110,7 @@ public class UserAggregate {
             throw new IllegalArgumentException("role cannot be null or empty");
         }
         String normalizedRole = role.trim().toUpperCase();
-        if (normalizedRole.length() > 40) {
+        if (normalizedRole.length() < 3 || normalizedRole.length() > 40) {
             throw new IllegalArgumentException("role needs to be between 3 and 40 characters");
         }
         return normalizedRole;

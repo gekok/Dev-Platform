@@ -20,13 +20,21 @@ public class UserDirectoryService implements UserDirectoryPort {
   @Override
   @Transactional(readOnly = true)
   public List<UserSummaryDto> searchUsers(String query) {
+    return searchUsers(query, 20);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<UserSummaryDto> searchUsers(String query, int limit) {
     String q = (query == null) ? "" : query.trim().toLowerCase();
+    int effectiveLimit = (limit <= 0) ? 20 : Math.min(limit, 100);
     return userRepository.findAll().stream()
         .filter(user -> user.getStatus() == AccountStatus.ACTIVE)
         .filter(user ->
             q.isEmpty()
                 || user.getEmail().toLowerCase().contains(q)
                 || user.getFullName().toLowerCase().contains(q))
+        .limit(effectiveLimit)
         .map(UserSummaryDto::from)
         .toList();
   }

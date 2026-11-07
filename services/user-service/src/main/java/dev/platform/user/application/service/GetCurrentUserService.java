@@ -3,7 +3,7 @@ package dev.platform.user.application.service;
 import dev.platform.user.application.dto.UserSummaryDto;
 import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
-import dev.platform.user.domain.exception.AuthenticationException;
+import dev.platform.user.domain.exception.AccountNotFoundException;
 import dev.platform.user.domain.repository.UserRepository;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,7 +25,7 @@ public class GetCurrentUserService implements GetCurrentUserPort {
     UserAggregate user =
         userRepository
             .findById(userId)
-            .orElseThrow(() -> new AuthenticationException("User not found"));
+            .orElseThrow(() -> new AccountNotFoundException("Account not found: " + userId));
     accountAccessGuard.requireActive(user);
     return UserSummaryDto.from(user);
   }

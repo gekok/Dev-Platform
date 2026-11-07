@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class LoginUserService implements LoginUserPort {
+  private static final String DUMMY_BCRYPT_HASH =
+      "$2a$12$BqfnOOfzIFaiMsWqu2MAk.lferAigH2XTucXueq8o2WQ6jDVwFm9W";
+
   private final UserRepository userRepository;
   private final AccountAccessGuard accountAccessGuard;
   private final PasswordEncoderPort passwordEncoderPort;
@@ -26,10 +29,14 @@ public class LoginUserService implements LoginUserPort {
       throw new AuthenticationException("Invalid credentials");
     }
     String normalizedEmail = cmd.email().trim().toLowerCase();
-    UserAggregate user =
-        userRepository
-            .findByEmail(normalizedEmail)
-            .orElseThrow(() -> new AuthenticationException("Invalid credentials"));
+    UserAggregate user = userRepository.findByEmail(normalizedEmail).orElse(null);
+
+    if (user == null) {
+      // Mitigate timing attack: compute bcrypt hash so response time is indistinguishable
+      passwordEncoderPort.matches(cmd.password(), DUMMY_BCRYPT_HASH);
+      throw new AuthenticationException("Invalid credentials");
+    }
+
     accountAccessGuard.requireActive(user);
     if (!passwordEncoderPort.matches(cmd.password(), user.getPasswordHash())) {
       throw new AuthenticationException("Invalid credentials");

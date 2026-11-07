@@ -8,5 +8,7 @@ import java.util.UUID;
 public interface UserDirectoryPort {
   List<UserSummaryDto> searchUsers(String query);
 
+  List<UserSummaryDto> searchUsers(String query, int limit);
+
   List<UserSummaryDto> getProfiles(Set<UUID> ids);
 }
