@@ -35,12 +35,8 @@ class UserDirectoryServiceTest {
   void shouldSearchOnlyActiveMatchingUsers() {
     UserAggregate active1 = UserAggregate.rehydrate(
         UUID.randomUUID(), "alex@demo.local", "pass", "Alex Morgan", AccountStatus.ACTIVE, 1L, Set.of("USER"));
-    UserAggregate active2 = UserAggregate.rehydrate(
-        UUID.randomUUID(), "john@demo.local", "pass", "John Doe", AccountStatus.ACTIVE, 1L, Set.of("USER"));
-    UserAggregate locked = UserAggregate.rehydrate(
-        UUID.randomUUID(), "alex_locked@demo.local", "pass", "Alex Locked", AccountStatus.LOCKED, 1L, Set.of("USER"));
 
-    when(userRepository.findAll()).thenReturn(List.of(active1, active2, locked));
+    when(userRepository.searchActiveUsers("alex", 20)).thenReturn(List.of(active1));
 
     List<UserSummaryDto> results = service.searchUsers("alex");
 
@@ -52,13 +48,10 @@ class UserDirectoryServiceTest {
   @DisplayName("Lấy profiles theo danh sách UUIDs")
   void shouldGetProfilesByIds() {
     UUID id1 = UUID.randomUUID();
-    UUID id2 = UUID.randomUUID();
     UserAggregate u1 = UserAggregate.rehydrate(
         id1, "u1@demo.local", "pass", "User One", AccountStatus.ACTIVE, 1L, Set.of("USER"));
-    UserAggregate u2 = UserAggregate.rehydrate(
-        id2, "u2@demo.local", "pass", "User Two", AccountStatus.ACTIVE, 1L, Set.of("USER"));
 
-    when(userRepository.findAll()).thenReturn(List.of(u1, u2));
+    when(userRepository.findByIdIn(Set.of(id1))).thenReturn(List.of(u1));
 
     List<UserSummaryDto> results = service.getProfiles(Set.of(id1));
 

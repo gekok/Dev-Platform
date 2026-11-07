@@ -7,6 +7,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.exception.AuthenticationException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,6 +15,7 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -52,6 +54,7 @@ public class JwtTokenAdapter implements TokenPort {
 
   public JwtTokenAdapter(KeyPair keyPair, long expirationMillis) {
     Objects.requireNonNull(keyPair, "keyPair cannot be null");
+    validateKeyPair(keyPair);
     this.publicKey = (RSAPublicKey) keyPair.getPublic();
     this.privateKey = (RSAPrivateKey) keyPair.getPrivate();
     this.algorithm = Algorithm.RSA256(this.publicKey, this.privateKey);
@@ -101,23 +104,35 @@ public class JwtTokenAdapter implements TokenPort {
 
   private static KeyPair resolveKeyPair(
       String privateKeyPem, String publicKeyPem, String keyFilePath) {
-    if (privateKeyPem != null
-        && !privateKeyPem.isBlank()
-        && publicKeyPem != null
-        && !publicKeyPem.isBlank()) {
+    boolean hasPrivatePem = privateKeyPem != null && !privateKeyPem.isBlank();
+    boolean hasPublicPem = publicKeyPem != null && !publicKeyPem.isBlank();
+
+    if (hasPrivatePem != hasPublicPem) {
+      throw new IllegalStateException(
+          "Invalid JWT RSA configuration: both 'app.jwt.private-key' and 'app.jwt.public-key' must be provided together");
+    }
+
+    if (hasPrivatePem && hasPublicPem) {
       return parsePemKeyPair(privateKeyPem, publicKeyPem);
     }
 
-    String targetPath =
-        (keyFilePath != null && !keyFilePath.isBlank()) ? keyFilePath : DEFAULT_DEV_KEY_FILE;
+    boolean hasExplicitFile = keyFilePath != null && !keyFilePath.isBlank();
+    String targetPath = hasExplicitFile ? keyFilePath : DEFAULT_DEV_KEY_FILE;
+    Path path = Paths.get(targetPath);
+
     try {
-      Path path = Paths.get(targetPath);
       if (Files.exists(path) && Files.size(path) > 0) {
         String content = Files.readString(path);
         String[] parts = content.split("---KEY-SPLIT---");
         if (parts.length == 2) {
           return parsePemKeyPair(parts[0], parts[1]);
+        } else {
+          throw new IllegalStateException("Corrupt RSA key file format in: " + targetPath);
         }
+      }
+
+      if (hasExplicitFile) {
+        throw new IllegalStateException("Configured RSA key file does not exist: " + targetPath);
       }
 
       KeyPair keyPair = generateRsaKeyPair();
@@ -129,7 +144,42 @@ public class JwtTokenAdapter implements TokenPort {
       Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
       return keyPair;
     } catch (Exception e) {
-      return generateRsaKeyPair();
+      if (e instanceof IllegalStateException ise) {
+        throw ise;
+      }
+      throw new IllegalStateException("Failed to read/write RSA key file: " + targetPath, e);
+    }
+  }
+
+  public static void validateKeyPair(KeyPair keyPair) {
+    if (keyPair == null || keyPair.getPublic() == null || keyPair.getPrivate() == null) {
+      throw new IllegalStateException("RSA KeyPair must contain both public and private keys");
+    }
+    if (!(keyPair.getPublic() instanceof RSAPublicKey pubKey)
+        || !(keyPair.getPrivate() instanceof RSAPrivateKey privKey)) {
+      throw new IllegalStateException("KeyPair must be an RSA key pair");
+    }
+    if (!pubKey.getModulus().equals(privKey.getModulus())) {
+      throw new IllegalStateException("RSA public and private keys do not match (modulus mismatch)");
+    }
+    try {
+      byte[] challenge = "jwt-keypair-validation-challenge".getBytes(StandardCharsets.UTF_8);
+      Signature signer = Signature.getInstance("SHA256withRSA");
+      signer.initSign(privKey);
+      signer.update(challenge);
+      byte[] signature = signer.sign();
+
+      Signature verifier = Signature.getInstance("SHA256withRSA");
+      verifier.initVerify(pubKey);
+      verifier.update(challenge);
+      if (!verifier.verify(signature)) {
+        throw new IllegalStateException("RSA signature verification failed: public key does not correspond to private key");
+      }
+    } catch (Exception e) {
+      if (e instanceof IllegalStateException ise) {
+        throw ise;
+      }
+      throw new IllegalStateException("RSA key pair validation failed", e);
     }
   }
 
@@ -153,8 +203,13 @@ public class JwtTokenAdapter implements TokenPort {
       byte[] pubBytes = Base64.getDecoder().decode(pubClean);
       RSAPublicKey pubKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(pubBytes));
 
-      return new KeyPair(pubKey, privKey);
+      KeyPair keyPair = new KeyPair(pubKey, privKey);
+      validateKeyPair(keyPair);
+      return keyPair;
     } catch (Exception e) {
+      if (e instanceof IllegalStateException ise) {
+        throw ise;
+      }
       throw new IllegalStateException("Failed to parse RSA key pair", e);
     }
   }

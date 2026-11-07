@@ -75,16 +75,49 @@ class UserControllerTest {
   }
 
   @Test
-  @DisplayName("GET /api/v1/users trả về danh sách người dùng tìm kiếm")
+  @DisplayName("GET /api/v1/users trả về danh sách người dùng tìm kiếm khi có Bearer token")
   void shouldSearchUsers() throws Exception {
+    UUID callerId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
     UserSummaryDto summary = new UserSummaryDto(
         userId, "alex@demo.local", "Alex Morgan", AccountStatus.ACTIVE, 1L, Set.of("USER"));
 
+    when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
     when(userDirectoryPort.searchUsers("alex", 20)).thenReturn(List.of(summary));
 
-    mockMvc.perform(get("/api/v1/users").param("query", "alex"))
+    mockMvc.perform(get("/api/v1/users")
+            .header("Authorization", "Bearer valid.token")
+            .param("query", "alex"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(userId.toString()))
+        .andExpect(jsonPath("$[0].fullName").value("Alex Morgan"))
         .andExpect(jsonPath("$[0].email").value("alex@demo.local"));
+  }
+
+  @Test
+  @DisplayName("GET /api/v1/users trả về 401 khi thiếu Authorization header")
+  void shouldReturn401WhenSearchWithoutToken() throws Exception {
+    mockMvc.perform(get("/api/v1/users").param("query", "alex"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+  }
+
+  @Test
+  @DisplayName("GET /api/v1/users/profiles trả về danh sách hồ sơ tối thiểu khi có token")
+  void shouldGetProfilesWithToken() throws Exception {
+    UUID callerId = UUID.randomUUID();
+    UUID targetId = UUID.randomUUID();
+    UserSummaryDto summary = new UserSummaryDto(
+        targetId, "alex@demo.local", "Alex Morgan", AccountStatus.ACTIVE, 1L, Set.of("USER"));
+
+    when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
+    when(userDirectoryPort.getProfiles(Set.of(targetId))).thenReturn(List.of(summary));
+
+    mockMvc.perform(get("/api/v1/users/profiles")
+            .header("Authorization", "Bearer valid.token")
+            .param("ids", targetId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(targetId.toString()))
+        .andExpect(jsonPath("$[0].displayName").value("Alex Morgan"));
   }
 }

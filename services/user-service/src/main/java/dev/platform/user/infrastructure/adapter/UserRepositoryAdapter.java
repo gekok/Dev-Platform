@@ -1,5 +1,6 @@
 package dev.platform.user.infrastructure.adapter;
 
+import dev.platform.user.domain.AccountStatus;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.repository.UserRepository;
 import dev.platform.user.infrastructure.persistence.entity.SystemRoleEntity;
@@ -13,6 +14,8 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,7 +95,49 @@ public class UserRepositoryAdapter implements UserRepository {
 
   @Override
   public List<UserAggregate> findAll() {
-    return userJpaRepository.findAll().stream().map(this::toAggregate).toList();
+    return toAggregatesBatch(userJpaRepository.findAll());
+  }
+
+  @Override
+  public List<UserAggregate> searchActiveUsers(String query, int limit) {
+    int effectiveLimit = (limit <= 0) ? 20 : Math.min(limit, 100);
+    Pageable pageable = PageRequest.of(0, effectiveLimit);
+    String q = (query == null) ? "" : query.trim();
+    List<UserEntity> entities = userJpaRepository.searchActiveUsers(AccountStatus.ACTIVE, q, pageable);
+    return toAggregatesBatch(entities);
+  }
+
+  @Override
+  public List<UserAggregate> findByIdIn(Set<UUID> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<UserEntity> entities = userJpaRepository.findByIdIn(ids);
+    return toAggregatesBatch(entities);
+  }
+
+  private List<UserAggregate> toAggregatesBatch(List<UserEntity> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<UUID> userIds = entities.stream().map(UserEntity::getId).toList();
+    List<UserSystemRoleEntity> roleEntities = userSystemRoleJpaRepository.findByIdUserIdIn(userIds);
+
+    Map<UUID, Set<String>> rolesMap = new HashMap<>();
+    for (UserSystemRoleEntity re : roleEntities) {
+      rolesMap.computeIfAbsent(re.getId().getUserId(), k -> new LinkedHashSet<>()).add(re.getId().getRoleCode());
+    }
+
+    return entities.stream()
+        .map(e -> UserAggregate.rehydrate(
+            e.getId(),
+            e.getEmail(),
+            e.getPasswordHash(),
+            e.getFullName(),
+            e.getStatus(),
+            e.getAuthVersion(),
+            rolesMap.getOrDefault(e.getId(), Collections.singleton("USER"))))
+        .toList();
   }
 
   private UserEntity toEntity(UserAggregate aggregate) {

@@ -3,6 +3,7 @@ package dev.platform.user.api;
 import dev.platform.user.api.dto.AdminCreateAccountRequest;
 import dev.platform.user.api.dto.ChangeStatusRequest;
 import dev.platform.user.api.dto.RoleRequest;
+import dev.platform.user.api.dto.UpdateUserRolesRequest;
 import dev.platform.user.api.dto.UserResponse;
 import dev.platform.user.application.command.AdminCreateAccountCommand;
 import dev.platform.user.application.dto.UserSummaryDto;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -76,6 +78,17 @@ public class AdminUserController {
     verifySystemAdmin(authorization);
 
     manageSystemRolePort.grantRole(userId, req.role());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PutMapping("/users/{userId}/roles")
+  public ResponseEntity<Void> updateRoles(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @PathVariable("userId") UUID userId,
+      @Valid @RequestBody UpdateUserRolesRequest req) {
+    verifySystemAdmin(authorization);
+
+    manageSystemRolePort.updateRoles(userId, req.roles());
     return ResponseEntity.noContent().build();
   }
 

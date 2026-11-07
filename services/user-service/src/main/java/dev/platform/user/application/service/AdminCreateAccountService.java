@@ -3,6 +3,7 @@ package dev.platform.user.application.service;
 import dev.platform.user.application.command.AdminCreateAccountCommand;
 import dev.platform.user.application.dto.UserSummaryDto;
 import dev.platform.user.application.port.in.AdminCreateAccountPort;
+import dev.platform.user.application.port.out.AccountSnapshotSyncPort;
 import dev.platform.user.application.port.out.PasswordEncoderPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.exception.EmailAlreadyExistsException;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminCreateAccountService implements AdminCreateAccountPort {
   private final UserRepository userRepository;
   private final PasswordEncoderPort passwordEncoder;
+  private final AccountSnapshotSyncPort accountSnapshotSyncPort;
 
   @Override
   @Transactional
@@ -36,6 +38,8 @@ public class AdminCreateAccountService implements AdminCreateAccountPort {
         UserAggregate.create(normalizedEmail, passwordHash, cmd.fullName(), cmd.roles());
 
     UserAggregate saved = userRepository.save(newUser);
+    accountSnapshotSyncPort.recordStatusChange(
+        saved.getId(), saved.getStatus().name(), saved.getRoles(), saved.getAuthVersion());
     return UserSummaryDto.from(saved);
   }
 }

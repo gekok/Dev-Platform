@@ -12,4 +12,6 @@ public interface UserRepository {
   Optional<UserAggregate> findByIdForUpdate(UUID id);
   boolean existsByEmail(String email);
   List<UserAggregate> findAll();
+  List<UserAggregate> searchActiveUsers(String query, int limit);
+  List<UserAggregate> findByIdIn(java.util.Set<UUID> ids);
 }

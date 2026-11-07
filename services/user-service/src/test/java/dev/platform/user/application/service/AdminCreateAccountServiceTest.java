@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import dev.platform.user.application.command.AdminCreateAccountCommand;
 import dev.platform.user.application.dto.UserSummaryDto;
+import dev.platform.user.application.port.out.AccountSnapshotSyncPort;
 import dev.platform.user.application.port.out.PasswordEncoderPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.exception.EmailAlreadyExistsException;
@@ -29,15 +30,18 @@ class AdminCreateAccountServiceTest {
   @Mock
   private PasswordEncoderPort passwordEncoder;
 
+  @Mock
+  private AccountSnapshotSyncPort snapshotSyncPort;
+
   private AdminCreateAccountService service;
 
   @BeforeEach
   void setUp() {
-    service = new AdminCreateAccountService(userRepository, passwordEncoder);
+    service = new AdminCreateAccountService(userRepository, passwordEncoder, snapshotSyncPort);
   }
 
   @Test
-  @DisplayName("Admin tạo tài khoản mới thành công")
+  @DisplayName("Admin tạo tài khoản mới thành công và đồng bộ snapshot")
   void shouldCreateAccountSuccessfully() {
     AdminCreateAccountCommand cmd = new AdminCreateAccountCommand(
         "newuser@demo.local", "PlainPassword123", "New User", Set.of("USER"));
@@ -52,6 +56,7 @@ class AdminCreateAccountServiceTest {
     assertThat(result.fullName()).isEqualTo("New User");
     assertThat(result.roles()).containsExactly("USER");
     verify(userRepository).save(any(UserAggregate.class));
+    verify(snapshotSyncPort).recordStatusChange(result.id(), "ACTIVE", Set.of("USER"), 1L);
   }
 
   @Test

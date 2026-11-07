@@ -8,5 +8,7 @@ public interface ManageSystemRolePort {
 
   void revokeRole(UUID id, String roleCode);
 
+  void updateRoles(UUID id, Set<String> roles);
+
   Set<String> getRoles(UUID id);
 }

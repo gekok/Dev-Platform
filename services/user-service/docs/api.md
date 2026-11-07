@@ -51,8 +51,11 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 | `GET` | `/api/v1/users` | `Authorization: Bearer <jwt>`, query, limit | Không có body | `200`, `UserCandidateResponse[]` |
 | `GET` | `/api/v1/users/profiles` | `Authorization: Bearer <jwt>`, ids | Không có body | `200`, `UserProfileResponse[]` |
 | `POST` | `/api/v1/admin/accounts` | `Authorization: Bearer <admin_jwt>` | `AdminCreateAccountRequest` | `201`, `UserResponse` |
-| `PATCH` | `/api/v1/admin/users/{userId}/status` | `Authorization: Bearer <admin_jwt>` | `ChangeUserStatusRequest` | `200`, `{ "userId": "...", "status": "..." }` |
-| `PUT` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | `UpdateUserRolesRequest` | `200`, `{ "userId": "...", "roles": [...] }` |
+| `PATCH` | `/api/v1/admin/users/{userId}/status` | `Authorization: Bearer <admin_jwt>` | `ChangeStatusRequest` | `204 No Content` |
+| `PUT` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | `UpdateUserRolesRequest` | `204 No Content` |
+| `POST` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | `RoleRequest` | `204 No Content` |
+| `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | `Authorization: Bearer <admin_jwt>` | Không có body | `204 No Content` |
+| `GET` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | Không có body | `200`, `Set<String>` |
 
 ### Đăng ký
 

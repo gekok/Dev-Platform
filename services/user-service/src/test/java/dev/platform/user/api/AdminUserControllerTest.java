@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -142,5 +143,31 @@ class AdminUserControllerTest {
         .andExpect(status().isNoContent());
 
     verify(changeUserStatusPort).changeStatus(targetUserId, AccountStatus.LOCKED);
+  }
+
+  @Test
+  @DisplayName("PUT /api/v1/admin/users/{userId}/roles cập nhật toàn bộ vai trò thành công")
+  void shouldUpdateRolesSuccessfully() throws Exception {
+    UUID adminId = UUID.randomUUID();
+    UserSummaryDto adminUser = new UserSummaryDto(
+        adminId, "admin@demo.local", "Admin", AccountStatus.ACTIVE, 1L, Set.of("SYSTEM_ADMIN"));
+
+    when(tokenPort.parseAndValidate("admin.token")).thenReturn(adminId);
+    when(getCurrentUserPort.getCurrentUser(adminId)).thenReturn(adminUser);
+
+    UUID targetUserId = UUID.randomUUID();
+    String requestJson = """
+        {
+          "roles": ["USER", "SYSTEM_ADMIN"]
+        }
+        """;
+
+    mockMvc.perform(put("/api/v1/admin/users/" + targetUserId + "/roles")
+            .header("Authorization", "Bearer admin.token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
+        .andExpect(status().isNoContent());
+
+    verify(manageSystemRolePort).updateRoles(targetUserId, Set.of("USER", "SYSTEM_ADMIN"));
   }
 }

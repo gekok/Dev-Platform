@@ -1,5 +1,7 @@
 package dev.platform.user.api;
 
+import dev.platform.user.api.dto.UserCandidateResponse;
+import dev.platform.user.api.dto.UserProfileResponse;
 import dev.platform.user.api.dto.UserResponse;
 import dev.platform.user.application.dto.UserSummaryDto;
 import dev.platform.user.application.port.in.GetCurrentUserPort;
@@ -29,33 +31,39 @@ public class UserController {
   @GetMapping("/me")
   public ResponseEntity<UserResponse> me(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    if (authorization == null || !authorization.startsWith("Bearer ")) {
-      throw new AuthenticationException("Missing or invalid Authorization header");
-    }
-
-    String token = authorization.substring(7).trim();
-    UUID userId = tokenPort.parseAndValidate(token);
-
+    UUID userId = verifyAuthenticated(authorization);
     UserSummaryDto summary = getCurrentUserPort.getCurrentUser(userId);
     return ResponseEntity.ok(UserResponse.from(summary));
   }
 
   @GetMapping
-  public ResponseEntity<List<UserResponse>> searchUsers(
+  public ResponseEntity<List<UserCandidateResponse>> searchUsers(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "query", required = false) String query,
       @RequestParam(value = "limit", required = false, defaultValue = "20") int limit) {
-    List<UserResponse> users = userDirectoryPort.searchUsers(query, limit).stream()
-        .map(UserResponse::from)
+    verifyAuthenticated(authorization);
+    List<UserCandidateResponse> users = userDirectoryPort.searchUsers(query, limit).stream()
+        .map(UserCandidateResponse::from)
         .toList();
     return ResponseEntity.ok(users);
   }
 
   @GetMapping("/profiles")
-  public ResponseEntity<List<UserResponse>> getProfiles(
+  public ResponseEntity<List<UserProfileResponse>> getProfiles(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "ids", required = false) Set<UUID> ids) {
-    List<UserResponse> profiles = userDirectoryPort.getProfiles(ids).stream()
-        .map(UserResponse::from)
+    verifyAuthenticated(authorization);
+    List<UserProfileResponse> profiles = userDirectoryPort.getProfiles(ids).stream()
+        .map(UserProfileResponse::from)
         .toList();
     return ResponseEntity.ok(profiles);
+  }
+
+  private UUID verifyAuthenticated(String authorization) {
+    if (authorization == null || !authorization.startsWith("Bearer ")) {
+      throw new AuthenticationException("Missing or invalid Authorization header");
+    }
+    String token = authorization.substring(7).trim();
+    return tokenPort.parseAndValidate(token);
   }
 }

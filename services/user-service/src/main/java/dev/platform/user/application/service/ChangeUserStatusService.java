@@ -73,6 +73,23 @@ public class ChangeUserStatusService implements ChangeUserStatusPort, ManageSyst
   }
 
   @Override
+  @Transactional
+  public void updateRoles(UUID id, Set<String> roles) {
+    Objects.requireNonNull(id, "id cannot be null");
+    Objects.requireNonNull(roles, "roles cannot be null");
+    UserAggregate user =
+        userRepository
+            .findByIdForUpdate(id)
+            .orElseThrow(() -> new AccountNotFoundException("Account not found: " + id));
+    boolean change = user.updateRoles(roles);
+    if (change) {
+      userRepository.save(user);
+      accountSnapshotSyncPort.recordSystemRolesChange(
+          user.getId(), user.getStatus().name(), user.getRoles(), user.getAuthVersion());
+    }
+  }
+
+  @Override
   @Transactional(readOnly = true)
   public Set<String> getRoles(UUID id) {
     Objects.requireNonNull(id, "id cannot be null");

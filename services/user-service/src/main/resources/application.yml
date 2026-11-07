@@ -9,8 +9,8 @@ spring:
   datasource:
     url: '${USER_DB_URL:jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_user_db;encrypt=true;trustServerCertificate=true}'
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Password123!}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   data:
     redis:
       host: ${REDIS_HOST:localhost}

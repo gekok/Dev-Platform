@@ -86,6 +86,23 @@ class ChangeUserStatusServiceTest {
   }
 
   @Test
+  @DisplayName("Cập nhật toàn bộ roles thành công và đồng bộ role change")
+  void shouldUpdateRolesAndSync() {
+    UUID userId = UUID.randomUUID();
+    UserAggregate user = UserAggregate.rehydrate(
+        userId, "user@demo.local", "pass", "User", AccountStatus.ACTIVE, 1L, Set.of("USER"));
+
+    when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+
+    service.updateRoles(userId, Set.of("USER", "SYSTEM_ADMIN"));
+
+    assertThat(user.getRoles()).containsExactlyInAnyOrder("USER", "SYSTEM_ADMIN");
+    assertThat(user.getAuthVersion()).isEqualTo(2L);
+    verify(userRepository).save(user);
+    verify(snapshotSyncPort).recordSystemRolesChange(userId, "ACTIVE", Set.of("USER", "SYSTEM_ADMIN"), 2L);
+  }
+
+  @Test
   @DisplayName("Ném ngoại lệ khi user không tồn tại")
   void shouldThrowWhenUserNotFound() {
     UUID userId = UUID.randomUUID();
