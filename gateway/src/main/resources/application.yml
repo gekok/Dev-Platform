@@ -30,7 +30,7 @@ spring:
                 - Path=/api/v1/projects/**,/api/v1/boards/**,/api/v1/columns/**,/api/v1/invitations/**
             # Kênh sống của bảng do task-service bắn event card.moved / card.created.
             - id: task-service-ws
-              uri: ${gateway.upstream.task:http://localhost:8083}
+              uri: ${gateway.upstream.task-websocket:ws://localhost:8083}
               predicates:
                 - Path=/ws/**
             - id: notification-service
@@ -45,6 +45,11 @@ app:
 gateway:
   upstream:
     user: ${GATEWAY_UPSTREAM_USER:http://localhost:8081}
+    task-websocket: ${GATEWAY_UPSTREAM_TASK_WEBSOCKET:ws://localhost:8083}
+  realtime:
+    websocket:
+      ticket-ttl: ${GATEWAY_WS_TICKET_TTL:PT30S}
+      allowed-origins: ${GATEWAY_WS_ALLOWED_ORIGINS:http://localhost:5173}
 
 management:
   endpoints:

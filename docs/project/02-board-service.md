@@ -16,7 +16,7 @@
 - [ ] Thiết kế/migrate Project và Membership; một Project có đúng một Owner, Member chỉ được tạo sau khi Invitation được Accept.
 - [ ] Tạo Project chỉ từ Account nghiệp vụ `ACTIVE` và identity context đáng tin cậy do Gateway chuyển tiếp; không nhận actor ID do client gửi. Ghi Project + Owner membership trong cùng transaction.
 - [ ] Thêm Invitation cho tài khoản đã có; Owner dùng User directory API để chọn UUID và list lời mời của Project để theo dõi/hủy; chốt lỗi, reject/cancel/expiry contract và transaction Accept trước khi triển khai API.
-- [ ] Validate invited User tồn tại/ACTIVE ở board-service khi tạo Invitation và khi Accept; do internal REST chưa bảo mật, giữ nguồn validation như integration TODO trước khi bật route.
+- [ ] Validate invited User tồn tại/ACTIVE ở board-service khi tạo Invitation và khi Accept; user-service internal directory lookup `/internal/users/{userId}` chưa có runtime handler, nên giữ validation như integration TODO trước khi bật route.
 - [ ] Thêm quan hệ Board→Project; chuẩn hóa Board key chữ thường, unique trong Project.
 - [ ] Chuyển quyền truy cập từ Board owner trực tiếp sang Project membership. Owner/Member dùng quyền công việc chung; Owner có thêm Board, membership và lifecycle Project/Board.
 - [ ] Implement route Project/Board theo [API chung](../api/kanban-api.md); payload/error có bản draft per-service nhưng chỉ dùng field/behavior đã chốt, các mục proposal/open cần duyệt trước khi đóng OpenAPI.

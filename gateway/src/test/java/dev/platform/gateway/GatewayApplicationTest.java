@@ -10,12 +10,18 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Map;
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.net.http.WebSocket;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,9 +41,12 @@ import org.springframework.test.context.DynamicPropertySource;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
+import reactor.netty.http.server.WebsocketServerSpec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
@@ -56,6 +65,15 @@ class GatewayApplicationTest {
     private static final AtomicReference<String> USER_PUBLIC_KEY_BODY = new AtomicReference<>(publicKeyResponse());
     private static final AtomicReference<Function<String, Mono<String>>> SNAPSHOT_LOOKUP =
             new AtomicReference<>(key -> Mono.empty());
+    private static final Map<String, String> REDIS_TICKETS = new ConcurrentHashMap<>();
+    private static final AtomicReference<String> TASK_WS_URI = new AtomicReference<>();
+    private static final AtomicReference<String> TASK_WS_USER_ID = new AtomicReference<>();
+    private static final AtomicReference<String> TASK_WS_AUTHORIZATION = new AtomicReference<>();
+    private static final AtomicReference<String> TASK_WS_USER_ROLE = new AtomicReference<>();
+    private static final AtomicReference<String> TASK_WS_GATEWAY_SIGNATURE = new AtomicReference<>();
+    private static final AtomicReference<String> TASK_WS_ORIGIN = new AtomicReference<>();
+    private static final AtomicReference<CountDownLatch> TASK_WS_HANDSHAKE =
+            new AtomicReference<>(new CountDownLatch(1));
     private static final ReactiveStringRedisTemplate REDIS = mock(ReactiveStringRedisTemplate.class);
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     @SuppressWarnings("unchecked")
@@ -64,6 +82,7 @@ class GatewayApplicationTest {
     private static final DisposableServer USER = upstream("user");
     private static final DisposableServer BOARD = upstream("board");
     private static final DisposableServer TASK = upstream("task");
+    private static final DisposableServer TASK_WEBSOCKET = websocketUpstream();
     private static final DisposableServer NOTIFICATION = upstream("notification");
 
     static {
@@ -121,11 +140,29 @@ class GatewayApplicationTest {
                 .bindNow();
     }
 
+    private static DisposableServer websocketUpstream() {
+        return HttpServer.create().host("127.0.0.1").port(0)
+                .route(routes -> routes.ws(request -> {
+                    TASK_WS_URI.set(request.uri());
+                    return request.uri().startsWith("/ws/boards/");
+                }, (in, out) -> {
+                        TASK_WS_USER_ID.set(in.headers().get("X-User-Id"));
+                        TASK_WS_AUTHORIZATION.set(in.headers().get("Authorization"));
+                        TASK_WS_USER_ROLE.set(in.headers().get("X-User-Role"));
+                        TASK_WS_GATEWAY_SIGNATURE.set(in.headers().get("X-Gateway-Signature"));
+                        TASK_WS_ORIGIN.set(in.headers().get("Origin"));
+                        TASK_WS_HANDSHAKE.get().countDown();
+                        return out.sendClose(1000, "accepted").then();
+                    }, WebsocketServerSpec.builder().build()))
+                .bindNow();
+    }
+
     @DynamicPropertySource
     static void upstreams(DynamicPropertyRegistry registry) {
         registry.add("gateway.upstream.user", () -> "http://127.0.0.1:" + USER.port());
         registry.add("gateway.upstream.board", () -> "http://127.0.0.1:" + BOARD.port());
         registry.add("gateway.upstream.task", () -> "http://127.0.0.1:" + TASK.port());
+        registry.add("gateway.upstream.task-websocket", () -> "ws://127.0.0.1:" + TASK_WEBSOCKET.port());
         registry.add("gateway.upstream.notification", () -> "http://127.0.0.1:" + NOTIFICATION.port());
         registry.add("app.jwt.issuer", () -> ISSUER);
         registry.add("spring.data.redis.host", () -> "localhost");
@@ -144,6 +181,20 @@ class GatewayApplicationTest {
         reset(REDIS_VALUES);
         when(REDIS_VALUES.get(anyString())).thenAnswer(invocation ->
                 SNAPSHOT_LOOKUP.get().apply(invocation.getArgument(0)));
+        REDIS_TICKETS.clear();
+        TASK_WS_URI.set(null);
+        TASK_WS_USER_ID.set(null);
+        TASK_WS_AUTHORIZATION.set(null);
+        TASK_WS_USER_ROLE.set(null);
+        TASK_WS_GATEWAY_SIGNATURE.set(null);
+        TASK_WS_ORIGIN.set(null);
+        TASK_WS_HANDSHAKE.set(new CountDownLatch(1));
+        when(REDIS_VALUES.set(anyString(), anyString(), any(Duration.class))).thenAnswer(invocation -> {
+            REDIS_TICKETS.put(invocation.getArgument(0), invocation.getArgument(1));
+            return Mono.just(true);
+        });
+        when(REDIS_VALUES.getAndDelete(anyString())).thenAnswer(invocation ->
+                Mono.justOrEmpty(REDIS_TICKETS.remove(invocation.getArgument(0))));
     }
 
     @AfterAll
@@ -152,6 +203,7 @@ class GatewayApplicationTest {
         BOARD.disposeNow();
         TASK.disposeNow();
         NOTIFICATION.disposeNow();
+        TASK_WEBSOCKET.disposeNow();
         HTTP_CLIENT.close();
     }
 
@@ -174,6 +226,48 @@ class GatewayApplicationTest {
         assertRoute("/api/v1/projects/1/boards", "board");
         assertRoute("/api/v1/users/me", "user", validToken(ACCOUNT_ID));
         assertRoute("/api/v1/notifications/me", "notification");
+    }
+
+    @Test
+    void issuesSingleUseTicketAndProxiesBrowserWebSocketWithVerifiedIdentity() throws Exception {
+        HttpResponse<String> ticketResponse = request(
+                "POST",
+                "/api/v1/realtime/boards/42/ws-ticket",
+                validToken(ACCOUNT_ID),
+                UUID.randomUUID().toString());
+
+        assertEquals(201, ticketResponse.statusCode());
+        assertTrue(ticketResponse.headers().firstValue("Cache-Control").orElse("").contains("no-store"));
+        String ticket = ticketResponse.body().replaceAll(".*\\\"ticket\\\":\\\"([^\\\"]+)\\\".*", "$1");
+        assertTrue(ticket.matches("[A-Za-z0-9_-]{43}"));
+        assertTrue(ticketResponse.body().contains("\"expiresInSeconds\":30"));
+
+        HTTP_CLIENT.newWebSocketBuilder()
+                .header("Origin", "http://localhost:5173")
+                .header("X-User-Id", UUID.randomUUID().toString())
+                .header("X-User-Role", "SYSTEM_ADMIN")
+                .header("X-Gateway-Signature", "client-controlled")
+                .header("Authorization", "Bearer client-token")
+                .buildAsync(
+                        URI.create("ws://127.0.0.1:" + port + "/ws/boards/42?ticket=" + ticket),
+                        new WebSocket.Listener() {
+                            @Override
+                            public void onOpen(WebSocket webSocket) {
+                                webSocket.request(1);
+                            }
+                        })
+                .get(5, TimeUnit.SECONDS);
+
+        assertTrue(TASK_WS_HANDSHAKE.get().await(5, TimeUnit.SECONDS),
+                "Task WebSocket upstream should receive the proxied handshake");
+
+        assertEquals("/ws/boards/42", TASK_WS_URI.get());
+        assertEquals(ACCOUNT_ID.toString(), TASK_WS_USER_ID.get());
+        assertEquals("http://127.0.0.1:" + TASK_WEBSOCKET.port(), TASK_WS_ORIGIN.get());
+        assertNull(TASK_WS_AUTHORIZATION.get());
+        assertNull(TASK_WS_USER_ROLE.get());
+        assertNull(TASK_WS_GATEWAY_SIGNATURE.get());
+        assertEquals(0, REDIS_TICKETS.size());
     }
 
     @Test

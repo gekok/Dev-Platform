@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.platform.task.application.exception.ProjectAccessDeniedException;
 import dev.platform.task.application.port.out.BoardProjectLookupPort;
 import dev.platform.task.application.service.ProjectAuthorizationGuard;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,48 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 class BoardWebSocketHandlerTest {
+
+    @Test
+    void broadcastClosesSessionAfterMembershipRevocation() throws Exception {
+        long boardId = 7L;
+        long projectId = 9L;
+        UUID userId = UUID.randomUUID();
+        BoardProjectLookupPort boardProjects = mock(BoardProjectLookupPort.class);
+        when(boardProjects.findProjectId(boardId)).thenReturn(Optional.of(projectId));
+        ProjectAuthorizationGuard authorization = mock(ProjectAuthorizationGuard.class);
+        when(authorization.requireProjectMember(projectId, userId)).thenReturn(null);
+        BoardWebSocketHandler handler = new BoardWebSocketHandler(
+                boardProjects, authorization, new ObjectMapper());
+        WebSocketSession session = session("revoked-session", boardId, projectId, userId);
+        handler.afterConnectionEstablished(session);
+
+        when(authorization.requireProjectMember(projectId, userId))
+                .thenThrow(new ProjectAccessDeniedException("Membership is revoked"));
+        handler.broadcast(boardId, Map.of("event", "card.created"));
+
+        verify(session).close(CloseStatus.POLICY_VIOLATION);
+        verify(session, never()).sendMessage(any());
+    }
+
+    @Test
+    void periodicAuthorizationCheckClosesSessionAfterBoardIsRemoved() throws Exception {
+        long boardId = 7L;
+        long projectId = 9L;
+        UUID userId = UUID.randomUUID();
+        BoardProjectLookupPort boardProjects = mock(BoardProjectLookupPort.class);
+        when(boardProjects.findProjectId(boardId)).thenReturn(Optional.of(projectId));
+        ProjectAuthorizationGuard authorization = mock(ProjectAuthorizationGuard.class);
+        when(authorization.requireProjectMember(projectId, userId)).thenReturn(null);
+        BoardWebSocketHandler handler = new BoardWebSocketHandler(
+                boardProjects, authorization, new ObjectMapper());
+        WebSocketSession session = session("removed-board-session", boardId, projectId, userId);
+        handler.afterConnectionEstablished(session);
+
+        when(boardProjects.findProjectId(boardId)).thenReturn(Optional.empty());
+        handler.reauthorizeConnectedSessions();
+
+        verify(session).close(CloseStatus.POLICY_VIOLATION);
+    }
 
     @Test
     void closingLastSessionCannotDetachConcurrentNewRegistration() throws Exception {

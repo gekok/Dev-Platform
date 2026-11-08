@@ -30,7 +30,7 @@ class OutboxEventWriterTest {
         var occurredAt = OffsetDateTime.parse("2026-01-02T03:04:05Z");
         var event = new EventEnvelope<>(eventId, EventTypes.MEMBERSHIP_REMOVED, 1,
                 "PROJECT_MEMBERSHIP", "42:" + userId, 7L, occurredAt,
-                new MembershipRemoved(42L, userId, 3L));
+                new MembershipRemoved(42L, userId, 3L, 4L));
 
         writer.append(event);
 
@@ -50,6 +50,7 @@ class OutboxEventWriterTest {
         assertEquals(occurredAt, mapper.treeToValue(json.path("occurredAt"), OffsetDateTime.class));
         assertEquals(42L, json.path("payload").path("projectId").asLong());
         assertEquals(userId.toString(), json.path("payload").path("userId").asText());
-        assertEquals(3L, json.path("payload").path("membershipVersion").asLong());
+        assertEquals(3L, json.path("payload").path("revokedMembershipVersion").asLong());
+        assertEquals(4L, json.path("payload").path("membershipVersion").asLong());
     }
 }

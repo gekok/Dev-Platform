@@ -75,10 +75,10 @@ Kỳ vọng theo source/bootstrap: có `outbox_events.aggregate_version`; `cards
 
 Outbox/Inbox là messaging dùng chung; không có Account/Project deletion job hay Board write-lock table trong schema Kỳ 1.
 
-Issue #24 không tạo bảng/cột: WebSocket là kênh ephemeral và kiến trúc đã duyệt, nhưng runtime chờ Gateway identity, Board lookup và Gateway proxy. Issue #25 dùng shared Outbox cho `card.assigned` và `comment.mentioned`; Outbox completion của assignment cleanup #22 vẫn là luồng riêng. Không cần schema/migration mới theo event-intent contract, và không thêm `cards.aggregate_version`. Vì `ddl-auto=none`, phải xác minh database SQL Server hiện tại có bảng/cột Outbox theo bootstrap trước khi bật relay; việc có mapping hoặc bootstrap không chứng minh database vật lý đã khớp.
+Issue #24 không tạo bảng/cột: WebSocket là kênh ephemeral. Source hiện có Gateway ticket/proxy và Task Board lookup adapter, nhưng Task runtime mặc định tắt và chưa nghiệm thu với Task/Board/Redis thật. Ticket nằm trong query string nên ingress/access log phải che giá trị `ticket`. Issue #25 dùng shared Outbox cho `card.assigned` và `comment.mentioned`; Outbox completion của assignment cleanup #22 vẫn là luồng riêng. Không cần schema/migration mới theo event-intent contract, và không thêm `cards.aggregate_version`. Vì `ddl-auto=none`, phải xác minh database SQL Server hiện tại có bảng/cột Outbox theo bootstrap trước khi bật relay; việc có mapping hoặc bootstrap không chứng minh database vật lý đã khớp.
 
 ## Phạm vi target và giới hạn
 
-cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities và script khởi tạo local. Card/Comment use cases đã có implementation trong source; việc có entity hoặc schema không chứng minh đã chạy E2E. Board/Column-to-Project validation vẫn là integration TODO vì internal REST chưa được bảo mật/triển khai.
+cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities và script khởi tạo local. Card/Comment use cases đã có implementation trong source; việc có entity hoặc schema không chứng minh đã chạy E2E. Board state lookup được bảo vệ bằng `X-Service-Token` cho WebSocket authorization; `ColumnRelationshipValidator` vẫn fail-closed cho create/move tới khi validator phù hợp được nối.
 
 Kỳ 1 không có cards.assignee_id, task_deletion_jobs, board_write_locks, Project cascade hay Account deletion operation. Mọi tài liệu cũ mô tả các đối tượng này là lịch sử/Kỳ 2, không phải schema hiện hành.

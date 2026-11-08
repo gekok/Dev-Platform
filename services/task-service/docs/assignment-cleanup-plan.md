@@ -2,7 +2,7 @@
 
 **Goal:** Hoàn thiện assignment theo Project và membership generation, đồng thời bảo đảm cleanup batch rollback trước khi ghi retry.
 
-**Architecture:** `AssignCardService` dùng application port để khóa và đọc Card theo Project, sau đó thay đổi assignment qua adapter hiện tại. Worker chạy batch trong transaction riêng; lỗi được xử lý sau rollback bằng một transaction mới. Consumer bind event cleanup được duyệt và dùng AUTO ACK sau commit; broker E2E cùng retry/DLQ policy còn mở.
+**Architecture:** `AssignCardService` dùng application port để khóa và đọc Card theo Project, sau đó thay đổi assignment qua adapter hiện tại. Worker chạy batch trong transaction riêng; lỗi được xử lý sau rollback bằng một transaction mới. Consumer bind event cleanup được duyệt và dùng AUTO ACK sau commit. Shared consumer retry/DLX source policy và Task queue/DLQ topology đã có; broker E2E còn mở.
 
 **Tech Stack:** Java 21, Spring Boot, JPA, SQL Server, Redis snapshot, Outbox/Inbox hiện có.
 
@@ -43,7 +43,7 @@
 - [x] Nối durable queue/routing key của event cleanup đã có trong catalog; listener dùng AUTO ACK sau khi recorder transaction commit và Inbox dedupe khi redelivery.
 - [x] Consumer chỉ đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều bật; cờ cuối mặc định false.
 - [x] Listener phân loại JSON/contract poison bằng `AmqpRejectAndDontRequeueException`; lỗi recorder được chuyển lên container retry policy; thêm unit coverage cho ACK sau handler, poison, handler failure và message hợp lệ sau poison.
-- [ ] Chưa kiểm chứng broker redelivery/ACK, bounded retry/backoff, DLQ routing, thứ tự poison/message kế tiếp hoặc nhiều worker cạnh tranh. Giữ consumer tắt cho tới khi integration cung cấp policy Rabbit chung và xác minh broker behavior.
+- [ ] Chưa kiểm chứng broker redelivery/ACK, bounded retry/backoff, DLQ routing, thứ tự poison/message kế tiếp hoặc nhiều worker cạnh tranh. Giữ consumer tắt cho tới khi policy Rabbit chung và topology được xác minh trên broker mục tiêu.
 
 ## Verification evidence
 
@@ -53,4 +53,4 @@
 - Command after the listener change: `mvn -pl services/task-service -am test`
 - Result on 2026-11-07: `BUILD SUCCESS`; task-service: 24 tests, 0 failures, 0 errors, 7 skipped. The five new listener unit tests passed. The skipped tests require opt-in SQL Server integration; no Rabbit broker was used.
 - `MemberAssignmentCleanupSqlServerTest.outboxFailureRollsBackSqlDeleteBeforePersistingRetry` uses SQL Server repositories and transaction manager. It injects an Outbox failure after the assignment delete, then reads persisted state: assignment remains, Comment remains, and job is `PENDING` with retry attempt 1 and the failure message.
-- Remaining evidence: bounded Rabbit retry/backoff and DLQ routing, poison-message broker verification, Redis/Gateway identity and latest-snapshot behavior, board-service cleanup delivery, and concurrent multi-worker execution.
+- Remaining evidence: Rabbit retry/backoff and DLQ routing against a real broker, poison-message broker verification, Redis/Gateway identity and latest-snapshot behavior, board-service cleanup delivery, and concurrent multi-worker execution.

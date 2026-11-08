@@ -4,7 +4,7 @@
 
 ## Issue #24 — Board WebSocket
 
-**Trạng thái:** Kiến trúc đã được chủ dự án duyệt. Phần task-service đã có handler, authorization lifecycle và fanout best-effort sau commit, nhưng runtime mặc định tắt. Chỉ bật sau khi Gateway identity, secured Board lookup và Gateway WebSocket proxy được xác nhận sẵn sàng.
+**Trạng thái:** Kiến trúc đã được chủ dự án duyệt. Source hiện có Gateway ticket một lần cho browser, WebSocket proxy tới Task, secured Board lookup adapter, authorization lifecycle và fanout best-effort sau commit. Task runtime vẫn mặc định tắt; chưa nghiệm thu WebSocket end-to-end hoặc chặn direct-service ingress.
 
 Giữ route và payload đã duyệt:
 
@@ -18,17 +18,19 @@ WS /ws/boards/{boardId}
 {"event":"comment.added","cardId":100,"commentId":900}
 ```
 
-Gateway xác thực handshake và chuyển identity tin cậy tới Task; không dùng identity hoặc `projectId` do client tự gửi. Task phân giải `boardId` thành Project từ dữ liệu Board đã lưu, sau đó kiểm tra Account và membership qua authorization snapshot. Lifecycle khi runtime được bật: kiểm tra tại handshake, định kỳ và ngay trước khi gửi; đóng socket nếu membership bị thu hồi, Board đổi Project hoặc không thể xác minh quyền.
+Browser lấy ticket qua `POST /api/v1/realtime/boards/{boardId}/ws-ticket` với Bearer access token, rồi kết nối `ws(s)://<gateway>/ws/boards/{boardId}?ticket=<ticket>`. Ticket gắn với Account và Board, mặc định sống 30 giây và chỉ dùng một lần. Gateway kiểm tra Origin theo allowlist, tiêu thụ ticket nguyên tử trong Redis, bỏ query ticket cùng Authorization và các header bảo mật do client gửi, rồi chuyển `X-User-Id` đã xác minh tới Task. Access token không được gửi trong handshake WebSocket của browser.
+
+Task phân giải `boardId` thành Project qua `BoardProjectLookupAdapter` và `HttpBoardStateAdapter`, gọi `GET /internal/boards/{boardId}` với `X-Service-Token`; không dùng identity hoặc `projectId` do client tự gửi. Sau đó Task kiểm tra Account và Membership qua authorization snapshot. Lifecycle khi runtime được bật: kiểm tra tại handshake, định kỳ và ngay trước khi gửi; đóng socket nếu Membership bị thu hồi, Board đổi Project hoặc không thể xác minh quyền.
 
 Phân phối chỉ giữa các session cùng Board trong một Task instance. Event chỉ gửi sau commit của thao tác Card/Comment. Fanout best-effort: không lưu bền, không retry/replay, không bảo đảm nhận đủ hoặc thứ tự. Client refetch REST sau khi reconnect. Không gửi Card title hoặc Comment body.
 
 ### Điều kiện bật runtime và phần tích hợp còn lại
 
-1. **Gateway identity (#34):** xác thực handshake và chuyển tiếp principal tin cậy; loại bỏ identity header từ client. Chốt cách truyền identity tương thích với browser WebSocket.
-2. **Board lookup:** board-service cung cấp Board→Project lookup đã xác thực service-to-service. Không dùng Project ID từ caller làm bằng chứng và không tạo mock.
-3. **Gateway proxy (#31):** xác nhận route dùng WebSocket upstream và kiểm tra handshake/frame qua Gateway. Source hiện khai báo `/ws/**` với `http://localhost:8083`, nên chưa coi proxy WebSocket sẵn sàng.
-4. **Task runtime:** handler chỉ được đăng ký khi cả bốn cờ readiness trong `services/task-service/src/main/resources/application.yml` đều là `true`; mặc định tất cả đều `false`. Cần có adapter `BoardProjectLookupPort` truy vấn Board đã lưu. Cờ cấu hình không tự chứng minh các phụ thuộc đã sẵn sàng.
-5. **Acceptance (#35):** kiểm tra member/non-member, revoke khi đang kết nối, Board lookup/snapshot lỗi, event sau commit và reconnect/refetch qua Gateway.
+1. **Gateway identity (#34):** source đã có endpoint cấp ticket sau JWT + Account snapshot và WebSocket filter xác minh ticket/Origin, loại bỏ credential client gửi. Cần nghiệm thu cấu hình Redis và allowlist Origin trong môi trường chạy.
+2. **Board lookup:** Task adapter và Board endpoint đã có; cần cấu hình cùng `INTERNAL_SERVICE_TOKEN` ở hai service và nghiệm thu lỗi/response qua service đang chạy.
+3. **Gateway proxy (#31):** route `/ws/**` đã dùng upstream `ws://localhost:8083`; unit/integration test dùng upstream giả kiểm tra ticket và header. Cần kiểm tra handshake/frame với Task thật.
+4. **Task runtime:** handler chỉ được đăng ký khi cả bốn cờ readiness trong `services/task-service/src/main/resources/application.yml` đều là `true`; mặc định tất cả đều là `false`. Không bật khi Task còn truy cập trực tiếp được từ client; network ingress restriction là điều kiện triển khai được hoãn khỏi nhánh hiện tại.
+5. **Acceptance (#35):** kiểm tra member/non-member, revoke khi đang kết nối, Board lookup/snapshot lỗi, event sau commit và reconnect/refetch qua Gateway. Chưa có bằng chứng nghiệm thu E2E.
 
 Task phân phối event chỉ giữa các session trong cùng instance, sau commit và best-effort; lỗi fanout không rollback thao tác Card/Comment. Không lưu bền, retry, replay hoặc cam kết thứ tự/đủ sự kiện. Client cần refetch REST sau reconnect. Không đánh dấu #24 hoàn tất chỉ dựa trên handler đã có trong source; xác nhận qua Gateway và các phụ thuộc thuộc integration task.
 
@@ -94,6 +96,6 @@ Ví dụ payload thực tế trong envelope:
 
 #### Ranh giới tích hợp và bằng chứng còn thiếu
 
-Task không gọi internal Notification REST. Consumer cần ghi Inbox và mọi Notification tạo ra trong cùng transaction, rồi ACK sau commit. Consumer, queue/binding, retry/DLQ, xác minh schema SQL Server vật lý và kiểm tra publish/consume/rollback/redelivery thuộc task tích hợp. Messaging và Outbox relay mặc định tắt; shared relay hiện retry mỗi 5 giây nhưng chưa có giới hạn lần thử hoặc DLQ. Không bật delivery production trước khi task tích hợp chốt các chính sách này.
+Task không gọi internal Notification REST. Consumer ghi Inbox và Notification trong cùng transaction rồi ACK sau commit. `messaging-support` hiện cung cấp retry policy chung cho consumer: một lần xử lý đầu, tối đa 3 retry cách 5 giây, rồi reject không requeue để DLX chuyển vào DLQ; lỗi contract poison đi thẳng DLQ. Notification và Task cleanup có queue/DLQ topology source tương ứng, nhưng Task cleanup vẫn gated và broker retry/DLQ chưa được nghiệm thu end-to-end. Outbox relay là luồng riêng: hiện retry nền mỗi 5 giây, chưa có giới hạn lần thử hoặc DLQ. Xác minh schema SQL Server vật lý và publish/consume/rollback/redelivery vẫn thuộc task tích hợp.
 
 Bootstrap SQL tạo sẵn `outbox_events.aggregate_version` và `inbox_events` cho database rỗng; `ddl-auto=none` không cập nhật database hiện hữu. Đối chiếu schema vật lý theo [database docs](database.md) trước khi bật relay. #24 WebSocket vẫn là kênh ephemeral, tách biệt khỏi các event bền vững này.

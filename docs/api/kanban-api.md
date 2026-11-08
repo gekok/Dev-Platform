@@ -38,6 +38,7 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Comment | `GET`, `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Xem và tạo Comment |
 | Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
 | Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
+| Realtime | `POST` | `/api/v1/realtime/boards/{boardId}/ws-ticket` | Đổi Bearer access token đã xác thực thành ticket WebSocket dùng một lần |
 | Account Admin | `POST` | `/api/v1/admin/accounts` | System Admin tạo Account theo contract issue #54; role mặc định `USER` |
 | Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
 | Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
@@ -54,10 +55,10 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 - User-service phát JWT gồm `iss`, `sub` UUID, `email`, `fullName`, `roles`, `authVersion`, `iat`, `exp`; issuer mặc định `dev-platform-user-service`, hạn dùng mặc định 1 giờ (`app.jwt.expiration-ms`). JWT được ký nhưng không mã hóa; email claim vẫn có trong Bearer token được Gateway forward. Token phát trước khi có issuer claim không hợp lệ với cấu hình mới; cần đăng nhập lại. Gateway không forward profile/role riêng trong header.
 - Public routes Gateway: `POST /api/v1/auth/login`, `GET /api/v1/auth/public-key`, `GET /actuator/health`. Protected request trả `401` với token thiếu/sai, `403` nếu snapshot cho biết Account không `ACTIVE`, `503` nếu key/snapshot không xác minh được.
 - Account snapshot key là `auth:account:{accountId}`, shape `{accountId,status,systemRoles,authVersion}`. Gateway đọc trực tiếp Redis mỗi request, không sở hữu hoặc cache snapshot. User-service ghi snapshot-sync job cùng Account mutation; worker mặc định tắt nên auth fail-closed nếu snapshot chưa được apply.
-- Gateway chỉ bảo vệ request qua Gateway; direct-service ports chưa bị giới hạn network ingress. CORS allowlist chưa cấu hình; browser cross-origin cần origin được chốt và cấu hình trước khi dùng.
-- Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
+- Gateway chỉ bảo vệ request qua Gateway; direct-service ports chưa bị giới hạn network ingress. WebSocket Origin allowlist có cấu hình riêng bằng `GATEWAY_WS_ALLOWED_ORIGINS` (mặc định `http://localhost:5173`); CORS cho HTTP cross-origin chưa cấu hình.
+- Task có secured internal lookup `GET /internal/boards/{boardId}` tới board-service bằng `X-Service-Token` để lấy trạng thái Board/Project/Columns. Endpoint này không thay thế Project membership authorization: Task vẫn đọc authorization snapshot từ Redis. Internal lookup không được expose qua Gateway; direct-service ingress vẫn chưa bị chặn.
 - Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. Account mang `SYSTEM_ADMIN` không được tạo hoặc tham gia Project; cá nhân cần làm việc trong Project dùng Account nghiệp vụ không mang role này.
-- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Admin create/status/role routes có implementation; field `roles` trong request tạo Account trái với quyết định không để client tự khai role, nên là sai khác implementation chưa được duyệt. Contract mục tiêu và credential provisioning cần được đồng bộ riêng. Notification consumer đã nối retry tối đa 3 lần, cách nhau 5 giây rồi chuyển DLQ; broker E2E, xử lý sau DLQ và cấu hình của các consumer khác còn mở. Directory/profile handlers có source; privacy, query rules và field contract, cùng lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope và Board preference còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
+- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Admin create/status/role routes có implementation; field `roles` trong request tạo Account trái với quyết định không để client tự khai role, nên là sai khác implementation chưa được duyệt. Contract mục tiêu và credential provisioning cần được đồng bộ riêng. Shared consumer factory có retry tối đa 3 lần, cách nhau 5 giây, và DLX; Notification/Task cleanup có queue/DLQ source nhưng broker E2E, xử lý sau DLQ và Outbox Relay ACK-loss còn mở. Directory/profile handlers có source; privacy, query rules và field contract, cùng lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope và Board preference còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -182,7 +183,7 @@ Thứ tự đã chốt là giảm dần theo `(position, id)`. `id` unique nên 
 
 Card response tối thiểu đề xuất có `id`, `projectId`, `boardId`, `columnId`, `title`, `position`, `assigneeId`, cùng `description`/`dueDate` ở detail. Task lưu `project_id` scalar và mỗi read/write phải khớp `projectId` trên route với Card đã lưu. `status` hiện có trong demo (`TODO`, `IN_PROGRESS`, `DONE`) nhưng không đổi theo move; cần chốt có bỏ field này hay ràng buộc nó với Column. Comment giữ `id`, `cardId`, `authorId`, `content`, `createdAt`; `mentionedUserIds` là request input, response/storage model cần thống nhất.
 
-Board/Column thuộc Project phải được xác minh từ nguồn đáng tin cậy trước khi bật create-card end-to-end. Vì internal REST chưa được bảo mật, route `projectId` do client gửi không tự chứng minh Board/Column có quan hệ với Project.
+Board/Column thuộc Project phải được xác minh từ nguồn đáng tin cậy trước khi bật create-card end-to-end. Task có secured Board-state lookup bằng `X-Service-Token` cho WebSocket, nhưng Column validator cho create/move chưa có adapter sẵn sàng; route `projectId` do client gửi không tự chứng minh quan hệ đó.
 
 ### `notification-service`: Notification
 
@@ -524,7 +525,7 @@ Response `200 OK`: thông báo sau khi đổi `read` thành `true`.
 
 ### Real-time
 
-Issue #24 architecture approved on 2026-11-06. This is the approved target contract; Task runtime must wait until Gateway identity, trusted Board lookup, and Gateway WebSocket proxy are ready.
+Issue #24 architecture approved on 2026-11-06. Source đã có Gateway browser ticket, WebSocket proxy và Task Board lookup adapter; Task runtime vẫn phải chờ readiness gates và nghiệm thu integration.
 
 Web React giữ một kênh sống (WebSocket) theo bảng:
 
@@ -532,7 +533,9 @@ Web React giữ một kênh sống (WebSocket) theo bảng:
 WS /ws/boards/{boardId}
 ```
 
-Header contract hiện ghi `Authorization: Bearer <jwt>`; Gateway phải xác thực handshake và chuyển identity tin cậy tới Task. Task không tin `X-User-Id` hay `projectId` do client gửi. Task resolve Board→Project từ nguồn persisted đáng tin cậy, rồi kiểm tra Account và Project membership qua snapshot ở lúc handshake, định kỳ khi socket mở và ngay trước mỗi lần gửi. Nếu không xác minh được identity, Board relation hoặc snapshot, Task từ chối handshake/đóng socket. Runtime chưa được bật trước khi các phụ thuộc này sẵn sàng. Cần xác nhận cách browser WebSocket cung cấp credential và cách Gateway chuyển identity trước khi tích hợp.
+Browser gọi `POST /api/v1/realtime/boards/{boardId}/ws-ticket` với `Authorization: Bearer <accessToken>`; endpoint chỉ nhận Account identity đã được Gateway xác thực và trả `201` cùng `{ "ticket": "...", "expiresInSeconds": 30 }`, header `Cache-Control: no-store`. Sau đó browser mở `WS /ws/boards/{boardId}?ticket=<ticket>` (hoặc `WSS` khi chạy HTTPS). Không gửi access token trong handshake vì WebSocket API của browser không cho đặt Authorization header tùy ý.
+
+Ticket ngẫu nhiên, gắn với Account và Board, hết hạn sau 30 giây mặc định và chỉ dùng một lần bằng thao tác Redis nguyên tử. Gateway yêu cầu một `Origin` khớp chính xác allowlist; khi proxy, nó xóa ticket khỏi URL, bỏ `Authorization` cùng các header identity/security do client gửi và đặt `X-User-Id` từ ticket đã xác minh. Ticket thiếu/sai/hết hạn/đã dùng hoặc sai Board trả `401`; Origin không hợp lệ trả `403`; Redis lỗi trả `503`. Vì ticket nằm trong query string, ingress/reverse-proxy access log cần che giá trị `ticket`. Task không tin identity hoặc `projectId` do client gửi. Task resolve Board→Project qua secured internal lookup đã lưu, rồi kiểm tra Account và Project membership qua Redis snapshot lúc handshake, định kỳ khi socket mở và ngay trước mỗi lần gửi. Nếu không xác minh được identity, Board relation hoặc snapshot, Task từ chối handshake/đóng socket.
 
 Fanout chỉ tới các session cùng Board trong Task instance hiện tại. Event được gửi sau khi transaction Card/Comment commit; send/queue lỗi có thể làm rơi event nhưng không đổi kết quả HTTP đã commit. WebSocket không lưu bền, không retry/replay và không bảo đảm thứ tự hay nhận đủ. Khi reconnect, client refetch REST. Event không chứa title hoặc Comment body. Đây là semantics cho WebSocket #24, không phải RabbitMQ catalog của #25.
 
@@ -550,7 +553,7 @@ Event server gửi xuống:
 { "event": "comment.added", "cardId": 100, "commentId": 900 }
 ```
 
-Gateway auth runtime, Board-to-Project adapter an toàn và proxy WebSocket qua Gateway chưa sẵn sàng; Task handler hiện chưa được đăng ký.
+Task handler chỉ được đăng ký khi `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED`, `TASK_BOARD_PROJECT_LOOKUP_READY`, `TASK_GATEWAY_WEBSOCKET_PROXY_READY` và `TASK_BOARD_WEBSOCKET_ENABLED` đều bật; mặc định cả bốn đều tắt. Source có adapter gọi `GET /internal/boards/{boardId}` với `X-Service-Token`, và Gateway proxy đã được kiểm tra bằng upstream giả. Chưa có nghiệm thu WebSocket end-to-end với Task/Board/Redis thật; direct-service ingress restriction vẫn là điều kiện triển khai riêng.
 
 Mobile Flutter không giữ socket suốt. Nhận việc gán và mention qua đẩy
 (push FCM). Bấm vào tin mới mở app và gọi API lấy chi tiết.
