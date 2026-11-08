@@ -7,10 +7,10 @@ spring:
   application:
     name: board-service
   datasource:
-    url: '${BOARD_DB_URL:jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_board_db;encrypt=true;trustServerCertificate=true}'
+    url: ${BOARD_DB_URL:jdbc:sqlserver://localhost:1433;instanceName=SQLEXPRESS;databaseName=kanban_board_db;encrypt=true;trustServerCertificate=true}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:123456}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -26,14 +26,21 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:devplatform}
-    password: ${RABBITMQ_PASSWORD:devplatform}
+    username: ${RABBITMQ_USERNAME:quyennq}
+    password: ${RABBITMQ_PASSWORD:123456}
     publisher-confirm-type: correlated
     publisher-returns: true
     template:
       mandatory: true
 
 dev-platform:
+  security:
+    internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+  internal:
+    user-service:
+      base-url: ${USER_SERVICE_BASE_URL:http://localhost:8081}
+    task-service:
+      base-url: ${TASK_SERVICE_BASE_URL:http://localhost:8083}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:
@@ -45,5 +52,9 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
   snapshot-sync:
     project:
-      enabled: ${PROJECT_AUTH_SNAPSHOT_SYNC_ENABLED:false}
+      enabled: ${PROJECT_AUTH_SNAPSHOT_SYNC_ENABLED:true}
       fixed-delay-ms: ${PROJECT_AUTH_SNAPSHOT_SYNC_FIXED_DELAY_MS:1000}
+
+security:
+  gateway:
+    hmac-secret: ${GATEWAY_HMAC_SECRET}     # cùng giá trị với Gateway

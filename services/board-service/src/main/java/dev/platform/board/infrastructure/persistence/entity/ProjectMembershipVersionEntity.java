@@ -27,7 +27,7 @@ public class ProjectMembershipVersionEntity {
 
     @Version
     @Column(name = "row_version", nullable = false)
-    private long rowVersion;
+    private int rowVersion;
 
     public ProjectMembershipVersionEntity(
             ProjectMembershipVersionId id, long membershipVersion, long authorizationVersion) {
