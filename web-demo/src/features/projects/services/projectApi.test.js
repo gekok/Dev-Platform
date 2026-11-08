@@ -83,6 +83,27 @@ test('maps backend Membership userId and User profile displayName for assignee U
   });
 });
 
+test('keeps member IDs when the profile service is unavailable', async () => {
+  await withAdapter(async (config) => {
+    if (config.url.startsWith('/projects/1/members')) {
+      return response(config, { data: { items: [{ userId: 'member-1', role: 'MEMBER' }], page: 0, size: 100, totalElements: 1, totalPages: 1 } });
+    }
+    throw new Error('Network unavailable');
+  }, async () => {
+    const members = await listProjectMembers(1);
+    assert.equal(members.items[0].id, 'member-1');
+    assert.equal(members.items[0].fullName, 'Project member');
+  });
+});
+
+test('rejects overlapping pages when the Project list changes', async () => {
+  await withAdapter(async (config) => response(config, {
+    data: { items: [{ id: 1 }], page: config.params.page, size: 100, totalElements: 2, totalPages: 2 },
+  }), async () => {
+    await assert.rejects(listProjects(), /list changed/i);
+  });
+});
+
 test('uses the current Project invitation routes and unwraps their response envelopes', async () => {
   const requests = [];
   await withAdapter(async (config) => {

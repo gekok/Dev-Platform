@@ -66,8 +66,17 @@ export async function listAllApiPages(path, params = {}) {
     return normalizeApiPage(response.data, pageNumber, API_PAGE_SIZE);
   }));
 
+  const pages = [firstPage, ...remainingPages];
+  const items = pages.flatMap((page) => page.items);
+  const ids = items.map((item) => item?.id ?? item?.userId).filter((id) => id != null);
+  if (pages.some((page, index) => page.page !== index ||
+      page.totalElements !== firstPage.totalElements || page.totalPages !== firstPage.totalPages) ||
+      items.length !== firstPage.totalElements || new Set(ids.map(String)).size !== ids.length) {
+    throw new Error('The list changed while loading. Please retry.');
+  }
+
   return {
-    items: [firstPage.items, ...remainingPages.map((page) => page.items)].flat(),
+    items,
     pagination: {
       page: firstPage.page,
       size: firstPage.size,

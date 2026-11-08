@@ -28,9 +28,14 @@ async function listProjectProfiles(projectId, userIds) {
     const params = new URLSearchParams();
     params.set('projectId', String(projectId));
     uniqueIds.slice(start, start + 100).forEach((id) => params.append('ids', id));
-    const response = await api.get(`/users/profiles?${params.toString()}`);
-    const profiles = unwrapApiResponse(response.data);
-    if (Array.isArray(profiles)) profileGroups.push(...profiles);
+    try {
+      const response = await api.get(`/users/profiles?${params.toString()}`);
+      const profiles = unwrapApiResponse(response.data);
+      if (Array.isArray(profiles)) profileGroups.push(...profiles);
+    } catch (error) {
+      const status = error.response?.status;
+      if (status && status < 500) throw error;
+    }
   }
 
   return new Map(profileGroups.map((profile) => [String(profile.id), profile]));
