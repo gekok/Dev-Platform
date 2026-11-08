@@ -6,14 +6,14 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path. Gateway xác thực JWT và ghi đè `X-User-Id` cho request đi qua Gateway, nhưng mọi route Card/Comment vẫn trả 503 `CARD_OPERATION_UNAVAILABLE` trước guard khi Task trusted identity gate mặc định tắt. Sau khi gate được bật an toàn, ProjectAuthorizationGuard kiểm tra Redis snapshot. Adapter Board lookup đã có; create/move vẫn trả 503 tới khi Column validator tin cậy sẵn sàng. Gateway + Task chưa được kiểm thử E2E; direct-service ingress hiện chưa bị chặn.
+CardController hiện dùng Project-scoped path. Gateway xác thực JWT và ghi đè `X-User-Id` cho request đi qua Gateway, nhưng mọi route Card/Comment vẫn trả 503 `CARD_OPERATION_UNAVAILABLE` trước guard khi Task trusted identity gate mặc định tắt. Sau khi gate được bật an toàn, ProjectAuthorizationGuard kiểm tra Redis snapshot. Create/move đã nối `ColumnRelationshipValidator` với `BoardWriteGuard`, dùng secured Board lookup để xác minh Board, Project, Column và trạng thái ghi. Gateway + Task chưa được kiểm thử E2E; direct-service ingress hiện chưa bị chặn.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
-| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 khi identity tin cậy và validator Column sẵn sàng; 503 `CARD_OPERATION_UNAVAILABLE` nếu thiếu một trong hai |
+| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 khi identity, membership và target hợp lệ; 404 `RESOURCE_NOT_FOUND` nếu Board/Project/Column không khớp; 409 nếu Project/Board đã đóng; 503 `CARD_OPERATION_UNAVAILABLE` nếu identity hoặc Board lookup chưa xác minh được |
 | GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId required, limit?, cursor? | 200 `{items, nextCursor}` sau khi identity tin cậy và authorization snapshot hợp lệ; nếu chưa, 503 |
 | GET | /api/v1/projects/{projectId}/cards/{cardId} | X-User-Id | 200 CardDetailResponse; 404 nếu Card không tồn tại trong Project; 503 khi identity chưa tin cậy |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi identity và validator Column sẵn sàng; nếu chưa, 503 `CARD_OPERATION_UNAVAILABLE` |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi identity, membership và cả hai Column hợp lệ; 404 `RESOURCE_NOT_FOUND` nếu target không khớp; 409 nếu Project/Board đã đóng; 503 `CARD_OPERATION_UNAVAILABLE` nếu dependency chưa xác minh được |
 | PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 `CARD_OPERATION_UNAVAILABLE` khi identity chưa tin cậy; sau khi tích hợp, 200 CardResponse hoặc 403 nếu assignee không hợp lệ/generation đã có fence |
 | POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse khi identity tin cậy và snapshot hợp lệ; nếu chưa, 503 `CARD_OPERATION_UNAVAILABLE` |
 | GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần sau khi identity tin cậy; nếu chưa, 503 |
@@ -57,7 +57,7 @@ Envelope dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, 
 
 ### Ví dụ request/response
 
-Các ví dụ này mô tả contract của code, không phải log nghiệm thu. Request qua Gateway nhận `X-User-Id` là UUID đã được xác thực và ghi đè; Task trusted identity mặc định tắt. Create/move cũng yêu cầu validator Column thật, nên các request đó trả 503 tới khi dependency được cấu hình.
+Các ví dụ này mô tả contract của code, không phải log nghiệm thu. Request qua Gateway nhận `X-User-Id` là UUID đã được xác thực và ghi đè; Task trusted identity mặc định tắt. Khi gate được cấu hình an toàn, create/move gọi Board lookup có `X-Service-Token`; Board Service không xác minh được thì trả 503, target không khớp trả 404, Project/Board không ACTIVE trả 409.
 
 `POST /api/v1/projects/1/boards/2/cards` với body:
 
@@ -77,15 +77,15 @@ Khi được phép và lưu thành công, response `201` có dạng `{"id":42,"p
 
 GET `/api/v1/projects/{projectId}/cards/{cardId}` đã được khai báo qua inbound port; persistence query đồng thời lọc theo `project_id`, nên Card sai Project trả `404 CARD_NOT_FOUND`. Response chi tiết gồm `description` và `dueDate` ngoài các field Card cơ bản. Mọi route Card giữ projectId trong URL để giới hạn đọc/ghi theo `cards.project_id`; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
 
-Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Secured `GET /internal/boards/{boardId}` với `X-Service-Token` hiện phục vụ WebSocket Board lookup; `ColumnRelationshipValidator` cho create/move chưa có adapter sẵn sàng. Không được xem riêng `projectId` do caller gửi là bằng chứng cho quan hệ Board–Project.
+Board/Column truyền khi tạo hoặc move Card được xác minh thuộc Project trong path bằng `ColumnRelationshipValidator` → `BoardWriteGuard` → secured `GET /internal/boards/{boardId}` với `X-Service-Token`. Guard kiểm tra Board ID/Project ID, sự tồn tại của Column và trạng thái `ACTIVE`; riêng `projectId` do caller gửi không phải bằng chứng quan hệ. Adapter Board lookup và wiring đã có source; chưa xác nhận E2E qua các service đang chạy.
 
 Move yêu cầu `toPosition`, dùng chỉ số hiển thị bắt đầu từ 0 theo thứ tự position DESC/id DESC, sau khi gỡ Card khỏi vị trí cũ. Tạo Card từ chối title rỗng hoặc dài quá 500 ký tự sau khi trim. Thuật toán khóa theo Project/Board bằng SQL Server application lock và cập nhật cả hai Column trong transaction; mọi đường ghi position phải dùng cùng khóa trước khi bật tích hợp. Chưa kiểm tra đồng thời trên SQL Server hoặc tích hợp adapter Column. WebSocket `card.moved` thuộc #24; chưa có durable `MOVED` Notification event trong catalog #25.
 
-Kiểm tra SQL Server tùy chọn: `mvn -pl services/task-service -am '-Dtask.sqlserver.integration=true' test`. Test hiện xác nhận create fail-closed và không ghi Card khi chưa có validator tin cậy. Nó không xác minh Board/Column thật, Gateway, Redis hoặc E2E; các kiểm tra liên service thuộc task tích hợp. Test chỉ chạy khi bật property trên và dùng cấu hình datasource local.
+Kiểm tra SQL Server tùy chọn: `mvn -pl services/task-service -am '-Dtask.sqlserver.integration=true' test`. Test hiện xác nhận create không ghi Card khi Board state không thể xác minh. Nó không xác minh quan hệ Board/Column thật, Gateway, Redis hoặc E2E; các kiểm tra liên service thuộc task tích hợp. Test chỉ chạy khi bật property trên và dùng cấu hình datasource local.
 
 ### Xác minh quan hệ Board/Column
 
-`ColumnRelationshipValidator` vẫn là application port của task-service vì create/move cần kiểm tra quan hệ. Không còn mock profile hoặc allowlist giả. Infrastructure cung cấp adapter mặc định fail-closed bằng 503; adapter thật sẽ được nối khi có nguồn Board/Column đã xác minh. `projectId` trong request không được dùng làm bằng chứng quan hệ.
+`ColumnRelationshipValidator` là application port của task-service. Bean infrastructure nối port này vào `BoardWriteGuard`, dùng `HttpBoardStateAdapter` và Board Service `GET /internal/boards/{boardId}` có `X-Service-Token`; không còn mock profile hoặc allowlist giả. Board state không truy cập được thì fail-closed bằng 503. Board/Project/Column không khớp trả 404 `RESOURCE_NOT_FOUND`; trạng thái Project/Board khác `ACTIVE` trả 409 `PROJECT_NOT_ACTIVE` hoặc `BOARD_NOT_ACTIVE`.
 
 Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Cursor hiện tại là wire tạm thời; contract lỗi và stale-cursor chưa được chốt. Card detail GET scope theo Project đã có trong source. Các use case Card/Comment có implementation trong source, nhưng chưa xác nhận E2E qua Gateway, Redis và adapter Board/Column thật.
 
@@ -104,7 +104,9 @@ Task listener cho event cleanup có durable queue/routing binding và dùng `AUT
 | Input/domain validation | 400 | BAD_REQUEST |
 | Không có quyền Project | 403 | PROJECT_ACCESS_DENIED |
 | Không đọc/giải mã được snapshot | 503 | AUTHORIZATION_SNAPSHOT_UNAVAILABLE |
-| Trusted Gateway identity hoặc validator Board/Column chưa sẵn sàng | 503 | CARD_OPERATION_UNAVAILABLE |
+| Trusted Gateway identity hoặc Board lookup không xác minh được | 503 | CARD_OPERATION_UNAVAILABLE |
+| Board, Project hoặc Column không khớp | 404 | RESOURCE_NOT_FOUND |
+| Project hoặc Board không ACTIVE | 409 | PROJECT_NOT_ACTIVE / BOARD_NOT_ACTIVE |
 | Card không tồn tại trong Project | 404 | CARD_NOT_FOUND |
 
 Bảng trên mô tả code và mapping hiện có; chưa có bằng chứng các thao tác đã chạy end-to-end với Gateway, Redis và adapter Column thật.

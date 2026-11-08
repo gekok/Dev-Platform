@@ -79,6 +79,6 @@ Issue #24 không tạo bảng/cột: WebSocket là kênh ephemeral. Source hiệ
 
 ## Phạm vi target và giới hạn
 
-cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities và script khởi tạo local. Card/Comment use cases đã có implementation trong source; việc có entity hoặc schema không chứng minh đã chạy E2E. Board state lookup được bảo vệ bằng `X-Service-Token` cho WebSocket authorization; `ColumnRelationshipValidator` vẫn fail-closed cho create/move tới khi validator phù hợp được nối.
+cards.project_id, task_assignees, membership fence và cleanup job hiện được biểu diễn trong JPA entities và script khởi tạo local. Card/Comment use cases đã có implementation trong source; việc có entity hoặc schema không chứng minh đã chạy E2E. Board state lookup được bảo vệ bằng `X-Service-Token` cho WebSocket authorization và Card create/move; `ColumnRelationshipValidator` nối qua `BoardWriteGuard`. Nếu Board lookup không xác minh được, create/move fail-closed bằng 503.
 
 Kỳ 1 không có cards.assignee_id, task_deletion_jobs, board_write_locks, Project cascade hay Account deletion operation. Mọi tài liệu cũ mô tả các đối tượng này là lịch sử/Kỳ 2, không phải schema hiện hành.

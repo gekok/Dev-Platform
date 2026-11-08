@@ -16,7 +16,8 @@ public class BoardWriteGuard {
 
     public void requireWritable(Long projectId, Long boardId, Long columnId) {
         BoardStateSnapshot board = boardStates.getBoardState(boardId);
-        if (board == null || !projectId.equals(board.projectId())
+        if (board == null || !Objects.equals(boardId, board.boardId())
+                || !Objects.equals(projectId, board.projectId())
                 || board.columns() == null
                 || board.columns().stream().noneMatch(column -> Objects.equals(column.id(), columnId))) {
             throw new InvalidBoardTargetException();

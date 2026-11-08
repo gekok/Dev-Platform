@@ -45,7 +45,7 @@
 
 ### 2. Card, Comment, realtime và Notification
 
-- [ ] Card route mang `projectId`, Task lưu `cards.project_id` và đối chiếu project path với Card khi đọc/sửa. Task có Board-state lookup với `X-Service-Token`, nhưng Column validator cho create/move vẫn fail-closed và cần được nối/kiểm tra.
+- [ ] Card route mang `projectId`, Task lưu `cards.project_id` và đối chiếu project path với Card khi đọc/sửa. Source đã nối Column validator với Board-state lookup có `X-Service-Token` cho create/move; nghiệm thu E2E qua Gateway và service thật vẫn còn.
 - [ ] Move Card cập nhật thứ tự; #24 giữ nguyên route/payload đã duyệt. Browser lấy ticket qua Gateway rồi kết nối `/ws/boards/{boardId}`; source đã có ticket/route/lookup nhưng Task runtime mặc định tắt và chưa có E2E với service thật.
 - [ ] Comment/mention giữ đúng author và phạm vi Project.
 - [ ] Cursor Card mặc định 5, tối đa 20, sort position DESC, id DESC. Wire proposal per-Column yêu cầu columnId và cursor gắn Board/Column/sort; khi có bất nhất trong lúc tải, client dedupe theo cardId, hiện banner đầu trang yêu cầu reload.

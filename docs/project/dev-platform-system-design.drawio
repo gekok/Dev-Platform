@@ -100,7 +100,7 @@
         <mxCell id="16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#82b366;fillColor=#d5e8d4;" value="&lt;b&gt;Không có deployable project-service.&lt;/b&gt; Project/Membership cùng board-service và board_db. Mỗi service có database riêng; không có cross-database FK." vertex="1">
           <mxGeometry height="76" width="500" x="40" y="785" as="geometry" />
         </mxCell>
-        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" value="&lt;b&gt;TODO:&lt;/b&gt; Task đọc snapshot trực tiếp từ Redis và fail closed. Internal REST Task → Board để xác minh Board/Column thuộc Project chưa dùng vì chưa có bảo mật service-to-service." vertex="1">
+        <mxCell id="17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=9;fontSize=11;strokeColor=#d6b656;fillColor=#fff2cc;" value="Task đọc authorization snapshot trực tiếp từ Redis và fail closed. Internal REST Task → Board dùng X-Service-Token để xác minh Board/Column thuộc Project cho Card create/move và WebSocket. Task trusted identity vẫn mặc định tắt vì direct-service ingress chưa bị chặn." vertex="1">
           <mxGeometry height="76" width="680" x="610" y="785" as="geometry" />
         </mxCell>
         <mxCell id="35" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;spacing=6;fontSize=10;strokeColor=#c7d4df;fillColor=#f5f8fb;" value="&lt;b&gt;Nguồn:&lt;/b&gt; docs/project/architecture-decisions.md · docs/api/kanban-api.md · docs/project/06-integration.md · services/*/docs/database.md · shared/README.md · gateway/docs/routing.md · Kỳ 2 account-deletion-skeleton-guide.md" vertex="1">
@@ -973,7 +973,7 @@
             <mxPoint x="1004" y="293" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Validate Board/Column belongs to Project (internal REST not secured)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
+        <mxCell id="13" value="&lt;b&gt;04.&lt;/b&gt; Validate Board/Column belongs to Project (secured internal REST)" style="edgeStyle=none;html=1;rounded=0;strokeColor=#c89b2c;strokeWidth=1.4;dashed=1;endArrow=block;endFill=1;fontSize=11;labelBackgroundColor=#ffffff;align=center;verticalAlign=middle;" edge="1" parent="1">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="716" y="347" as="sourcePoint" />
             <mxPoint x="1292" y="347" as="targetPoint" />

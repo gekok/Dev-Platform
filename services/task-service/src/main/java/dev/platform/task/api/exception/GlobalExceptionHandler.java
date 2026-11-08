@@ -11,6 +11,8 @@ import dev.platform.task.application.exception.AuthorizationSnapshotUnavailableE
 import dev.platform.task.application.exception.ProjectAccessDeniedException;
 import dev.platform.task.application.exception.CardOperationUnavailableException;
 import dev.platform.task.application.exception.CardNotFoundException;
+import dev.platform.task.application.service.BoardNotWritableException;
+import dev.platform.task.application.service.InvalidBoardTargetException;
 import jakarta.servlet.http.HttpServletRequest;
 
 // Bắt lỗi validate Aggregate, trả 400 theo kanban-api.md mục 6.
@@ -21,6 +23,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleCardNotFound(CardNotFoundException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
                 "CARD_NOT_FOUND", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvalidBoardTargetException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBoardTarget(
+            InvalidBoardTargetException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
+                "RESOURCE_NOT_FOUND", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(BoardNotWritableException.class)
+    public ResponseEntity<ErrorResponse> handleBoardNotWritable(
+            BoardNotWritableException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(
+                ex.code(), ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
     }
 
     @ExceptionHandler(CardOperationUnavailableException.class)
