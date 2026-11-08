@@ -99,6 +99,20 @@ public class UserAggregate {
     return true;
   }
 
+  public boolean updateRoles(Set<String> roles) {
+    Objects.requireNonNull(roles, "roles cannot be null");
+    if (roles.isEmpty()) {
+      throw new IllegalArgumentException("roles cannot be empty");
+    }
+    Set<String> newRoles = new LinkedHashSet<>();
+    for (String role : roles) {
+      newRoles.add(validateAndNormalizeRoles(role));
+    }
+    this.roles = Collections.unmodifiableSet(newRoles);
+    this.authVersion++;
+    return true;
+  }
+
   private String validateAndNormalizeRoles(String role) {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("role cannot be null or blank");
