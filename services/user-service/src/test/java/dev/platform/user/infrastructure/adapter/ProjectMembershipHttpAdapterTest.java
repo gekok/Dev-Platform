@@ -62,11 +62,12 @@ class ProjectMembershipHttpAdapterTest {
     }
 
     @Test
-    @DisplayName("Trả false khi Board không tìm thấy Membership")
-    void shouldReturnFalseWhenMembershipIsNotFound() {
+    @DisplayName("Ném AuthorizationUnavailableException khi Board trả 404 (endpoint chưa sẵn sàng)")
+    void shouldFailClosedWhenBoardReturnsNotFound() {
         TestClient client = client(withStatus(HttpStatus.NOT_FOUND));
 
-        assertThat(client.adapter().isActiveProjectMember(PROJECT_ID, USER_ID)).isFalse();
+        assertThatThrownBy(() -> client.adapter().isActiveProjectMember(PROJECT_ID, USER_ID))
+                .isInstanceOf(AuthorizationUnavailableException.class);
         client.server().verify();
     }
 

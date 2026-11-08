@@ -187,4 +187,17 @@ class JwtTokenAdapterTest {
     assertThat(token).isNotBlank();
     assertThat(envAdapter.parseAndValidate(token)).isEqualTo(user.getId());
   }
+
+  @Test
+  @EnabledOnOs(OS.LINUX)
+  @DisplayName("Đọc thành công key file đã có kể cả khi file chỉ cho phép đọc (read-only secret mount)")
+  void shouldReadExistingKeyFileEvenIfReadOnly() throws Exception {
+    Path keyFile = temporaryDirectory.resolve("readonly-jwt.key");
+    KeyPair original = JwtTokenAdapter.resolveKeyPair("", "", "", keyFile);
+
+    Files.setPosixFilePermissions(keyFile, EnumSet.of(PosixFilePermission.OWNER_READ));
+
+    KeyPair loaded = JwtTokenAdapter.resolveKeyPair("", "", "", keyFile);
+    assertThat(loaded.getPublic().getEncoded()).isEqualTo(original.getPublic().getEncoded());
+  }
 }

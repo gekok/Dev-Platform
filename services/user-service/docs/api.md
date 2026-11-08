@@ -33,7 +33,7 @@ Endpoint nội bộ `GET /internal/users/{userId}` cho service khác xác minh A
 
 - Login, provisioning Account qua Admin, quản lý system role và phát token đã có implementation source. Điều này chưa đồng nghĩa Gateway→Redis snapshot đã được tích hợp end-to-end.
 - Account create/status/role mutation gọi snapshot recorder trong cùng DB transaction với thay đổi Account, Outbox và durable snapshot-sync job. SQL bootstrap local có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
-- Redis snapshot-sync worker chỉ chạy khi bật `USER_AUTH_SNAPSHOT_SYNC_ENABLED=true` (mặc định `false`). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
+- Redis snapshot-sync worker kích hoạt qua `USER_AUTH_SNAPSHOT_SYNC_ENABLED` (mặc định `true` cho môi trường local để tự động sync snapshot của seed users và account mới sang Redis). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
 - Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project, chỉ System Admin tạo Account và không public self-registration. Nếu cùng một cá nhân cần làm việc trong Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`. Directory privacy và Account validation từ board-service vẫn còn mở.
 - Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 
@@ -92,7 +92,7 @@ Request gồm `email` hợp lệ và `password` không rỗng. Response:
 {"accessToken":"<token returned by login port>","tokenType":"Bearer"}
 ```
 
-JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot. Có thể cấu hình cặp PEM qua `APP_JWT_PRIVATE_KEY`/`APP_JWT_PUBLIC_KEY`, hoặc đường dẫn file qua `APP_JWT_KEY_FILE`; mặc định service dùng `.keys/dev-rsa-jwt.key` theo thư mục làm việc. Không thể ghi file khóa thì user-service dừng khởi động. Môi trường nhiều replica hoặc container cần dùng cùng cặp khóa ổn định hay mount file lưu trữ bền vững.
+JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot. Trên môi trường production và multi-replica, bắt buộc cấu hình cùng một cặp khóa PEM ổn định cấp service qua `APP_JWT_PRIVATE_KEY`/`APP_JWT_PUBLIC_KEY`. Nếu cấu hình đường dẫn file qua `APP_JWT_KEY_FILE`, service hỗ trợ đọc secret mount chỉ đọc (read-only filesystem); khi chạy auto-generate mà không thể ghi file khóa ra disk, user-service sẽ dừng khởi động (fail-fast, không fallback in-memory không bền vững).
 
 | Field | Kiểu JSON | Bắt buộc/validation |
 |---|---|---|

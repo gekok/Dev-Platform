@@ -42,8 +42,6 @@ public class ProjectMembershipHttpAdapter implements ProjectMembershipPort {
             return "ACTIVE".equals(response.status())
                     && "ACTIVE".equals(response.projectStatus())
                     && ("OWNER".equals(response.role()) || "MEMBER".equals(response.role()));
-        } catch (HttpClientErrorException.NotFound exception) {
-            return false;
         } catch (HttpClientErrorException.Forbidden exception) {
             log.warn("Board rejected internal Membership verification", exception);
             throw new AuthorizationUnavailableException("Could not verify Project access", exception);

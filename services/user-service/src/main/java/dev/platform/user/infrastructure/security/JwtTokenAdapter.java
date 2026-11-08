@@ -210,8 +210,13 @@ public class JwtTokenAdapter implements TokenPort {
     try {
       Files.setPosixFilePermissions(
           path, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
-    } catch (UnsupportedOperationException unsupported) {
+    } catch (UnsupportedOperationException | SecurityException unsupported) {
       // Keep the platform's default access control on filesystems without POSIX permissions.
+    } catch (java.nio.file.FileSystemException fileSystemException) {
+      // Do not fail when reading from a read-only mount (e.g. K8s Secret mount) if the file is readable.
+      if (!Files.isReadable(path)) {
+        throw fileSystemException;
+      }
     }
   }
 
