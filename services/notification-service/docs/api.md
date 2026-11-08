@@ -12,9 +12,26 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 | PATCH | /api/v1/notifications/{id}/read | X-User-Id; body rỗng | 200 NotificationResponse |
 | POST | /internal/v1/notifications | userId, projectId?, type, title, cardId?, boardId? | 201 NotificationResponse |
 
-Client chỉ được list/mark-read Notification của Account hiện tại. POST internal route bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì hiện vẫn không kiểm tra service token, nên chỉ bật sau khi có bảo vệ service-to-service và không expose qua Gateway. TaskEventListener còn là placeholder, nên chưa có producer event tạo Notification end-to-end. ListMyNotificationsPort và MarkReadPort đã có application service triển khai. Client routes vẫn lấy identity từ X-User-Id dạng stub; Gateway chưa xác thực và bảo vệ identity header. CreateNotificationPort cùng producer/consumer event flow chưa thuộc phạm vi hoàn thiện của hai route này.
+Client chỉ được list/mark-read Notification của Account hiện tại. POST internal route bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì vẫn chưa kiểm tra service token, nên không expose qua Gateway. `TaskEventListener` đã consume `card.assigned` và `comment.mentioned` qua RabbitMQ, sau đó gọi application processor để ghi Inbox cùng Notification trong một transaction. Task-service đã có producer Outbox cho hai Notification intent này; nghiệm thu broker end-to-end vẫn cần thực hiện riêng. List/mark-read đã có application service. Controller đọc `X-User-Id`; Gateway xác thực và ghi đè header cho request đi qua Gateway, nhưng direct-service ingress vẫn còn mở.
 
 Response có id, type, title, projectId, cardId, boardId, read, createdAt. Client list hiện trả mảng không phân trang. Các error mapping cụ thể xem exception handler; không coi API contract draft là runtime behavior.
+
+## RabbitMQ consumer trong source
+
+Consumer được đăng ký khi đồng thời có `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`.
+
+- Exchange: `dev-platform.domain-events`.
+- Queue: `notification-service.task-events`.
+- Routing key: `card.assigned`, `comment.mentioned`.
+- DLQ: `notification-service.task-events.dlq` qua exchange `dev-platform.dead-letter`.
+- Contract: `schemaVersion=1`, `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`.
+- `card.assigned` tạo một Notification loại `ASSIGNED`.
+- `comment.mentioned` tạo một Notification loại `MENTIONED` cho mỗi recipient.
+- Inbox và các Notification được ghi cùng transaction; event trùng không tạo side effect lần hai.
+- Listener dùng AUTO ACK sau khi xử lý thành công. Lỗi được retry tối đa 3 lần, cách nhau 5 giây, sau đó chuyển DLQ.
+- Event type không hỗ trợ được bỏ qua mà không ghi Inbox hoặc Notification.
+
+Unit test của notification-service đã kiểm tra mapper, nhiều recipient, duplicate, rollback propagation và listener. Kiểm thử local qua RabbitMQ đã xác nhận `card.assigned`, `comment.mentioned`, duplicate và retry/DLQ; event lỗi không để lại Inbox/Notification. Luồng Task Outbox Relay → RabbitMQ và tình huống mất ACK/redelivery vẫn cần bằng chứng riêng trước khi đóng issue.
 
 ## Context và phạm vi
 
