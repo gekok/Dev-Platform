@@ -112,10 +112,13 @@ public class AdminUserController {
   }
 
   private void verifySystemAdmin(String authorization) {
-    if (authorization == null || !authorization.startsWith("Bearer ")) {
+    if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
       throw new AuthenticationException("Missing or invalid Authorization header");
     }
     String token = authorization.substring(7).trim();
+    if (token.isEmpty()) {
+      throw new AuthenticationException("Missing or invalid Authorization header");
+    }
     UUID callerId = tokenPort.parseAndValidate(token);
 
     UserSummaryDto caller = getCurrentUserPort.getCurrentUser(callerId);

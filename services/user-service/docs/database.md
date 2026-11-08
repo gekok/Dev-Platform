@@ -53,7 +53,7 @@ Mỗi service lưu Outbox/Inbox trong database do chính service sở hữu; mod
 
 user-service khai báo `messaging-support`, import `MessagingSupportConfiguration` và scan entity/repository của shared. Vì vậy `outbox_events` và `inbox_events` được map vào `user_db`, không phải database riêng của shared.
 
-- Snapshot recorder và Redis worker có skeleton; recorder chưa được gọi từ Account mutation use case. Khi nối lifecycle, recorder phải lưu Account/status/role Outbox event cùng durable sync job trong transaction nguồn. Worker retry Redis apply theo `auth_version` và chỉ chạy khi bật property.
+- Snapshot recorder được gọi từ luồng tạo Account, đổi trạng thái và đổi system role; Outbox event cùng durable sync job được ghi trong transaction nguồn. Worker retry Redis apply theo `auth_version` và chỉ chạy khi `dev-platform.snapshot-sync.user.enabled=true` (mặc định `false`), nên snapshot không tự được cập nhật vào Redis trong cấu hình mặc định.
 - Outbox Relay dùng lại cùng event ID/version/payload khi retry. Mọi consumer tương lai ghi Inbox cùng thay đổi nghiệp vụ/job trước ACK.
 - Các cờ messaging mặc định là `false`; cấu hình relay/consumer không đồng nghĩa snapshot sync đã chạy end-to-end.
 
@@ -95,7 +95,7 @@ Entity `users` không khai báo index ngoài unique email. Column kiểu `String
 ## Database local, schema và vòng đời dữ liệu
 
 - SQL Server local dùng database `kanban_user_db`; cấu hình kết nối và credentials xem README ở root.
-- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=false` là cấu hình local hiện tại; `none` không tạo schema. Dùng [script khởi tạo local](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database trống. Script và entity cùng đặt tên unique constraint email là `uq_users_email`; database tạo từ bootstrap cũ cần chạy [script nâng cấp constraint](../../../sql/upgrade-user-email-constraint.sql). Kỳ 1 chưa dùng Flyway.
+- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=false` là cấu hình local hiện tại; `none` không tạo schema. Dùng [bootstrap riêng cho user-service](../../../sql/user-service-local-bootstrap.sql) để tạo database mới/trống hoặc [bootstrap toàn dự án](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database mới/trống. Script và entity cùng đặt tên unique constraint email là `uq_users_email`; database tạo từ bootstrap cũ cần chạy [script nâng cấp constraint](../../../sql/upgrade-user-email-constraint.sql). Kỳ 1 chưa dùng Flyway.
 - Account/status/system-role mutation, Outbox event và snapshot-sync job phải commit cùng transaction. Redis apply/retry là bước sau commit; snapshot cũ không được ghi đè version mới.
 - Kỳ 1 không có Account deletion operation, tombstone hoặc cascade completion consumer.
 

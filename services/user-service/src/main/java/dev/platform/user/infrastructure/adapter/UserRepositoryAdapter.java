@@ -76,8 +76,7 @@ public class UserRepositoryAdapter implements UserRepository {
         SystemRoleEntity systemRole =
             systemRoleJpaRepository
                 .findById(code)
-                .orElseGet(
-                    () -> systemRoleJpaRepository.save(new SystemRoleEntity(code, code + " role")));
+                .orElseThrow(() -> new IllegalArgumentException("Unknown system role: " + code));
 
         UserSystemRoleEntity newRole = new UserSystemRoleEntity();
         newRole.setId(new UserSystemRoleId(user.getId(), code));
@@ -127,7 +126,7 @@ public class UserRepositoryAdapter implements UserRepository {
     Pageable pageable = PageRequest.of(0, effectiveLimit);
     String q = (query == null) ? "" : query.trim();
     List<UserEntity> entities = q.isEmpty()
-        ? userJpaRepository.findByStatusOrderByFullNameAsc(AccountStatus.ACTIVE, pageable)
+        ? userJpaRepository.findDirectoryCandidatesByStatus(AccountStatus.ACTIVE, pageable)
         : userJpaRepository.searchActiveUsersByPattern(AccountStatus.ACTIVE, "%" + q + "%", pageable);
     return toAggregatesBatch(entities);
   }

@@ -5,10 +5,9 @@ import java.util.UUID;
 
 public record UserCandidateResponse(
     UUID id,
-    String fullName,
-    String email
+    String fullName
 ) {
   public static UserCandidateResponse from(UserSummaryDto summary) {
-    return new UserCandidateResponse(summary.id(), summary.fullName(), summary.email());
+    return new UserCandidateResponse(summary.id(), summary.fullName());
   }
 }

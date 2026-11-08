@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.platform.user.domain.AccountStatus;
 import java.util.Set;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -90,5 +91,22 @@ class UserAggregateTest {
 
     assertThatThrownBy(() -> user.revokeRole("USER"))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  @DisplayName("Chuẩn hóa email và system role độc lập với Turkish locale")
+  void shouldNormalizeEmailAndRolesIndependentlyOfDefaultLocale() {
+    Locale originalLocale = Locale.getDefault();
+    try {
+      Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+      UserAggregate user = UserAggregate.create("ADMIN@EXAMPLE.COM", "pass", "Admin", null);
+
+      user.grantRole("system_admin");
+
+      assertThat(user.getEmail()).isEqualTo("admin@example.com");
+      assertThat(user.getRoles()).contains("SYSTEM_ADMIN");
+    } finally {
+      Locale.setDefault(originalLocale);
+    }
   }
 }

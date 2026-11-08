@@ -6,13 +6,16 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Controller hiện có
 
-`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, cùng các route `GET`, `POST`, `PUT`, `DELETE /api/v1/admin/users/{userId}/roles...` để xem và quản lý system role.
+`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị sau khi xác minh quyền truy cập Project, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, cùng các route `GET`, `POST`, `PUT`, `DELETE /api/v1/admin/users/{userId}/roles...` để xem và quản lý system role.
+
+Endpoint nội bộ `GET /internal/users/{userId}` cho service khác xác minh Account; yêu cầu `X-Service-Token` và chỉ trả `status`. Route này không trả email hoặc tên hiển thị.
 
 - Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, đã bị bãi bỏ theo quyết định #7; ném `OPERATION_NOT_SUPPORTED`. Chính sách đã chốt là chỉ System Admin mới tạo Account.
 - `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
 - `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
 - `/admin/accounts`, `/admin/users/{userId}/status` và các route `/admin/users/{userId}/roles...` được xử lý bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Gateway route `/api/v1/admin/**` tới user-service và áp dụng Account snapshot gate trước khi proxy. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và snapshot-sync job trong cùng transaction.
-- `/users` và `/users/profiles` có handler runtime: directory trả `id`, `fullName`, `email`; bulk profile trả `id`, `displayName`. Privacy policy và giới hạn directory cần được chốt riêng; hiện không mô tả email là field ẩn.
+- `/users` yêu cầu Account `ACTIVE`, giới hạn `limit` từ 1 đến 100 (mặc định 20), chỉ trả Account `ACTIVE` không mang `SYSTEM_ADMIN`, và không trả email.
+- `/users/profiles` yêu cầu caller `ACTIVE` và thành viên/Owner `ACTIVE` của Project được hỏi. User-service chuyển tiếp Bearer token sang Board để kiểm tra membership; Board endpoint chưa có thì request fail-closed bằng `503 AUTHORIZATION_UNAVAILABLE`.
 
 
 ## Thiết kế mục tiêu đã thống nhất
@@ -48,8 +51,8 @@ Base path là `/api/v1`. Các route dưới đây là mapping của controller; 
 | `POST` | `/api/v1/auth/login` | Không đọc identity header | `LoginRequest` | `200`, `TokenResponse` |
 | `GET` | `/api/v1/auth/public-key` | Không đọc identity header | Không có body | `200`, `{ "algorithm": "RSA256", "publicKey": "..." }` |
 | `GET` | `/api/v1/users/me` | `Authorization: Bearer <jwt>` | Không có body | `200`, `UserResponse` |
-| `GET` | `/api/v1/users` | `Authorization: Bearer <jwt>`, query, limit | Không có body | `200`, `UserCandidateResponse[]` |
-| `GET` | `/api/v1/users/profiles` | `Authorization: Bearer <jwt>`, ids | Không có body | `200`, `UserProfileResponse[]` |
+| `GET` | `/api/v1/users` | Bearer của Account `ACTIVE`; `query`, `limit` 1–100 (mặc định 20) | Không có body | `200`, candidates `id` + `fullName`; excludes `SYSTEM_ADMIN` |
+| `GET` | `/api/v1/users/profiles?projectId={id}&ids={uuid,...}` | Bearer của Account `ACTIVE`; `projectId` dương; tối đa 100 `ids` | Không có body | `200`, `400`, `403 PROJECT_MEMBERSHIP_REQUIRED`; `503 AUTHORIZATION_UNAVAILABLE` nếu Board không xác minh được membership |
 | `POST` | `/api/v1/admin/accounts` | `Authorization: Bearer <admin_jwt>` | `AdminCreateAccountRequest` | `201`, `UserResponse` |
 | `PATCH` | `/api/v1/admin/users/{userId}/status` | `Authorization: Bearer <admin_jwt>` | `ChangeStatusRequest` | `204 No Content` |
 | `PUT` | `/api/v1/admin/users/{userId}/roles` | `Authorization: Bearer <admin_jwt>` | `UpdateUserRolesRequest` | `204 No Content` |
@@ -129,8 +132,8 @@ User-service sở hữu Account/Auth và system role. Bảng dưới phân biệ
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 TokenResponse` | Public; chỉ Account `ACTIVE` |
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
-| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email; mặc định `limit=20` | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | Account đã xác thực; privacy/query rules cần chốt |
-| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list; tối đa 100 IDs được xử lý | Runtime `200 UserProfile[]`: `id`, `displayName` | Account đã xác thực; tombstone chưa có trong runtime |
+| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email; `limit` 1–100 | `200 UserCandidate[]`: `id`, `fullName` | Caller `ACTIVE`; chỉ trả Account `ACTIVE` không mang `SYSTEM_ADMIN`, không trả email |
+| `GET` | `/api/v1/users/profiles?projectId={id}&ids={uuid,...}` | `projectId` dương; tối đa 100 UUID | `200 UserProfile[]`: `id`, `displayName` | Caller `ACTIVE` và là Member/Owner `ACTIVE` của Project; `403` nếu không phải Member; `503` nếu Board không xác minh được |
 | `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` gồm `id`, `email`, `fullName`, `status`, `authVersion`, `roles` (`["USER"]`) | Runtime; chỉ `SYSTEM_ADMIN`; `roles` không thuộc request |
 | `PATCH` | `/api/v1/admin/users/{userId}/status` | `{ "status": "SUSPENDED" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 | `GET` | `/api/v1/admin/users/{userId}/roles` | Không body | `200 string[]` | Runtime; chỉ `SYSTEM_ADMIN` |
@@ -138,7 +141,11 @@ User-service sở hữu Account/Auth và system role. Bảng dưới phân biệ
 | `PUT` | `/api/v1/admin/users/{userId}/roles` | `{ "roles": ["USER", "SYSTEM_ADMIN"] }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 | `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | Không body | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 
-Runtime `UserCandidate` gồm `id`, `fullName`, `email`; runtime `UserProfile` gồm `id`, `displayName`. Email hiện được trả bởi directory handler; policy ai được tra cứu email còn mở. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
+Runtime `UserCandidate` gồm `id`, `fullName`; email chỉ được dùng để tìm kiếm, không có trong response. Runtime `UserProfile` gồm `id`, `displayName` và chỉ được trả sau khi Board xác minh caller là Member/Owner `ACTIVE` của Project. Account tombstone chưa thuộc Kỳ 1. Endpoint membership nội bộ của Board chưa được cung cấp; đến lúc đó profile request trả `503 AUTHORIZATION_UNAVAILABLE`.
+
+### Account lookup nội bộ (`GET /internal/users/{userId}`)
+
+Board-service dùng route này để xác minh Account khi mời thành viên. Request phải có `X-Service-Token` trùng với `INTERNAL_SERVICE_TOKEN` cấu hình ở user-service và service gọi; thiếu token hoặc sai token trả `401`, Account không tồn tại trả `404 ACCOUNT_NOT_FOUND`. Thành công trả `200 { "status": "ACTIVE" }` (hoặc trạng thái hiện tại như `SUSPENDED`, `LOCKED`, `INACTIVE`). Route chỉ trả status, không trả email hay tên; token chưa cấu hình thì route từ chối tất cả request.
 
 ### Tạo Account qua System Admin (`POST /api/v1/admin/accounts`)
 

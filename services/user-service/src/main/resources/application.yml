@@ -8,6 +8,9 @@ app:
     private-key: ${APP_JWT_PRIVATE_KEY:}
     public-key: ${APP_JWT_PUBLIC_KEY:}
     key-file: ${APP_JWT_KEY_FILE:}
+  services:
+    board-service:
+      base-url: ${BOARD_SERVICE_BASE_URL:http://localhost:8082}
 
 spring:
   config:
@@ -42,6 +45,8 @@ spring:
       mandatory: true
 
 dev-platform:
+  security:
+    internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:

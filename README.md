@@ -69,7 +69,17 @@ Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tà
 
 ## 6. Chạy môi trường local
 
-Yêu cầu: Java 21, Maven, SQL Server local và Docker Compose để chạy RabbitMQ, Redis. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+### SQL Server riêng cho user-service
+
+`.env.example` đặt `DB_USERNAME=sa`, `USER_DB_URL=jdbc:sqlserver://localhost:11433;...`; hãy đặt mật khẩu mạnh cho `DB_PASSWORD` trong `.env` ở root. Chỉ khởi động SQL cho user-service bằng `docker compose up -d user-sqlserver`; container chỉ bind `localhost:11433` và không kéo theo RabbitMQ/Redis. Chờ container healthy rồi nạp schema vào database mới/trống; `sqlcmd` sẽ hỏi mật khẩu:
+
+```sh
+docker compose exec user-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -i /tmp/user-service-local-bootstrap.sql
+```
+
+`sql/user-service-local-bootstrap.sql` chỉ tạo `kanban_user_db` và tài khoản demo local `admin@demo.local` (`DemoPass123!`). Không chạy lại nếu database đã có bảng. Sau đó chạy `mvn spring-boot:run` từ `services/user-service`.
+
+Yêu cầu: Java 21, Maven, SQL Server local hoặc SQL Server container dành cho user-service, và Docker Compose cho hạ tầng local. Các service còn lại có thể tiếp tục dùng instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo toàn dự án tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
 
 Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
 

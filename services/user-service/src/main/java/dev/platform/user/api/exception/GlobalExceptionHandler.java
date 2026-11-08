@@ -3,8 +3,10 @@ package dev.platform.user.api.exception;
 import dev.platform.user.api.dto.ErrorResponse;
 import dev.platform.user.domain.exception.AccessDeniedException;
 import dev.platform.user.domain.exception.AccountNotFoundException;
+import dev.platform.user.domain.exception.AuthorizationUnavailableException;
 import dev.platform.user.domain.exception.AuthenticationException;
 import dev.platform.user.domain.exception.EmailAlreadyExistsException;
+import dev.platform.user.domain.exception.ProjectMembershipRequiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +50,20 @@ public class GlobalExceptionHandler {
       AccessDeniedException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
         .body(new ErrorResponse("SYSTEM_ADMIN_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(ProjectMembershipRequiredException.class)
+  public ResponseEntity<ErrorResponse> handleProjectMembershipRequired(
+      ProjectMembershipRequiredException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(new ErrorResponse("PROJECT_MEMBERSHIP_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(AuthorizationUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleAuthorizationUnavailable(
+      AuthorizationUnavailableException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(new ErrorResponse("AUTHORIZATION_UNAVAILABLE", "Could not verify Project access at this time", OffsetDateTime.now(), request.getRequestURI()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

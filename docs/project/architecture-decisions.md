@@ -77,7 +77,7 @@ task-service ── Internal REST API đồng bộ ──> board-service
 
 - Môi trường phát triển local dùng Docker Compose cho RabbitMQ và Redis; SQL Server chạy trực tiếp trên máy. Việc container sẵn sàng không đồng nghĩa luồng event hoặc snapshot đã nối hoàn chỉnh.
 - Hệ thống dùng mô hình giao tiếp kết hợp: Internal REST API đồng bộ, RabbitMQ truyền domain event và Redis lưu snapshot dùng chung giữa các instance.
-- Internal REST API dùng khi cần đọc dữ liệu gốc đồng bộ hoặc kiểm tra quyền. API này **chưa triển khai** cho đến khi thống nhất/thiết lập bảo mật cho giao tiếp service nội bộ.
+- Internal REST API dùng khi cần đọc dữ liệu gốc đồng bộ hoặc kiểm tra quyền. API này chưa triển khai cho tới khi thống nhất/thiết lập bảo mật cho giao tiếp service nội bộ.
 - RabbitMQ truyền các event gồm `USER_STATUS_CHANGED`, `USER_SYSTEM_ROLES_CHANGED`, `MEMBERSHIP_CHANGED`, `MEMBERSHIP_REMOVED` và yêu cầu cleanup assignment khi Membership bị thu hồi. Account/Project cascade không thuộc Kỳ 1.
 - Redis lưu Authentication/Authorization Snapshot dùng chung. API Gateway xác thực và định tuyến nhưng không sở hữu Authorization Snapshot.
 - `user-service` là nguồn dữ liệu chuẩn cho thông tin tài khoản/xác thực; `board-service` là nguồn dữ liệu chuẩn cho Project và phân quyền membership.
@@ -149,7 +149,7 @@ Kỳ 1 không có endpoint, `DELETING` status, operation, consumer hoặc cascad
 - Với thao tác `DELETE` membership, board-service ghi thay đổi Membership, Outbox và snapshot-sync job trong cùng transaction; quyền bị thu hồi khi Redis apply snapshot mới. Khi Redis apply còn pending, API trả `202` cùng `operationId`/`statusUrl`; completion chỉ sau Redis apply. Task unassign Card chạy nền độc lập và không chặn completion revoke.
 
 - Kỳ 1 chỉ mời tài khoản đã tồn tại; mời người ngoài hệ thống dành cho Kỳ 2. Đổi vai trò qua `PATCH /api/v1/projects/{projectId}/members/{userId}` cũng dành cho Kỳ 2.
-- Payload mời dùng `userId` UUID của tài khoản đã có; Owner cần API user-service để tìm Account ứng viên và profile API để render tên/trạng thái tác giả. Route, giới hạn/field được lộ và cách client compose là đề xuất còn mở.
+- Payload mời dùng `userId` UUID của tài khoản đã có; Owner cần API user-service để tìm Account ứng viên và profile API để render tên/trạng thái tác giả. Profile target yêu cầu Membership `ACTIVE` role `OWNER`/`MEMBER` trong Project liên quan và dùng `GET /api/v1/users/profiles?projectId={id}&ids={uuid,...}`. User-service đã fail-closed khi thiếu kiểm tra đó; endpoint board-service cần thiết chưa được triển khai. Tombstone cho Account đã xóa, quyền directory và cách client compose vẫn còn mở.
 - Khi dữ liệu không thể xóa riêng (ví dụ Comment), giữ nội dung và attribution; UI ghi “Tài khoản đã bị xóa” hoặc “Tài khoản không còn trong Project” theo trạng thái account.
 - API list Card thật dùng **cursor pagination**: page size mặc định 5, tối đa 20, sắp xếp `position DESC, id DESC`. Cursor opaque mã hóa `position` và `id`. Đề xuất endpoint infinite-scroll riêng từng Column yêu cầu `columnId` và ràng buộc cursor với `boardId`, `columnId`, sort contract; route/wire contract còn chờ duyệt.
 - Truy vấn trang tiếp theo dùng điều kiện tương ứng với thứ tự giảm dần; backend lấy `limit + 1` để xác định còn trang tiếp hay không:
@@ -195,7 +195,7 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 ## 7. Các điểm cần bàn tiếp
 
 1. **System Admin:** Đã chốt theo quyết định [#7](https://github.com/gekok/Dev-Platform/issues/7): chỉ System Admin được tạo Account, không mở public self-registration, và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Nếu cùng một cá nhân cần cả hai phạm vi, dùng Account quản trị riêng và Account nghiệp vụ không mang `SYSTEM_ADMIN`. SQL bootstrap local đã seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Quy trình bootstrap môi trường triển khai có thể bàn sau Kỳ 2.
-2. **Account lookup cho Invitation:** vì internal REST chưa bảo mật, cần chốt cách board-service xác minh target Account tồn tại/ACTIVE trước khi bật Invitation và Accept; API directory/bulk profile cùng field được lộ cũng còn mở.
+2. **Account lookup cho Invitation:** user-service cung cấp `GET /internal/users/{userId}`, được bảo vệ bằng `X-Service-Token` dùng chung và chỉ trả Account status. board-service cần tích hợp adapter và cấu hình cùng token trước khi Invitation/Accept hoạt động end-to-end. Quyền directory và profile fields/API contract còn mở. Profile authorization đã được chọn: cần `projectId` và Membership `ACTIVE` role `OWNER`/`MEMBER`; user-service consumer fail-closed khi Board chưa thể xác minh Membership.
 3. **Invitation policy:** expiry, reject/cancel rules, list Invitation của Owner và các mã lỗi/status nghiệp vụ chi tiết.
 4. **Project/Board lifecycle:** ba trạng thái `ACTIVE`, `COMPLETED`, `CANCELLED` đã thống nhất; transition graph và tác động tới dữ liệu con còn mở.
 5. **API details:** cursor wire format/scope, Card status, migration tool và index theo query thực tế.

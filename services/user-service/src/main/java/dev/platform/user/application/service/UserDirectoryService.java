@@ -26,6 +26,7 @@ public class UserDirectoryService implements UserDirectoryPort {
   @Transactional(readOnly = true)
   public List<UserSummaryDto> searchUsers(String query, int limit) {
     return userRepository.searchActiveUsers(query, limit).stream()
+        .filter(user -> !user.getRoles().contains("SYSTEM_ADMIN"))
         .map(UserSummaryDto::from)
         .toList();
   }
