@@ -15,7 +15,8 @@
 ## Việc cần làm
 
 - [x] Chốt chính sách cấp Account: chỉ System Admin được tạo Account, không mở public signup (issue #7).
-- [x] Có runtime API tạo Account, đổi status và đọc/cấp/đổi/thu hồi system role qua `AdminUserController`; chỉ System Admin được gọi. Formal contract và credential provisioning cần tiếp tục đồng bộ theo architecture decisions.
+- [x] Chốt contract `POST /api/v1/admin/accounts` theo issue #54: System Admin đặt mật khẩu ban đầu; request không nhận role, Account mới luôn `ACTIVE` với role `USER`.
+- [x] Có runtime API tạo Account, đổi status và đọc/cấp/đổi/thu hồi system role qua `AdminUserController`; chỉ System Admin được gọi.
 - [x] Thêm JPA entity/repository cho `SystemRoles`/`UserSystemRoles` trong user_db và role mutation API; không dùng quyền Admin làm quyền Project.
 - [x] Bổ sung API directory search để Owner chọn User đã tồn tại và bulk profile để UI render Member/author; chỉ trả dữ liệu tối thiểu và chỉ tìm Account ACTIVE theo policy được duyệt.
 - [x] Implement login, token issuance/validation và current-user từ identity đáng tin cậy; bỏ identity stub do client tự gửi (đã giải quyết tại issue #12 và #13).

@@ -13,7 +13,7 @@
 | Cột | Kiểu/mapping | Constraint |
 |---|---|---|
 | `id` | UUID | Primary key; tạo bằng `GenerationType.UUID` |
-| `email` | varchar(255) | not null, unique |
+| `email` | varchar(255) | not null, unique constraint `uq_users_email` |
 | `password_hash` | varchar | not null |
 | `full_name` | nvarchar(255) | nullable |
 | `status` | varchar(20) | not null; runtime enum hiện tại được đọc từ source; Kỳ 1 không dùng `DELETING` |
@@ -29,7 +29,7 @@
 | `system_roles` | `role_code`, `description` | `role_code` là PK; seed role `USER` và `SYSTEM_ADMIN` |
 | `user_system_roles` | `user_id`, `role_code`, `granted_at`, `granted_by` | PK `(user_id,role_code)`; FK nội bộ tới `users` và `system_roles` |
 | `users` | `auth_version` | Version tăng khi Account status hoặc SystemRoles đổi |
-| `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; script khởi tạo local tạo bảng rỗng |
+| `account_authorization_snapshot_sync_jobs` | `job_id`, `account_id`, `auth_version`, `snapshot_json`, retry/status/timestamps | JPA skeleton map trong `user_db`; script khởi tạo local seed sẵn snapshot sync job cho các tài khoản mẫu ở trạng thái PENDING |
 
 Mỗi lần đổi Account status/role, source row, Outbox event và snapshot-sync job phải commit trong cùng transaction. user-service retry apply snapshot vào Redis theo `auth_version`; Redis apply mới là mốc có hiệu lực trong authorization path. SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. API cấp/thu hồi role đã có handler runtime; contract lỗi và credential provisioning vẫn cần được đồng bộ.
 
@@ -53,7 +53,7 @@ Mỗi service lưu Outbox/Inbox trong database do chính service sở hữu; mod
 
 user-service khai báo `messaging-support`, import `MessagingSupportConfiguration` và scan entity/repository của shared. Vì vậy `outbox_events` và `inbox_events` được map vào `user_db`, không phải database riêng của shared.
 
-- Snapshot recorder và Redis worker có skeleton; recorder chưa được gọi từ Account mutation use case. Khi nối lifecycle, recorder phải lưu Account/status/role Outbox event cùng durable sync job trong transaction nguồn. Worker retry Redis apply theo `auth_version` và chỉ chạy khi bật property.
+- Snapshot recorder được gọi từ luồng tạo Account, đổi trạng thái và đổi system role; Outbox event cùng durable sync job được ghi trong transaction nguồn. Worker retry Redis apply theo `auth_version` và chỉ chạy khi `dev-platform.snapshot-sync.user.enabled=true` (mặc định `false`), nên snapshot không tự được cập nhật vào Redis trong cấu hình mặc định.
 - Outbox Relay dùng lại cùng event ID/version/payload khi retry. Mọi consumer tương lai ghi Inbox cùng thay đổi nghiệp vụ/job trước ACK.
 - Các cờ messaging mặc định là `false`; cấu hình relay/consumer không đồng nghĩa snapshot sync đã chạy end-to-end.
 
@@ -86,7 +86,7 @@ erDiagram
 | `users` | `id` PK; `email` unique | Không có FK liên service | `password_hash` không trả qua API; `auth_version` tăng theo đổi status/system role |
 | `system_roles` | `role_code` PK | Không có index phụ | Danh mục role hệ thống; seed `USER`, `SYSTEM_ADMIN` |
 | `user_system_roles` | Composite PK `(user_id,role_code)` | FK local tới `users`/`system_roles` | `granted_by` là audit reference; local SQL bootstrap seed Account System Admin mẫu với role `SYSTEM_ADMIN` |
-| `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; script khởi tạo local tạo bảng rỗng |
+| `account_authorization_snapshot_sync_jobs` | `job_id` PK; unique `(account_id, auth_version)` | `idx_account_snapshot_sync_due(status, next_attempt_at)` | JPA skeleton cho Redis sync retry; script khởi tạo local seed sẵn snapshot sync job cho các tài khoản mẫu ở trạng thái PENDING |
 | `outbox_events` | `event_id` PK | `idx_outbox_due(status, next_attempt_at, created_at)` | Do `shared/messaging-support` cung cấp và lưu ngay trong `user_db` |
 | `inbox_events` | Composite PK `(consumer_name, event_id)` | Không có index phụ khai báo | Một event được khử trùng theo từng consumer |
 
@@ -95,7 +95,7 @@ Entity `users` không khai báo index ngoài unique email. Column kiểu `String
 ## Database local, schema và vòng đời dữ liệu
 
 - SQL Server local dùng database `kanban_user_db`; cấu hình kết nối và credentials xem README ở root.
-- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=true` là cấu hình local hiện tại; `none` không tạo schema. Dùng [script khởi tạo local](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database trống. Kỳ 1 chưa dùng migration.
+- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=false` là cấu hình local hiện tại; `none` không tạo schema. Dùng [bootstrap riêng cho user-service](../../../sql/user-service-local-bootstrap.sql) để tạo database mới/trống hoặc [bootstrap toàn dự án](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database mới/trống. Script và entity cùng đặt tên unique constraint email là `uq_users_email`; database tạo từ bootstrap cũ cần chạy [script nâng cấp constraint](../../../sql/upgrade-user-email-constraint.sql). Kỳ 1 chưa dùng Flyway.
 - Account/status/system-role mutation, Outbox event và snapshot-sync job phải commit cùng transaction. Redis apply/retry là bước sau commit; snapshot cũ không được ghi đè version mới.
 - Kỳ 1 không có Account deletion operation, tombstone hoặc cascade completion consumer.
 
@@ -118,11 +118,11 @@ Các bảng dưới đây mô tả dữ liệu theo nghiệp vụ Kỳ 1. Entity
 | `status` | enum/string | not null | Dùng trạng thái Account Kỳ 1; không có `DELETING` |
 | `auth_version` | bigint | not null | Tăng khi status hoặc SystemRoles đổi; version trên snapshot Redis |
 
-`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. Account mang `SYSTEM_ADMIN` chỉ quản trị Account, không có quyền Project và không được làm Owner/Member (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Runtime Admin create request hiện có field `roles` tùy chọn; field này trái với quyết định không để client tự khai role khi tạo Account, nên được ghi nhận là sai khác implementation chưa được duyệt.
+`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. Account mang `SYSTEM_ADMIN` chỉ quản trị Account, không có quyền Project và không được làm Owner/Member (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Admin create request không có field `roles`; Account mới luôn nhận role `USER`.
 
 Không thêm `project_id`, `project_role` hay FK sang `board_db`. Account deletion/Owner succession được hoãn sang Kỳ 2; Kỳ 1 không cascade/xóa Project khi Account thay đổi.
 
-Chỉ System Admin được tạo Account; không mở public self-registration. Runtime Admin API nhận credential trong request và băm qua cùng `PasswordEncoderPort` với login; chính sách provisioning dài hạn (mật khẩu tạm hay flow reset lần đầu) chưa chốt. Không lưu plaintext password. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Nếu `roles` bị bỏ qua hoặc rỗng, Account mặc định nhận `USER`; system role được quản lý qua Admin role endpoints.
+Chỉ System Admin được tạo Account; không mở public self-registration. Runtime Admin API nhận credential trong request và băm qua cùng `PasswordEncoderPort` với login; BCrypt dùng strength 12, password tối đa 72 byte UTF-8. Không lưu plaintext password hoặc trả hash. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Tài khoản mới luôn nhận role `USER`; system role còn lại được quản lý qua Admin role endpoints.
 
 ### Account deletion — Kỳ 2
 

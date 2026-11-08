@@ -1,4 +1,23 @@
 services:
+  user-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the root .env file}
+      MSSQL_PID: Developer
+    ports:
+      - "127.0.0.1:11433:1433"
+    volumes:
+      - user_sqlserver_data:/var/opt/mssql
+      - ./sql/user-service-local-bootstrap.sql:/tmp/user-service-local-bootstrap.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" > /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
   rabbitmq:
     image: rabbitmq:4-management
     environment:
@@ -22,3 +41,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+volumes:
+  user_sqlserver_data:

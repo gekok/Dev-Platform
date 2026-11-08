@@ -69,11 +69,23 @@ Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tà
 
 ## 6. Chạy môi trường local
 
-Yêu cầu: Java 21, Maven, SQL Server local và Docker Compose để chạy RabbitMQ, Redis. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+### SQL Server riêng cho user-service
+
+`.env.example` đặt `DB_USERNAME=sa`, `USER_DB_URL=jdbc:sqlserver://localhost:11433;...`; hãy đặt mật khẩu mạnh cho `DB_PASSWORD` trong `.env` ở root. Chỉ khởi động SQL cho user-service bằng `docker compose up -d user-sqlserver`; container chỉ bind `localhost:11433` và không kéo theo RabbitMQ/Redis. Chờ container healthy rồi nạp schema vào database mới/trống; `sqlcmd` sẽ hỏi mật khẩu:
+
+```sh
+docker compose exec user-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -i /tmp/user-service-local-bootstrap.sql
+```
+
+`sql/user-service-local-bootstrap.sql` chỉ tạo `kanban_user_db` và tài khoản demo local `admin@demo.local` (`DemoPass123!`). Không chạy lại nếu database đã có bảng. Sau đó chạy `mvn spring-boot:run` từ `services/user-service`.
+
+Yêu cầu: Java 21, Maven, SQL Server local hoặc SQL Server container dành cho user-service, và Docker Compose cho hạ tầng local. Các service còn lại có thể tiếp tục dùng instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo toàn dự án tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
 
 Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Các biến `RABBITMQ_*`, `REDIS_*` trong file mẫu là cấu hình kết nối local; username/password `devplatform` của RabbitMQ chỉ là credential phát triển. Vì Compose và Spring phân tích `.env` theo cú pháp khác nhau, giữ password mẫu ở dạng chữ/số đơn giản; nếu password cần backslash hoặc ký tự escape, cấp cùng giá trị thô qua biến môi trường cho cả Compose và process service thay vì escape trong `.env`. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
 
 Ví dụ chạy script bằng PowerShell: `sqlcmd -S 'localhost\PHUC' -U sa -C -b -f 65001 -i sql/local-sqlserver-bootstrap.sql`, rồi nhập mật khẩu khi được hỏi; đổi instance và tên đăng nhập theo máy. Spring đọc `.env` cho service, nhưng file này không tự đặt biến môi trường của terminal cho `sqlcmd`. Script chỉ dành cho local, tạo bảng vận hành rỗng và chứa dữ liệu Account demo; đăng nhập chưa nối end-to-end.
+
+Nếu `kanban_user_db` đã được tạo từ bootstrap cũ, chạy `sql/upgrade-user-email-constraint.sql` bằng `sqlcmd -b` hoặc SSMS để đặt tên constraint email là `uq_users_email`; script giữ nguyên dữ liệu và không chạy lại bootstrap trên database đang có bảng.
 
 Các đường dẫn `.env` được tìm theo thư mục làm việc: `../../.env` và `.env` ở thư mục hiện tại, trong đó `.env` hiện tại được ưu tiên. Khi chạy từ thư mục service, tránh tạo thêm `.env` trong service nếu muốn dùng cấu hình chung; khi chạy từ root, `../../.env` có thể trỏ ra ngoài repo. Chỉ chạy từ thư mục làm việc tin cậy.
 

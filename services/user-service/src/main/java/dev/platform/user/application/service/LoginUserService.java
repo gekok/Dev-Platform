@@ -6,6 +6,7 @@ import dev.platform.user.application.port.out.PasswordEncoderPort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.aggregate.UserAggregate;
 import dev.platform.user.domain.exception.AuthenticationException;
+import java.util.Locale;
 import dev.platform.user.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,7 @@ public class LoginUserService implements LoginUserPort {
     if (cmd == null || cmd.email() == null || cmd.password() == null) {
       throw new AuthenticationException("Invalid credentials");
     }
-    String normalizedEmail = cmd.email().trim().toLowerCase();
+    String normalizedEmail = cmd.email().trim().toLowerCase(Locale.ROOT);
     UserAggregate user = userRepository.findByEmail(normalizedEmail).orElse(null);
 
     if (user == null) {
@@ -37,8 +38,12 @@ public class LoginUserService implements LoginUserPort {
       throw new AuthenticationException("Invalid credentials");
     }
 
-    accountAccessGuard.requireActive(user);
     if (!passwordEncoderPort.matches(cmd.password(), user.getPasswordHash())) {
+      throw new AuthenticationException("Invalid credentials");
+    }
+    try {
+      accountAccessGuard.requireActive(user);
+    } catch (AuthenticationException exception) {
       throw new AuthenticationException("Invalid credentials");
     }
 
