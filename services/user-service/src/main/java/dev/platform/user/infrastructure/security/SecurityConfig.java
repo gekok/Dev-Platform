@@ -18,7 +18,9 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/v1/auth/**", "/api/v1/users/**", "/api/v1/admin/**").permitAll()
+            .requestMatchers(
+                "/api/v1/auth/**", "/api/v1/users/**", "/api/v1/admin/**", "/internal/users/**")
+            .permitAll()
             .anyRequest().denyAll()
         )
         .httpBasic(AbstractHttpConfigurer::disable)

@@ -3,6 +3,7 @@ package dev.platform.user.domain.aggregate;
 import dev.platform.user.domain.AccountStatus;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -36,7 +37,7 @@ public class UserAggregate {
         Objects.requireNonNull(fullName, "fullName cannot be null");
         return new UserAggregate(
                 UUID.randomUUID(),
-                email.trim().toLowerCase(),
+                email.trim().toLowerCase(Locale.ROOT),
                 passwordHash,
                 fullName.trim(),
                 AccountStatus.ACTIVE,
@@ -109,7 +110,7 @@ public class UserAggregate {
         if (role == null || role.isBlank()) {
             throw new IllegalArgumentException("role cannot be null or empty");
         }
-        String normalizedRole = role.trim().toUpperCase();
+        String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
         if (normalizedRole.length() < 3 || normalizedRole.length() > 40) {
             throw new IllegalArgumentException("role needs to be between 3 and 40 characters");
         }

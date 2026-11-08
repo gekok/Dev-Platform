@@ -69,11 +69,23 @@ Web demo trong `web-demo/` dùng HTTP API được MSW giả lập. Demo là tà
 
 ## 6. Chạy môi trường local
 
-Yêu cầu: Java 21, Maven, SQL Server local và Docker Compose để chạy RabbitMQ, Redis. Mặc định kết nối instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấp quyền phù hợp cho tài khoản service trên từng database. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+### SQL Server riêng cho user-service
 
-Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
+`.env.example` đặt `DB_USERNAME=sa`, `USER_DB_URL=jdbc:sqlserver://localhost:11433;...`; hãy đặt mật khẩu mạnh cho `DB_PASSWORD` trong `.env` ở root. Chỉ khởi động SQL cho user-service bằng `docker compose up -d user-sqlserver`; container chỉ bind `localhost:11433` và không kéo theo RabbitMQ/Redis. Chờ container healthy rồi nạp schema vào database mới/trống; `sqlcmd` sẽ hỏi mật khẩu:
+
+```sh
+docker compose exec user-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -i /tmp/user-service-local-bootstrap.sql
+```
+
+`sql/user-service-local-bootstrap.sql` chỉ tạo `kanban_user_db` và tài khoản demo local `admin@demo.local` (`DemoPass123!`). Không chạy lại nếu database đã có bảng. Sau đó chạy `mvn spring-boot:run` từ `services/user-service`.
+
+Yêu cầu: Java 21, Maven, SQL Server local hoặc SQL Server container dành cho user-service, và Docker Compose cho hạ tầng local. Các service còn lại có thể tiếp tục dùng instance `localhost\PHUC` bằng SQL Server Authentication. Script khởi tạo toàn dự án tạo bốn database Kanban nếu chưa tồn tại; tài khoản chạy script cần quyền tạo database và bảng. Cấu hình này chỉ dành cho local: `trustServerCertificate=true` chấp nhận chứng chỉ server không được xác minh.
+
+Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USERNAME`, `DB_PASSWORD` của SQL Server local. Các biến `RABBITMQ_*`, `REDIS_*` trong file mẫu là cấu hình kết nối local; username/password `devplatform` của RabbitMQ chỉ là credential phát triển. Vì Compose và Spring phân tích `.env` theo cú pháp khác nhau, giữ password mẫu ở dạng chữ/số đơn giản; nếu password cần backslash hoặc ký tự escape, cấp cùng giá trị thô qua biến môi trường cho cả Compose và process service thay vì escape trong `.env`. Bốn service tự đọc file khi chạy từ thư mục gốc hoặc từ `services/<service>`; `.env` được Git bỏ qua. File dùng cú pháp Java properties `KEY=value`, không dùng `export` hay đặt giá trị trong dấu nháy; ký tự đặc biệt như backslash phải được escape theo cú pháp properties. Biến môi trường của hệ điều hành vẫn được ưu tiên. Có thể override URL bằng `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` tương ứng mỗi service. Schema tự động mặc định tắt (`DB_DDL_AUTO=none`). Với bốn database local hoàn toàn trống, chạy một lần [script khởi tạo và dữ liệu mẫu](sql/local-sqlserver-bootstrap.sql) bằng `sqlcmd -b` hoặc SSMS thông thường. Kiểm tra trước cả bốn database không có bảng; với SSMS, lỗi trong một batch có thể không dừng các batch tiếp theo, vì vậy không chạy script trên database đã có dữ liệu; không chạy file SQL mẫu bên ngoài repo vì chưa khớp mapping. Kỳ 1 chưa dùng migration.
 
 Ví dụ chạy script bằng PowerShell: `sqlcmd -S 'localhost\PHUC' -U sa -C -b -f 65001 -i sql/local-sqlserver-bootstrap.sql`, rồi nhập mật khẩu khi được hỏi; đổi instance và tên đăng nhập theo máy. Spring đọc `.env` cho service, nhưng file này không tự đặt biến môi trường của terminal cho `sqlcmd`. Script chỉ dành cho local, tạo bảng vận hành rỗng và chứa dữ liệu Account demo; đăng nhập chưa nối end-to-end.
+
+Nếu `kanban_user_db` đã được tạo từ bootstrap cũ, chạy `sql/upgrade-user-email-constraint.sql` bằng `sqlcmd -b` hoặc SSMS để đặt tên constraint email là `uq_users_email`; script giữ nguyên dữ liệu và không chạy lại bootstrap trên database đang có bảng.
 
 Các đường dẫn `.env` được tìm theo thư mục làm việc: `../../.env` và `.env` ở thư mục hiện tại, trong đó `.env` hiện tại được ưu tiên. Khi chạy từ thư mục service, tránh tạo thêm `.env` trong service nếu muốn dùng cấu hình chung; khi chạy từ root, `../../.env` có thể trỏ ra ngoài repo. Chỉ chạy từ thư mục làm việc tin cậy.
 
@@ -84,7 +96,23 @@ cd C:\full\MSS301\project\Dev-Platform
 mvn -DskipTests install
 ```
 
-Chạy `docker compose up -d` tại thư mục gốc để khởi động RabbitMQ (`localhost:5672`, giao diện quản trị `localhost:15672`) và Redis (`localhost:6379`). SQL Server chạy riêng trên máy. Kiểm tra bằng `docker compose ps` và `docker compose exec redis redis-cli ping` (mong đợi `PONG`); dừng container bằng `docker compose stop`, chạy lại bằng `docker compose start`. Nếu cổng đã bị chiếm, giải phóng cổng hoặc thay đổi cấu hình tương ứng. Redis chưa có volume riêng: dữ liệu snapshot có thể mất khi container bị xóa, và cơ chế rebuild snapshot chưa hoàn thiện; không coi cấu hình này là lưu trữ production. RabbitMQ cũng chưa có volume được khai báo. Container chạy không chứng minh luồng event hay snapshot đã nối end-to-end.
+RabbitMQ và Redis chạy trong Docker Compose, chỉ publish cổng trên loopback của máy local. Chạy từ thư mục gốc:
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+Chờ cả hai service có trạng thái `healthy` trong `docker compose ps`, rồi mới kiểm tra:
+
+```powershell
+docker compose exec redis redis-cli ping
+docker compose exec rabbitmq rabbitmq-diagnostics -q check_port_connectivity
+```
+
+Lệnh Redis mong đợi `PONG`; lệnh RabbitMQ phải thoát với mã `0` sau khi thử mở TCP connection tới các listener, trong đó có AMQP. Các healthcheck này xác nhận dependency sẵn sàng ở mức Redis PING/TCP listener; chúng không xác nhận AMQP authentication, publish/consume message hay event flow end-to-end. Host ports lấy từ `REDIS_PORT` (mặc định `6379`), `RABBITMQ_PORT` (`5672`) và `RABBITMQ_MANAGEMENT_PORT` (`15672`) trong `.env`; Compose publish các cổng này trên loopback và Spring dùng cùng port Redis/RabbitMQ. Cổng bên trong container giữ nguyên `6379`, `5672` và `15672`. Redis không bật username/password trong cấu hình local. RabbitMQ UI mặc định ở `http://localhost:15672` (đổi theo `RABBITMQ_MANAGEMENT_PORT`); đăng nhập bằng `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` trong `.env` (mặc định local là `devplatform` / `devplatform`). Các giá trị `RABBITMQ_DEFAULT_USER/PASS` chỉ khởi tạo user khi database RabbitMQ còn trống; đổi `.env` sau khi broker đã khởi tạo không tự đổi credential. Cập nhật user/password qua RabbitMQ management/CLI khi cần đổi. Không dùng các credential mặc định này ngoài máy phát triển. SQL Server chạy riêng trên máy.
+
+Compose chưa khai báo named volume. Hai image tự dùng anonymous volume cho `/data` (Redis) và `/var/lib/rabbitmq` (RabbitMQ). `docker compose stop` rồi `docker compose start` giữ nguyên container và dữ liệu; khi `docker compose up -d` recreate service, Compose giữ volume hiện tại mặc định. `docker compose down` xóa container nhưng mặc định để lại anonymous volume; lần `up` sau không tự gắn lại volume cũ nên service có thể khởi động với volume rỗng, còn volume cũ vẫn chiếm dung lượng. `docker compose down -v` xóa cả anonymous volume gắn với container, nên chỉ dùng khi chủ ý bỏ dữ liệu. Redis chỉ giữ Authentication/Authorization snapshot, không phải nguồn dữ liệu chuẩn; snapshot rebuild chưa hoàn thiện và user-service snapshot worker mặc định tắt, vì vậy Gateway có thể trả `503` cho đến khi snapshot được áp dụng lại. RabbitMQ local không phải nơi lưu dữ liệu nghiệp vụ bền vững. Cấu hình này chỉ dành cho phát triển; trạng thái `healthy` không chứng minh client authentication hoặc event/snapshot đã nối end-to-end.
 
 Mở một terminal PowerShell riêng cho mỗi service. Đổi đường dẫn nếu dự án nằm ở vị trí khác:
 

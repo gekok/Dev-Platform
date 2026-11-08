@@ -3,16 +3,24 @@ package dev.platform.user.api.exception;
 import dev.platform.user.api.dto.ErrorResponse;
 import dev.platform.user.domain.exception.AccessDeniedException;
 import dev.platform.user.domain.exception.AccountNotFoundException;
+import dev.platform.user.domain.exception.AuthorizationUnavailableException;
 import dev.platform.user.domain.exception.AuthenticationException;
 import dev.platform.user.domain.exception.EmailAlreadyExistsException;
+import dev.platform.user.domain.exception.ProjectMembershipRequiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -44,9 +52,23 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("SYSTEM_ADMIN_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
   }
 
-  @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+  @ExceptionHandler(ProjectMembershipRequiredException.class)
+  public ResponseEntity<ErrorResponse> handleProjectMembershipRequired(
+      ProjectMembershipRequiredException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(new ErrorResponse("PROJECT_MEMBERSHIP_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(AuthorizationUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleAuthorizationUnavailable(
+      AuthorizationUnavailableException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .body(new ErrorResponse("AUTHORIZATION_UNAVAILABLE", "Could not verify Project access at this time", OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleBadRequest(
-      RuntimeException ex, HttpServletRequest request) {
+      IllegalArgumentException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("BAD_REQUEST", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
   }
@@ -63,6 +85,36 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("VALIDATION_FAILED", message, OffsetDateTime.now(), request.getRequestURI()));
   }
 
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    log.warn("Malformed HTTP request body at {}: {}", request.getRequestURI(), ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("VALIDATION_FAILED", "Malformed JSON request body or invalid field format", OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    log.warn("Type mismatch for parameter '{}' at {}: {}", ex.getName(), request.getRequestURI(), ex.getMessage());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(new ErrorResponse("VALIDATION_FAILED", "Invalid value for parameter: " + ex.getName(), OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+      HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+        .body(new ErrorResponse("METHOD_NOT_ALLOWED", "HTTP method " + ex.getMethod() + " is not supported for this endpoint", OffsetDateTime.now(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(
+      HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+        .body(new ErrorResponse("UNSUPPORTED_MEDIA_TYPE", "Content type " + ex.getContentType() + " is not supported", OffsetDateTime.now(), request.getRequestURI()));
+  }
+
   @ExceptionHandler(UnsupportedOperationException.class)
   public ResponseEntity<ErrorResponse> handleUnsupported(
       UnsupportedOperationException ex, HttpServletRequest request) {
@@ -73,7 +125,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGeneric(
       Exception ex, HttpServletRequest request) {
+    log.error("Unhandled internal server error at {}:", request.getRequestURI(), ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(new ErrorResponse("INTERNAL_SERVER_ERROR", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
+        .body(new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected internal error occurred", OffsetDateTime.now(), request.getRequestURI()));
   }
 }

@@ -38,7 +38,7 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Comment | `GET`, `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Xem và tạo Comment |
 | Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
 | Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
-| Account Admin | `POST` | `/api/v1/admin/accounts` | Runtime route tạo Account; formal contract còn cần đồng bộ với tài liệu user-service |
+| Account Admin | `POST` | `/api/v1/admin/accounts` | System Admin tạo Account theo contract issue #54; role mặc định `USER` |
 | Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
 | Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
 
@@ -85,7 +85,7 @@ Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộ
 | `GET` | `/api/v1/users/me` | `Authorization: Bearer <accessToken>` | `200 { "id": "uuid", "email": "...", "fullName": "..." }` | Account hiện tại; service tự xác minh Bearer token |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tìm theo tên/email | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | User đã xác thực; privacy, query/limit rules còn mở |
 | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID batch trong query | Runtime `200 UserProfile[]`: `id`, `displayName` | User đã xác thực; tối đa 100 IDs; tombstone chưa có trong runtime |
-| `POST` | `/api/v1/admin/accounts` | Runtime nhận `email`, `password`, `fullName`, `roles` tùy chọn | `201 UserResponse` runtime | Chỉ System Admin; formal contract cần đồng bộ với user-service |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` (`id`, `email`, `fullName`, `status`, `roles`, `authVersion`) | Chỉ System Admin; role luôn là `USER`; request không có field `roles` (#54) |
 
 Runtime `UserCandidate` trả `id`, `fullName`, `email`; runtime `UserProfile` trả `id`, `displayName`. Target design còn đề xuất tombstone `accountDeleted`, chưa có trong runtime. Email hiện được trả bởi directory handler; policy ai được tra cứu email và cách client compose directory với Membership do board-service sở hữu vẫn cần chốt.
 

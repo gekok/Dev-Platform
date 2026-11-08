@@ -27,7 +27,7 @@ spring:
             - id: board-service
               uri: ${gateway.upstream.board:http://localhost:8082}
               predicates:
-                - Path=/api/v1/projects/**,/api/v1/boards/**
+                - Path=/api/v1/projects/**,/api/v1/boards/**,/api/v1/columns/**,/api/v1/invitations/**
             # Kênh sống của bảng do task-service bắn event card.moved / card.created.
             - id: task-service-ws
               uri: ${gateway.upstream.task:http://localhost:8083}

@@ -31,12 +31,15 @@ class UserDirectoryServiceTest {
   }
 
   @Test
-  @DisplayName("Tìm kiếm chỉ trả về các tài khoản ACTIVE khớp từ khóa")
+  @DisplayName("Tìm kiếm không trả tài khoản SYSTEM_ADMIN làm ứng viên Project")
   void shouldSearchOnlyActiveMatchingUsers() {
     UserAggregate active1 = UserAggregate.rehydrate(
         UUID.randomUUID(), "alex@demo.local", "pass", "Alex Morgan", AccountStatus.ACTIVE, 1L, Set.of("USER"));
+    UserAggregate admin = UserAggregate.rehydrate(
+        UUID.randomUUID(), "admin@demo.local", "pass", "Alex Admin", AccountStatus.ACTIVE, 1L,
+        Set.of("USER", "SYSTEM_ADMIN"));
 
-    when(userRepository.searchActiveUsers("alex", 20)).thenReturn(List.of(active1));
+    when(userRepository.searchActiveUsers("alex", 20)).thenReturn(List.of(active1, admin));
 
     List<UserSummaryDto> results = service.searchUsers("alex");
 

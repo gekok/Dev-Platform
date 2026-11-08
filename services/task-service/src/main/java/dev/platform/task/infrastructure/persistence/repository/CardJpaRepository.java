@@ -14,6 +14,7 @@ import dev.platform.task.infrastructure.persistence.entity.CardEntity;
 
 // Truy vấn bảng cards.
 public interface CardJpaRepository extends JpaRepository<CardEntity, Long> {
+    long countByColumnId(Long columnId);
 
     @Query("select c from CardEntity c where c.projectId = :projectId and c.boardId = :boardId "
             + "and (:columnId is null or c.columnId = :columnId) "

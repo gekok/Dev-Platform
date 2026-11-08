@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import dev.platform.board.infrastructure.persistence.entity.ProjectAuthorizationSnapshotSyncJobEntity;
 import dev.platform.board.infrastructure.persistence.repository.ProjectAuthorizationSnapshotSyncJobJpaRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 @ConditionalOnProperty(name = "dev-platform.snapshot-sync.project.enabled", havingValue = "true")
 public class ProjectAuthorizationSnapshotSyncWorker {
 
@@ -34,6 +36,8 @@ public class ProjectAuthorizationSnapshotSyncWorker {
                     job.markSynced(appliedAt);
                 }
             } catch (RuntimeException exception) {
+                log.warn("Project authorization snapshot sync failed for job {}: {}",
+                        job.getJobId(), exception.getMessage());
                 job.scheduleRetry(OffsetDateTime.now(), exception.getMessage());
             }
         }
