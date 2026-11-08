@@ -1,14 +1,11 @@
 package dev.platform.board.api.dto;
 
-import java.util.List;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
-// Yêu cầu tạo bảng (kanban-api 2.1).
 public record CreateBoardRequest(
-        @NotBlank(message = "name khong duoc trong") String name,
-        @Pattern(regexp = "[A-Z0-9]{2,20}", message = "key 2-20 ky tu hoa so") String key,
-        List<String> columns
-) {
+        @NotBlank @Size(max = 255) String name,
+        @NotBlank @Pattern(regexp = "[a-z0-9][a-z0-9-]{0,18}[a-z0-9]") String boardKey,
+        Boolean createDefaultColumns) {
 }

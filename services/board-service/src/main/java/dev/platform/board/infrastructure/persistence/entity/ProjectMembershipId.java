@@ -15,6 +15,15 @@ import java.util.UUID;
 @Embeddable
 public class ProjectMembershipId implements java.io.Serializable {
     private static final long serialVersionUID = 3706768894382280110L;
+
+    public ProjectMembershipId() {
+    }
+
+    public ProjectMembershipId(Long projectId, UUID userId) {
+        this.projectId = projectId;
+        this.userId = userId;
+    }
+
     @NotNull
     @Column(name = "project_id", nullable = false)
     private Long projectId;

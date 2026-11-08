@@ -1,110 +1,121 @@
 package dev.platform.board.api.controller;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.UUID;
-
-import dev.platform.board.api.dto.AddColumnRequest;
-import dev.platform.board.api.dto.BoardResponse;
-import dev.platform.board.api.dto.ColumnResponse;
-import dev.platform.board.api.dto.CreateBoardRequest;
-import dev.platform.board.api.dto.ReorderColumnsRequest;
-import dev.platform.board.application.command.AddColumnCommand;
-import dev.platform.board.application.command.CreateBoardCommand;
-import dev.platform.board.application.command.ReorderColumnsCommand;
-import dev.platform.board.application.port.in.AddColumnPort;
-import dev.platform.board.application.port.in.CreateBoardPort;
-import dev.platform.board.application.port.in.GetBoardPort;
-import dev.platform.board.application.port.in.ReorderColumnsPort;
-import dev.platform.board.domain.aggregate.BoardAggregate;
+import dev.platform.board.api.dto.*;
+import dev.platform.board.application.command.*;
+import dev.platform.board.application.port.in.BoardUseCasePort;
+import dev.platform.board.application.query.*;
+import dev.platform.board.domain.aggregate.Board;
+import dev.platform.board.domain.aggregate.ProjectRuleViolation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-// REST bảng Kanban (kanban-api mục 2).
+import java.net.URI;
+import java.security.Principal;
+import java.util.UUID;
+
 @RestController
-@RequestMapping("/api/v1/boards")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class BoardController {
+    private final BoardUseCasePort boards;
 
-    private final CreateBoardPort createBoardPort;
-    private final AddColumnPort addColumnPort;
-    private final ReorderColumnsPort reorderColumnsPort;
-    private final GetBoardPort getBoardPort;
+    @PostMapping("/projects/{projectId}/boards")
+    public ResponseEntity<ApiResponse<BoardResponse>> create(
+            @PathVariable Long projectId,
+            @Valid @RequestBody CreateBoardRequest request,
+            Principal principal) {
+        Board created = boards.create(new CreateProjectBoardCommand(
+                projectId, request.name(), request.boardKey(),
+                request.createDefaultColumns() == null || request.createDefaultColumns(), actor(principal)));
+        return ResponseEntity.created(URI.create("/api/v1/boards/" + created.id()))
+                .body(ApiResponse.of(BoardResponse.from(created, true, "OWNER")));
+    }
 
-    // TODO kỳ 1: parse JWT sub, hiện stub lấy X-User-Id.
-    private UUID currentUserId(UUID userId) {
-        if (userId == null) {
-            throw new IllegalArgumentException("Thieu X-User-Id");
+    @GetMapping("/projects/{projectId}/boards")
+    public ResponseEntity<ApiResponse<PageResponse<BoardSummaryResponse>>> list(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            Principal principal) {
+        BoardPage<BoardSummary> result = boards.list(
+                new BoardsQuery(projectId, status, page, size, sort, actor(principal)));
+        return ResponseEntity.ok(ApiResponse.of(PageResponse.from(result,
+                summary -> BoardSummaryResponse.from(summary.board(), summary.columnCount()))));
+    }
+
+    @GetMapping("/boards/{boardId}")
+    public ResponseEntity<ApiResponse<BoardResponse>> get(
+            @PathVariable Long boardId, Principal principal) {
+        BoardView view = boards.get(new BoardQuery(boardId, actor(principal)));
+        return ResponseEntity.ok(ApiResponse.of(
+                BoardResponse.from(view.board(), view.writable(), view.myRole())));
+    }
+
+    @PatchMapping("/boards/{boardId}")
+    public ResponseEntity<ApiResponse<BoardResponse>> rename(
+            @PathVariable Long boardId,
+            @Valid @RequestBody UpdateBoardRequest request,
+            Principal principal) {
+        Board updated = boards.rename(new BoardNameCommand(
+                boardId, request.name(), request.boardKey(), actor(principal)));
+        return ResponseEntity.ok(ApiResponse.of(BoardResponse.from(updated, true, "OWNER")));
+    }
+
+    @PatchMapping("/boards/{boardId}/status")
+    public ResponseEntity<ApiResponse<BoardResponse>> changeStatus(
+            @PathVariable Long boardId,
+            @Valid @RequestBody ChangeBoardStatusRequest request,
+            Principal principal) {
+        Board.Status status;
+        try {
+            status = Board.Status.valueOf(request.status());
+        } catch (IllegalArgumentException exception) {
+            throw ProjectRuleViolation.validation("status must be ACTIVE, COMPLETED, or CANCELLED.");
         }
-        return userId;
+        Board updated = boards.changeStatus(new BoardStatusCommand(boardId, status, actor(principal)));
+        return ResponseEntity.ok(ApiResponse.of(BoardResponse.from(updated,
+                updated.status() == Board.Status.ACTIVE, "OWNER")));
     }
 
-    // 2.1 Tạo bảng -> 201.
-    @PostMapping
-    public ResponseEntity<BoardResponse> createBoard(
-            @Valid @RequestBody CreateBoardRequest req,
-            @RequestHeader("X-User-Id") UUID userId) {
-        BoardAggregate board = createBoardPort.create(new CreateBoardCommand(
-                req.name(), req.key(), currentUserId(userId), req.columns()));
-        return ResponseEntity.status(HttpStatus.CREATED).body(BoardResponse.from(board));
-    }
-
-    // 2.2 Danh sách bảng của tôi -> 200.
-    @GetMapping
-    public ResponseEntity<List<BoardResponse>> listMyBoards(
-            @RequestHeader("X-User-Id") UUID userId) {
-        List<BoardResponse> boards = getBoardPort.listMine(currentUserId(userId)).stream()
-                .map(BoardResponse::from)
-                .toList();
-        return ResponseEntity.ok(boards);
-    }
-
-    // 2.3 Chi tiết bảng kèm cột -> 200.
-    @GetMapping("/{boardId}")
-    public ResponseEntity<BoardResponse> getBoard(
+    @PostMapping("/boards/{boardId}/columns")
+    public ResponseEntity<ApiResponse<AddBoardColumnResponse>> addColumn(
             @PathVariable Long boardId,
-            @RequestHeader("X-User-Id") UUID userId) {
-        BoardAggregate board = getBoardPort.getById(boardId, currentUserId(userId))
-                .orElseThrow(() -> new NoSuchElementException("Khong thay board " + boardId));
-        return ResponseEntity.ok(BoardResponse.from(board));
+            @Valid @RequestBody CreateColumnRequest request,
+            Principal principal) {
+        Board updated = boards.addColumn(new AddBoardColumnCommand(
+                boardId, request.name(), request.position(), actor(principal)));
+        int addedPosition = request.position() == null ? updated.columns().size() - 1 : request.position();
+        Board.Column added = updated.columns().get(addedPosition);
+        ColumnResponse response = ColumnResponse.from(added);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(
+                new AddBoardColumnResponse(response,
+                        updated.columns().stream().map(ColumnResponse::from).toList())));
     }
 
-    // 2.4 Thêm cột -> 201.
-    @PostMapping("/{boardId}/columns")
-    public ResponseEntity<ColumnResponse> addColumn(
+    @PutMapping("/boards/{boardId}/columns/order")
+    public ResponseEntity<ApiResponse<java.util.List<ColumnResponse>>> reorderColumns(
             @PathVariable Long boardId,
-            @Valid @RequestBody AddColumnRequest req,
-            @RequestHeader("X-User-Id") UUID userId) {
-        currentUserId(userId); // Giữ để check 401/403 kỳ sau.
-        BoardAggregate board = addColumnPort.addColumn(new AddColumnCommand(boardId, req.name()));
-        List<BoardAggregate.BoardColumnValue> columns = board.getColumns();
-        BoardAggregate.BoardColumnValue last = columns.get(columns.size() - 1);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ColumnResponse(last.id(), last.name(), last.position()));
+            @Valid @RequestBody ReorderBoardColumnsRequest request,
+            Principal principal) {
+        Board updated = boards.reorderColumns(new ReorderBoardColumnsCommand(
+                boardId, request.columnIds(), actor(principal)));
+        return ResponseEntity.ok(ApiResponse.of(
+                updated.columns().stream().map(ColumnResponse::from).toList()));
     }
 
-    // 2.5 Đổi thứ tự cột -> 200.
-    @PatchMapping("/{boardId}/columns/order")
-    public ResponseEntity<List<ColumnResponse>> reorderColumns(
-            @PathVariable Long boardId,
-            @Valid @RequestBody ReorderColumnsRequest req,
-            @RequestHeader("X-User-Id") UUID userId) {
-        currentUserId(userId); // Giữ để check 401/403 kỳ sau.
-        BoardAggregate board = reorderColumnsPort
-                .reorder(new ReorderColumnsCommand(boardId, req.orderedColumnIds()));
-        List<ColumnResponse> columns = board.getColumns().stream()
-                .map(c -> new ColumnResponse(c.id(), c.name(), c.position()))
-                .toList();
-        return ResponseEntity.ok(columns);
+    private UUID actor(Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            throw ProjectRuleViolation.unauthorized("Authenticated user identity is required.");
+        }
+        try {
+            return UUID.fromString(principal.getName());
+        } catch (IllegalArgumentException exception) {
+            throw ProjectRuleViolation.unauthorized("Authenticated user identity is invalid.");
+        }
     }
 }

@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import org.hibernate.annotations.Nationalized;
 
 // Bảng board_columns (JPA), sống chết theo Board.
 @Getter
@@ -25,7 +24,8 @@ import org.hibernate.annotations.Nationalized;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "board_columns", uniqueConstraints = @UniqueConstraint(name = "uq_board_columns_position", columnNames = {"board_id", "position"}))
+@Table(name = "board_columns", uniqueConstraints = @UniqueConstraint(
+        name = "UQ_board_columns_board_position", columnNames = {"board_id", "position"}))
 public class BoardColumnEntity {
 
     @Id
@@ -37,7 +37,6 @@ public class BoardColumnEntity {
     @JoinColumn(name = "board_id", nullable = false)
     private BoardEntity board;
 
-    @Nationalized
     @Column(nullable = false, length = 100)
     private String name;
 

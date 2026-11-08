@@ -13,6 +13,7 @@ import dev.platform.task.infrastructure.persistence.entity.CardEntity;
 
 // Truy vấn bảng cards.
 public interface CardJpaRepository extends JpaRepository<CardEntity, Long> {
+    long countByColumnId(Long columnId);
 
     List<CardEntity> findByProjectIdAndBoardIdOrderByPositionAsc(Long projectId, Long boardId);
 

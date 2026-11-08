@@ -111,7 +111,7 @@ CREATE TABLE inbox_events
 );
 
 
-/* 2. PROJECT SERVICE */
+/* 2. BOARD SERVICE */
 -- Dùng cơ sở dữ liệu board_db (Đảm bảo database đã được tạo trước)
 -- USE board_db;
 -- GO
@@ -269,6 +269,39 @@ CREATE TABLE project_authorization_snapshot_sync_jobs (
 -- Index phục vụ Worker quét job chạy lại
 CREATE NONCLUSTERED INDEX IX_snapshot_sync_jobs_status_next_attempt
 ON project_authorization_snapshot_sync_jobs (status, next_attempt_at);
+
+
+-- BẢNG OUTBOX / INBOX (cùng schema với user_db và task_db)
+CREATE TABLE outbox_events (
+                               event_id        UNIQUEIDENTIFIER NOT NULL,
+                               event_type      VARCHAR(120)     NOT NULL,
+                               aggregate_type  VARCHAR(80)      NOT NULL,
+                               aggregate_id    VARCHAR(80)      NOT NULL,
+                               aggregate_version BIGINT          NOT NULL,
+                               payload         NVARCHAR(MAX)    NOT NULL,
+                               status          VARCHAR(20)      NOT NULL DEFAULT 'PENDING',
+                               attempt_count   INT              NOT NULL DEFAULT 0,
+                               created_at      DATETIMEOFFSET   NOT NULL,
+                               next_attempt_at DATETIMEOFFSET   NOT NULL,
+                               sent_at         DATETIMEOFFSET   NULL,
+                               last_error      NVARCHAR(MAX)    NULL,
+
+                               CONSTRAINT PK_outbox_events PRIMARY KEY (event_id),
+                               CONSTRAINT CHK_outbox_events_status CHECK (status IN ('PENDING','SENT'))
+);
+
+CREATE NONCLUSTERED INDEX idx_outbox_due
+ON outbox_events (status, next_attempt_at, created_at);
+
+CREATE TABLE inbox_events (
+                              consumer_name VARCHAR(255)     NOT NULL,
+                              event_id      UNIQUEIDENTIFIER NOT NULL,
+                              status        VARCHAR(20)      NOT NULL DEFAULT 'PENDING',
+                              processed_at  DATETIMEOFFSET   NULL,
+
+                              CONSTRAINT PK_inbox_events PRIMARY KEY (consumer_name, event_id),
+                              CONSTRAINT CHK_inbox_events_status CHECK (status IN ('PENDING','PROCESSED','FAILED'))
+);
 
 
 /* 4. TASK SERVICE */
@@ -644,4 +677,3 @@ SET IDENTITY_INSERT notifications OFF;
 -- 2. Chèn bản ghi Inbox ghi nhận sự kiện hạ tầng từ Message Broker gửi sang đã được xử lý xong (Khử trùng lặp)
 INSERT INTO inbox_events (id, message_handler, status, created_at, processed_at)
 VALUES (NEWID(), 'TaskAssignedNotificationHandler', 'PROCESSED', SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET());
-

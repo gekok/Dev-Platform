@@ -16,4 +16,5 @@ public interface ProjectMembershipVersionJpaRepository
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select version from ProjectMembershipVersionEntity version where version.id = :id")
     Optional<ProjectMembershipVersionEntity> findForUpdate(@Param("id") ProjectMembershipVersionId id);
+
 }

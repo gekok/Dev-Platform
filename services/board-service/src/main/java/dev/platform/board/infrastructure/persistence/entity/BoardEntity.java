@@ -1,10 +1,7 @@
 package dev.platform.board.infrastructure.persistence.entity;
 
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,14 +12,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
-// Bảng boards (JPA), tách khỏi Aggregate thuần.
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "boards")
+@Table(name = "boards", uniqueConstraints = @UniqueConstraint(
+        name = "UQ_boards_project_key", columnNames = {"project_id", "board_key"}))
 public class BoardEntity {
 
     @Id
@@ -32,21 +29,13 @@ public class BoardEntity {
     @Column(nullable = false, length = 255)
     private String name;
 
-    @Column(name = "board_key", nullable = false, unique = true, length = 20)
+    @Column(name = "board_key", nullable = false, length = 20)
     private String boardKey;
-
-    @Column(name = "owner_id", nullable = false, columnDefinition = "uuid")
-    private UUID ownerId;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("position ASC")
-    private List<BoardColumnEntity> columns = new ArrayList<>();
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    private ProjectEntity projectEntity;
 
     @Size(max = 20)
     @NotNull

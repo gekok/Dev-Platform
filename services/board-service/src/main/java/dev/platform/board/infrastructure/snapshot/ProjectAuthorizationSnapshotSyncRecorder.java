@@ -27,6 +27,21 @@ public class ProjectAuthorizationSnapshotSyncRecorder {
     private final ObjectMapper objectMapper;
 
     @Transactional
+    public void recordSnapshot(
+            UUID operationId,
+            Long projectId,
+            UUID userId,
+            String status,
+            String role,
+            long membershipVersion,
+            long authorizationVersion) {
+        OffsetDateTime now = OffsetDateTime.now();
+        ProjectMemberAuthorizationSnapshot snapshot = new ProjectMemberAuthorizationSnapshot(
+                projectId, userId, status, role, membershipVersion, authorizationVersion);
+        saveSnapshotJob(operationId, snapshot, now);
+    }
+
+    @Transactional
     public void recordMembershipChanged(
             UUID operationId, Long projectId, UUID userId, String status, String role,
             long membershipVersion, long authorizationVersion) {

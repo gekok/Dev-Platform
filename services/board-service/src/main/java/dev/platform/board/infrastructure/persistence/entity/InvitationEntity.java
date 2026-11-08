@@ -1,47 +1,50 @@
 package dev.platform.board.infrastructure.persistence.entity;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import jakarta.persistence.*;
-import lombok.*;
 
 @Getter
 @Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
-@Table(name = "invitations", indexes = {
-        @Index(name = "ix_invitations_user_status_created", columnList = "user_id,status,created_at"),
-        @Index(name = "ix_invitations_project_status_created", columnList = "project_id,status,created_at")
-})
+@Table(name = "invitations")
 public class InvitationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
     private Long id;
 
+    @NotNull
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", insertable = false, updatable = false)
-    private ProjectEntity project;
-
-    @Column(name = "user_id", nullable = false, columnDefinition = "uniqueidentifier")
+    @NotNull
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "invited_by_user_id", nullable = false, columnDefinition = "uniqueidentifier")
+    @NotNull
+    @Column(name = "invited_by_user_id", nullable = false)
     private UUID invitedByUserId;
 
-    @Column(nullable = false, length = 20)
+    @Size(max = 20)
+    @NotNull
+    @Column(name = "status", nullable = false, length = 20)
     private String status;
 
-    @Column(name = "created_at", nullable = false, columnDefinition = "datetimeoffset")
+    @NotNull
+    @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false, columnDefinition = "datetimeoffset")
+    @NotNull
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @Column(name = "responded_at", columnDefinition = "datetimeoffset")
+    @Column(name = "responded_at")
     private OffsetDateTime respondedAt;
+
 }

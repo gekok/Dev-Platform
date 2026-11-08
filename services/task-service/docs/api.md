@@ -6,7 +6,7 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Đây là mapping của controller; các inbound port chưa có implementation hoàn chỉnh, Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
+CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Trước khi tạo hoặc di chuyển Card, controller cũng gọi Board Service nội bộ để xác minh Project, Board, Column và trạng thái ACTIVE. Đây là mapping của controller; các inbound port CRUD vẫn chưa có implementation hoàn chỉnh.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
@@ -20,11 +20,19 @@ X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải dan
 
 CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List hiện trả toàn bộ kết quả; cursor chưa được nối vào controller.
 
+## Board Service validation
+
+| Method | Route | Authentication | Purpose |
+|---|---|---|---|
+| GET | `/internal/columns/{columnId}/task-count` | `X-Service-Token` | Đếm Card/Task trước khi Board Service xóa Column |
+
+Task create/move gọi `GET {BOARD_SERVICE_BASE_URL}/internal/boards/{boardId}` với `X-Service-Token`; Project/Board phải ACTIVE và Column phải thuộc Board. Dependency lỗi trả `503 DEPENDENCY_UNAVAILABLE`; target sai trả `422 INVALID_COLUMN_TARGET`; Board/Project đóng trả `409 BOARD_NOT_ACTIVE` / `PROJECT_NOT_ACTIVE`. Internal endpoints không được expose qua Gateway. Cấu hình token dùng chung qua `INTERNAL_SERVICE_TOKEN`.
+
 ## Contract mục tiêu và phần chưa có trong source
 
 Contract chung còn có GET /api/v1/projects/{projectId}/cards/{cardId} để đọc một Card. Route này chưa được khai báo trong controller hiện tại. Mọi route Card phải giữ projectId trong URL để giới hạn đọc/ghi theo cards.project_id; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
 
-Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Internal REST đang hoãn vì chưa có bảo mật service-to-service, nên không được xem riêng projectId do caller gửi là bằng chứng cho quan hệ Board–Project. Đây là integration TODO trước khi bật luồng end-to-end.
+Board/Column truyền khi tạo hoặc move Card được kiểm tra với Board Service thay vì tin riêng projectId caller gửi. Các Card CRUD ports chưa có implementations nên việc ghi Task vẫn chưa chạy end-to-end.
 
 Phân trang mục tiêu theo từng Column: cursor opaque, mặc định 5, tối đa 20, position DESC, id DESC; controller hiện chưa có limit/cursor. Dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload.
 

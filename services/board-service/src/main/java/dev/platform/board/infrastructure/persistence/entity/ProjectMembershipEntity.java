@@ -1,36 +1,43 @@
 package dev.platform.board.infrastructure.persistence.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.OffsetDateTime;
-import jakarta.persistence.*;
-import lombok.*;
 
 @Getter
 @Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
-@Table(name = "project_memberships", indexes = @Index(name = "ix_project_memberships_user_status_project", columnList = "user_id,status,project_id"))
+@Table(name = "project_memberships")
 public class ProjectMembershipEntity {
     @EmbeddedId
     private ProjectMembershipId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", insertable = false, updatable = false)
-    private ProjectEntity project;
-
-    @Column(nullable = false, length = 20)
+    @Size(max = 20)
+    @NotNull
+    @Column(name = "role", nullable = false, length = 20)
     private String role;
 
-    @Column(nullable = false, length = 20)
+    @Size(max = 20)
+    @NotNull
+    @Column(name = "status", nullable = false, length = 20)
     private String status;
 
-    @Column(name = "joined_at", nullable = false, columnDefinition = "datetimeoffset")
+    @NotNull
+    @Column(name = "joined_at", nullable = false)
     private OffsetDateTime joinedAt;
 
-    @Column(name = "removed_at", columnDefinition = "datetimeoffset")
+    @Column(name = "removed_at")
     private OffsetDateTime removedAt;
 
-    @Column(name = "updated_at", nullable = false, columnDefinition = "datetimeoffset")
+    @NotNull
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
 }

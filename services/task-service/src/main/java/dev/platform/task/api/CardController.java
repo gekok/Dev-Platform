@@ -30,6 +30,7 @@ import dev.platform.task.application.port.in.CreateCardPort;
 import dev.platform.task.application.port.in.GetCardsPort;
 import dev.platform.task.application.port.in.MoveCardPort;
 import dev.platform.task.application.service.ProjectAuthorizationGuard;
+import dev.platform.task.application.service.BoardWriteGuard;
 import dev.platform.task.domain.aggregate.CardAggregate;
 import dev.platform.task.domain.aggregate.CardAggregate.CommentValue;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class CardController {
     private final AssignCardPort assignCardPort;
     private final AddCommentPort addCommentPort;
     private final ProjectAuthorizationGuard authorizationGuard;
+    private final BoardWriteGuard boardWriteGuard;
 
     // Tạo thẻ (3.1).
     @PostMapping("/api/v1/projects/{projectId}/boards/{boardId}/cards")
@@ -60,6 +62,7 @@ public class CardController {
             // TODO Gateway phải ghi đè header này từ principal đã xác thực.
             @RequestHeader(value = "X-User-Id") UUID userId) {
         authorizationGuard.requireProjectMember(projectId, userId);
+        boardWriteGuard.requireWritable(projectId, boardId, request.columnId());
         Long assigneeMembershipVersion = request.assigneeId() == null ? null
                 : authorizationGuard.requireActiveAssigneeMembership(projectId, request.assigneeId());
         CreateCardCommand cmd = new CreateCardCommand(
@@ -96,6 +99,7 @@ public class CardController {
             @RequestBody MoveCardRequest request,
             @RequestHeader(value = "X-User-Id") UUID actorId) {
         authorizationGuard.requireProjectMember(projectId, actorId);
+        boardWriteGuard.requireWritableForCard(projectId, cardId, request.toColumnId());
         MoveCardCommand cmd = new MoveCardCommand(
                 projectId, cardId, request.toColumnId(), request.toPosition(), actorId);
         CardAggregate card = moveCardPort.move(cmd);

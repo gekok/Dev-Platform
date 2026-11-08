@@ -34,6 +34,11 @@ spring:
       mandatory: true
 
 dev-platform:
+  security:
+    internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
+  internal:
+    board-service:
+      base-url: ${BOARD_SERVICE_BASE_URL:http://localhost:8082}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:
