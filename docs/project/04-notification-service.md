@@ -8,19 +8,21 @@
 
 - **NotificationController** khai báo GET list và PATCH mark-read theo **X-User-Id**.
 - **InternalNotificationController** là skeleton cho **POST /internal/v1/notifications**, bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì chưa có authentication enforcement. Không coi route này là giao tiếp service-to-service an toàn.
-- **TaskEventListener** là placeholder; chưa có event consumer tạo Notification end-to-end.
-- `NotificationEntity` hiện có nullable `project_id` cùng recipient Account và Board/Card context. List/mark-read inbound ports đã có application service; controller vẫn đọc `X-User-Id`, được Gateway xác thực và ghi đè cho request đi qua Gateway. Direct-service ingress và producer/consumer flow chưa nối hoàn chỉnh. Account/Project deletion jobs không thuộc Kỳ 1.
+- **TaskEventListener** consume `card.assigned` và `comment.mentioned` từ queue `notification-service.task-events`; **NotificationRabbitConfiguration** khai báo binding, retry tối đa 3 lần cách nhau 5 giây và DLQ `notification-service.task-events.dlq`. Consumer mặc định tắt theo feature flag.
+- **ProcessTaskNotificationService** kiểm tra contract `TASK_NOTIFICATION_INTENT`, ghi Inbox cùng Notification trong một transaction, xử lý duplicate và tạo một Notification cho mỗi recipient. Không consume `MOVED` trong Kỳ 1.
+- Task-service đã có producer Outbox #25 cho hai Notification intent. Kiểm thử local bằng cách publish trực tiếp vào RabbitMQ đã xác nhận routing, nhiều recipient, duplicate, rollback và DLQ của consumer; Task Outbox Relay → broker và ACK-loss/redelivery vẫn chưa được nghiệm thu end-to-end.
+- `NotificationEntity` hiện có nullable `project_id` cùng recipient Account và Board/Card context. List/mark-read/create inbound ports đã có application service; controller đọc `X-User-Id`, được Gateway xác thực và ghi đè cho request đi qua Gateway. Direct-service ingress còn mở. Account/Project deletion jobs không thuộc Kỳ 1.
 
 ## Việc cần làm
 
 - [ ] Nghiệm thu end-to-end list/mark-read chỉ cho Account hiện tại theo Gateway identity; không tin header do client tự gửi ngoài Gateway.
-- [ ] Chốt phương thức giao tiếp producer→notification-service; internal REST chưa đưa vào integration path khi chưa có bảo mật service-to-service.
-- [ ] Nối các loại event/tạo Notification theo event contract đã duyệt; bỏ mô tả PR_REVIEWED như một tính năng Kỳ 2 đã chốt.
+- [x] Dùng RabbitMQ + Outbox/Inbox cho producer→notification-service; internal REST không thuộc integration path khi chưa có bảo mật service-to-service.
+- [x] Consume `card.assigned` và `comment.mentioned`, ánh xạ thành `ASSIGNED`/`MENTIONED`; không phát hoặc consume `MOVED` trong Kỳ 1.
 - [x] Thêm nullable `project_id` vào NotificationEntity/DTO; giữ recipient `user_id` và nullable Board/Card context, tất cả là scalar reference không FK chéo DB.
-- [ ] Đảm bảo inbox Notification tổng hợp theo Account và không cascade xóa theo Project/Board trong Kỳ 1.
-- [ ] Nối producer/consumer Notification theo event contract sau khi quyết định được chốt; internal REST chưa dùng khi chưa có bảo mật service-to-service.
+- [x] Đảm bảo inbox Notification tổng hợp theo Account và không cascade xóa theo Project/Board trong Kỳ 1.
+- [ ] Nghiệm thu producer Outbox → relay → RabbitMQ → consumer Inbox/Notification, gồm duplicate, rollback, ACK/redelivery và DLQ trên hạ tầng local.
 - [x] Gỡ Account/Project deletion handler/job khỏi runtime; policy retention và deletion thuộc Kỳ 2.
-- [ ] Đồng bộ API/database docs riêng sau khi event và cleanup contract chốt.
+- [x] Đồng bộ API/database docs riêng theo event contract #25 và consumer #26.
 
 ## Tiêu chí nghiệm thu khi triển khai
 
@@ -29,3 +31,5 @@
 - Mỗi Notification thuộc đúng một recipient Account; Project/Board/Card chỉ giúp điều hướng context.
 - Account inbox có thể tổng hợp Notification từ nhiều Project và cả thông báo hệ thống không có Project context.
 - Kỳ 1 không cascade delete Notification theo Project và không có Notification deletion job.
+- Event trùng không tạo Notification lần hai; một `comment.mentioned` tạo đúng một Notification cho mỗi recipient duy nhất.
+- Lỗi xử lý được retry tối đa 3 lần cách nhau 5 giây rồi chuyển DLQ; consumer path đã có bằng chứng local, còn Task Outbox Relay và ACK-loss/redelivery cần nghiệm thu trước khi đóng issue.
