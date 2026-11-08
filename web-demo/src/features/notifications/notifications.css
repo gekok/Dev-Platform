@@ -50,6 +50,30 @@
   font-weight: 700;
 }
 
+.notification-panel-filters {
+  display: flex;
+  justify-content: flex-end;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.notification-filter-button {
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: #697188;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.notification-filter-button[aria-pressed="true"] {
+  border-color: #c9c3f2;
+  background: #f3f1ff;
+  color: var(--color-accent-hover);
+}
+
 .notification-list {
   display: grid;
   margin: 0;

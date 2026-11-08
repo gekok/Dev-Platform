@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import { useProject, useProjectMembers } from '../../projects/hooks/useProjects.js';
-import { useCards, useCreateCard, useMoveCard } from '../../cards/hooks/useCards.js';
+import { useCreateCard, useMoveCard } from '../../cards/hooks/useCards.js';
 import CardDetailPanel from '../../cards/components/CardDetailPanel.jsx';
 import {
   useAddColumn,
@@ -13,6 +13,7 @@ import {
 } from '../hooks/useBoards.js';
 import BoardHeader from '../components/BoardHeader.jsx';
 import BoardCreateDialog from '../components/BoardCreateDialog.jsx';
+import ProjectMembersDialog from '../../projects/components/ProjectMembersDialog.jsx';
 import ColumnCreateForm from '../components/ColumnCreateForm.jsx';
 import KanbanColumns from '../components/KanbanColumns.jsx';
 import {
@@ -21,8 +22,11 @@ import {
   useSetDefaultBoard,
 } from '../../preferences/hooks/useDefaultBoards.js';
 import { getPreferenceErrorClearPath } from '../preferenceNavigation.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 import '../../cards/cards.css';
 import '../boards.css';
+
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getErrorTitle(error) {
   switch (error.response?.status) {
@@ -46,7 +50,7 @@ function getErrorMessage(error) {
     case 404:
       return 'Check the Board link and try again.';
     default:
-      return error.response?.data?.message ?? 'The Board workspace could not be loaded. Try again.';
+      return getApiErrorMessage(error, 'The Board workspace could not be loaded. Try again.');
   }
 }
 
@@ -54,7 +58,7 @@ function getPreferenceErrorMessage(
   error,
   fallback = 'The saved Board preference could not be updated.',
 ) {
-  return error.response?.data?.message ?? fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 export default function BoardPage() {
@@ -66,22 +70,34 @@ export default function BoardPage() {
   const navigate = useNavigate();
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [showBoardCreateDialog, setShowBoardCreateDialog] = useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
   const [selectedCardContext, setSelectedCardContext] = useState(null);
+  const [loadedCardColumns, setLoadedCardColumns] = useState({ scope: null, columns: {} });
+  const [isPreparingCardMove, setIsPreparingCardMove] = useState(false);
+  const [cardMoveError, setCardMoveError] = useState(null);
+  const cardLoadersRef = useRef(new Map());
   const userQuery = useCurrentUser();
   const userId = userQuery.data?.id;
   const projectQuery = useProject(projectId);
   const projectBoardsQuery = useProjectBoards(projectId);
   const boardQuery = useBoard(boardId);
-  const cardsQuery = useCards(boardId);
   const membersQuery = useProjectMembers(projectId);
+  const projectBoards = projectBoardsQuery.data?.items ?? [];
+  const members = membersQuery.data?.items ?? [];
   const defaultBoardsQuery = useDefaultBoards(userId);
   const setDefaultMutation = useSetDefaultBoard(userId);
   const clearDefaultMutation = useClearDefaultBoard(userId);
   const addColumnMutation = useAddColumn(projectId, boardId);
   const reorderMutation = useReorderColumns(projectId, boardId);
   const createBoardMutation = useCreateProjectBoard(projectId);
-  const createCardMutation = useCreateCard(boardId);
-  const moveCardMutation = useMoveCard(boardId);
+  const createCardMutation = useCreateCard(projectId, boardId);
+  const moveCardMutation = useMoveCard(projectId, boardId);
+  const cardScope = `${projectId}:${boardId}`;
+  const cardsByColumn = loadedCardColumns.scope === cardScope
+    ? loadedCardColumns.columns
+    : {};
+  const cards = Object.values(cardsByColumn).flat();
+  const isMovingCard = isPreparingCardMove || moveCardMutation.isPending;
   const isOwner = projectQuery.data?.role === 'OWNER';
   const defaultBoard = defaultBoardsQuery.data?.defaultBoards.find(
     (preference) => Number(preference.projectId) === Number(projectId),
@@ -99,7 +115,7 @@ export default function BoardPage() {
       : null;
   const preferenceError = preferenceMutationError
     ? getPreferenceErrorMessage(preferenceMutationError)
-    : defaultBoardsQuery.isError
+    : isDemoMode && defaultBoardsQuery.isError
       ? getPreferenceErrorMessage(
           defaultBoardsQuery.error,
           'The saved Board preference could not be loaded.',
@@ -132,6 +148,22 @@ export default function BoardPage() {
 
   const closeCardDetails = useCallback(() => setSelectedCardContext(null), []);
 
+  const handleCardsChange = useCallback((columnId, columnCards) => {
+    setLoadedCardColumns((current) => {
+      const currentColumns = current.scope === cardScope ? current.columns : {};
+      if (currentColumns[columnId] === columnCards) return current;
+      return {
+        scope: cardScope,
+        columns: { ...currentColumns, [columnId]: columnCards },
+      };
+    });
+  }, [cardScope]);
+
+  const registerColumnLoader = useCallback((columnId, loaderRef) => {
+    if (loaderRef) cardLoadersRef.current.set(columnId, loaderRef);
+    else cardLoadersRef.current.delete(columnId);
+  }, []);
+
   async function handleAddColumn(name) {
     await addColumnMutation.mutateAsync({ name });
     setShowColumnForm(false);
@@ -154,34 +186,55 @@ export default function BoardPage() {
     await createCardMutation.mutateAsync(payload);
   }
 
-  function handleMoveCard(cardId, toColumnId, requestedPosition = null) {
-    if (moveCardMutation.isPending) return;
-    const cards = cardsQuery.data ?? [];
+  async function handleMoveCard(cardId, toColumnId, beforeCardId = null) {
+    if (isMovingCard) return;
     const card = cards.find((item) => item.id === cardId);
     const destinationColumn = boardQuery.data?.columns.some((item) => item.id === toColumnId);
     if (!card || !destinationColumn) return;
 
-    const destinationCards = cards
-      .filter((item) => item.columnId === toColumnId && item.id !== cardId)
-      .sort((left, right) => left.position - right.position);
-    const toPosition = requestedPosition == null
-      ? destinationCards.length
-      : Math.min(Math.max(requestedPosition, 0), destinationCards.length);
-    if (card.columnId === toColumnId && card.position === toPosition) return;
+    setCardMoveError(null);
+    setIsPreparingCardMove(true);
+    moveCardMutation.reset();
+    try {
+      const sourceLoader = cardLoadersRef.current.get(card.columnId);
+      const destinationLoader = cardLoadersRef.current.get(toColumnId);
+      if (!sourceLoader?.current || !destinationLoader?.current) {
+        throw new Error('Source or destination Column cards are not ready. Reload the Board and retry.');
+      }
 
-    moveCardMutation.mutate({ cardId, toColumnId, toPosition });
+      const sourceCards = await sourceLoader.current.loadAllCards();
+      const destinationCardsSnapshot = card.columnId === toColumnId
+        ? sourceCards
+        : await destinationLoader.current.loadAllCards();
+      const currentPosition = sourceCards.findIndex((item) => String(item.id) === String(cardId));
+      if (currentPosition < 0) {
+        throw new Error('This Card is no longer in the loaded Column. Reload and retry.');
+      }
+
+      const destinationCards = destinationCardsSnapshot
+        .filter((item) => String(item.id) !== String(cardId));
+      const toPosition = beforeCardId == null
+        ? destinationCards.length
+        : destinationCards.findIndex((item) => String(item.id) === String(beforeCardId));
+      if (toPosition < 0) {
+        throw new Error('The destination list changed. Reload the Column and retry.');
+      }
+      if (card.columnId === toColumnId && currentPosition === toPosition) return;
+
+      await moveCardMutation.mutateAsync({ cardId, toColumnId, toPosition });
+    } catch (error) {
+      setCardMoveError(getApiErrorMessage(
+        error,
+        error?.message ?? 'The Card could not be moved.',
+      ));
+    } finally {
+      setIsPreparingCardMove(false);
+    }
   }
 
   function handleDropCard(draggedCardId, toColumnId, beforeCardId) {
-    if (draggedCardId === beforeCardId) return;
-    const destinationCards = (cardsQuery.data ?? [])
-      .filter((item) => item.columnId === toColumnId && item.id !== draggedCardId)
-      .sort((left, right) => left.position - right.position);
-    const requestedPosition = beforeCardId == null
-      ? destinationCards.length
-      : destinationCards.findIndex((item) => item.id === beforeCardId);
-    if (requestedPosition < 0) return;
-    handleMoveCard(draggedCardId, toColumnId, requestedPosition);
+    if (String(draggedCardId) === String(beforeCardId)) return;
+    handleMoveCard(draggedCardId, toColumnId, beforeCardId);
   }
 
   function handleOpenCard(cardId) {
@@ -245,14 +298,13 @@ export default function BoardPage() {
   if (
     projectQuery.isPending ||
     boardQuery.isPending ||
-    cardsQuery.isPending ||
     membersQuery.isPending
   ) {
     return <div className="page-state" aria-live="polite">Loading Board…</div>;
   }
 
-  if (projectQuery.isError || boardQuery.isError || cardsQuery.isError || membersQuery.isError) {
-    const error = projectQuery.error ?? boardQuery.error ?? cardsQuery.error ?? membersQuery.error;
+  if (projectQuery.isError || boardQuery.isError || membersQuery.isError) {
+    const error = projectQuery.error ?? boardQuery.error ?? membersQuery.error;
     return (
       <div className="empty-state" role="alert">
         <strong>{getErrorTitle(error)}</strong>
@@ -262,7 +314,6 @@ export default function BoardPage() {
           onClick={() => {
             projectQuery.refetch();
             boardQuery.refetch();
-            cardsQuery.refetch();
             membersQuery.refetch();
           }}
           type="button"
@@ -294,13 +345,14 @@ export default function BoardPage() {
       isDefault={isDefault}
       project={project}
       selectorProps={{
-        boards: projectBoardsQuery.data ?? [],
+        boards: projectBoards,
         currentBoardId: board.id,
         defaultBoardId,
         canCreate: isOwner,
-        isPreferenceLoading: userQuery.isPending ||
-          (Boolean(userId) && defaultBoardsQuery.isPending),
-        isPreferenceReady: Boolean(userId) && defaultBoardsQuery.isSuccess,
+        isPreferenceFeatureEnabled: isDemoMode,
+        isPreferenceLoading: isDemoMode && (userQuery.isPending ||
+          (Boolean(userId) && defaultBoardsQuery.isPending)),
+        isPreferenceReady: isDemoMode && Boolean(userId) && defaultBoardsQuery.isSuccess,
         isPreferencePending,
         preferenceError,
         onRetryPreferences: handleRetryPreferences,
@@ -343,6 +395,13 @@ export default function BoardPage() {
             {board.columns.length} stages for this team’s work
           </span>
         </div>
+        <button
+          className="secondary-button"
+          onClick={() => setShowMembersDialog(true)}
+          type="button"
+        >
+          Members ({members.length})
+        </button>
         {isOwner && (
           <button
             aria-controls="column-create-form"
@@ -378,19 +437,20 @@ export default function BoardPage() {
         </p>
       )}
 
-      {moveCardMutation.isError && (
+      {cardMoveError && (
         <p className="form-inline-error board-mutation-error" role="alert">
-          {getErrorMessage(moveCardMutation.error)}
+          {cardMoveError}
         </p>
       )}
 
       <KanbanColumns
+        projectId={projectId}
+        boardId={boardId}
         columns={board.columns}
-        cards={cardsQuery.data}
-        members={membersQuery.data}
+        members={members}
         isCreatingCard={createCardMutation.isPending}
         cardCreateError={createCardMutation.isError ? getErrorMessage(createCardMutation.error) : null}
-        isMovingCard={moveCardMutation.isPending}
+        isMovingCard={isMovingCard}
         isOwner={isOwner}
         isReordering={reorderMutation.isPending}
         onResetCardCreate={() => createCardMutation.reset()}
@@ -399,6 +459,8 @@ export default function BoardPage() {
         onMoveCard={handleMoveCard}
         onDropCard={handleDropCard}
         onMoveColumn={handleMoveColumn}
+        onCardsChange={handleCardsChange}
+        onRegisterColumnLoader={registerColumnLoader}
       />
     </section>
     {selectedCardId !== null && (
@@ -406,8 +468,9 @@ export default function BoardPage() {
           boardId={boardId}
           cardId={selectedCardId}
           key={`${projectId}:${boardId}:${selectedCardId}`}
-          members={membersQuery.data}
+          members={members}
           onClose={closeCardDetails}
+          projectId={projectId}
         />
       )}
       <BoardCreateDialog
@@ -418,6 +481,12 @@ export default function BoardPage() {
         onClose={closeBoardCreateDialog}
         onCreate={handleCreateBoard}
         open={showBoardCreateDialog}
+      />
+      <ProjectMembersDialog
+        isOwner={isOwner}
+        onClose={() => setShowMembersDialog(false)}
+        open={showMembersDialog}
+        projectId={projectId}
       />
     </>
   );

@@ -249,13 +249,50 @@ function parseCreateCardInput(request, payload, authorization) {
   return { columnId, title, description, assigneeId, dueDate };
 }
 
-function sortCards(cards, columns) {
-  const columnPositions = new Map(columns.map((column) => [column.id, column.position]));
+function sortCards(cards) {
   return cards.sort((left, right) =>
-    (columnPositions.get(left.columnId) - columnPositions.get(right.columnId)) ||
-    (left.position - right.position) ||
-    (left.id - right.id),
+    (right.position - left.position) || (right.id - left.id),
   );
+}
+
+function encodeCardCursor(projectId, boardId, columnId, card) {
+  const value = `1:${projectId}:${boardId}:${columnId}:position_desc_id_desc:${card.position}:${card.id}`;
+  return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeCardCursor(cursor, projectId, boardId, columnId) {
+  if (typeof cursor !== 'string' || !cursor || cursor.length > 256 || !/^[A-Za-z0-9_-]+$/.test(cursor)) {
+    throw new Error('Invalid Card cursor');
+  }
+
+  const base64 = cursor.replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4));
+  const parts = raw.split(':');
+  if (parts.length !== 7 || !/^\d+$/.test(parts[5]) || !/^\d+$/.test(parts[6])) {
+    throw new Error('Invalid Card cursor');
+  }
+  const [version, rawProjectId, rawBoardId, rawColumnId, sort, rawPosition, rawCardId] = parts;
+  const anchor = {
+    projectId: Number(rawProjectId),
+    boardId: Number(rawBoardId),
+    columnId: Number(rawColumnId),
+    position: Number(rawPosition),
+    cardId: Number(rawCardId),
+  };
+
+  if (
+    version !== '1' ||
+    sort !== 'position_desc_id_desc' ||
+    anchor.projectId !== projectId ||
+    anchor.boardId !== boardId ||
+    anchor.columnId !== columnId ||
+    !Number.isSafeInteger(anchor.position) ||
+    anchor.position < 0 ||
+    !Number.isSafeInteger(anchor.cardId) ||
+    anchor.cardId <= 0
+  ) throw new Error('Invalid Card cursor');
+
+  return anchor;
 }
 
 export function createCardHandlers(repository, resolveUserFromToken) {
@@ -274,13 +311,13 @@ export function createCardHandlers(repository, resolveUserFromToken) {
       );
       if (authorization.response) return authorization.response;
 
-      const rawColumnId = new URL(request.url).searchParams.get('columnId');
+      const searchParams = new URL(request.url).searchParams;
+      const rawColumnId = searchParams.get('columnId');
       const columnId = rawColumnId === null ? null : parsePositiveId(rawColumnId);
-      if (rawColumnId !== null && !columnId) {
-        return errorResponse(request, 400, 'BAD_REQUEST', 'Column ID must be a positive integer');
+      if (!columnId) {
+        return errorResponse(request, 400, 'BAD_REQUEST', 'Column ID is required and must be a positive integer');
       }
       if (
-        columnId !== null &&
         !authorization.data.columns.some(
           (column) => column.id === columnId && column.boardId === boardId,
         )
@@ -288,14 +325,36 @@ export function createCardHandlers(repository, resolveUserFromToken) {
         return errorResponse(request, 400, 'BAD_REQUEST', 'Column must belong to this Board');
       }
 
-      const cards = authorization.data.cards.filter(
-        (card) =>
-          card.boardId === boardId &&
-          (columnId === null || card.columnId === columnId),
-      );
-      return HttpResponse.json(
-        sortCards(cards, authorization.data.columns).map(mapCard),
-      );
+      const rawLimit = searchParams.get('limit');
+      const limit = rawLimit === null ? 5 : /^\d+$/.test(rawLimit) ? Number(rawLimit) : NaN;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
+        return errorResponse(request, 400, 'BAD_REQUEST', 'Limit must be between 1 and 20');
+      }
+
+      let anchor = null;
+      const cursor = searchParams.get('cursor');
+      if (cursor !== null) {
+        try {
+          anchor = decodeCardCursor(cursor, authorization.project.id, boardId, columnId);
+        } catch {
+          return errorResponse(request, 400, 'BAD_REQUEST', 'Invalid Card cursor');
+        }
+      }
+
+      const cards = sortCards(authorization.data.cards.filter(
+        (card) => card.boardId === boardId && card.columnId === columnId,
+      )).filter((card) => !anchor ||
+        card.position < anchor.position ||
+        (card.position === anchor.position && card.id < anchor.cardId));
+      const hasMore = cards.length > limit;
+      const page = hasMore ? cards.slice(0, limit) : cards;
+      const lastCard = page.at(-1);
+      return HttpResponse.json({
+        items: page.map(mapCard),
+        nextCursor: hasMore && lastCard
+          ? encodeCardCursor(authorization.project.id, boardId, columnId, lastCard)
+          : null,
+      });
     }),
     http.post('*/api/v1/boards/:boardId/cards', async ({ request, params }) => {
       const boardId = parsePositiveId(params.boardId);
@@ -435,7 +494,7 @@ export function createCardHandlers(repository, resolveUserFromToken) {
               item.columnId === sourceColumnId &&
               item.id !== card.id,
           )
-          .sort((left, right) => left.position - right.position);
+          .sort((left, right) => (right.position - left.position) || (right.id - left.id));
         const destinationCards = toColumnId === sourceColumnId
           ? sourceCards
           : draft.cards
@@ -444,18 +503,25 @@ export function createCardHandlers(repository, resolveUserFromToken) {
                 item.boardId === authorization.board.id &&
                 item.columnId === toColumnId,
             )
-            .sort((left, right) => left.position - right.position);
+            .sort((left, right) => (right.position - left.position) || (right.id - left.id));
 
         if (toPosition > destinationCards.length) return { invalidPosition: true };
 
-        const sourcePosition = card.position;
+        const sourcePosition = draft.cards
+          .filter(
+            (item) =>
+              item.boardId === authorization.board.id &&
+              item.columnId === sourceColumnId,
+          )
+          .sort((left, right) => (right.position - left.position) || (right.id - left.id))
+          .findIndex((item) => item.id === card.id);
         sourceCards.forEach((item, position) => {
-          item.position = position;
+          item.position = sourceCards.length - position - 1;
         });
         destinationCards.splice(toPosition, 0, card);
         card.columnId = toColumnId;
         destinationCards.forEach((item, position) => {
-          item.position = position;
+          item.position = destinationCards.length - position - 1;
         });
 
         if (sourceColumnId !== toColumnId || sourcePosition !== toPosition) {

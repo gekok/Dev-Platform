@@ -3,7 +3,19 @@ export const DEMO_CREDENTIALS = Object.freeze({
   password: 'kanban-demo',
 });
 
+export const DEMO_ADMIN_CREDENTIALS = Object.freeze({
+  email: 'admin@devplatform.demo',
+  password: 'admin-demo',
+});
+
 export const DEMO_OWNER_ID = 'a1000000-0000-4000-8000-000000000001';
+export const DEMO_ADMIN_ID = 'a1000000-0000-4000-8000-000000000006';
+export const DEMO_ADMIN_USER = Object.freeze({
+  id: DEMO_ADMIN_ID,
+  email: DEMO_ADMIN_CREDENTIALS.email,
+  fullName: 'System Administrator',
+  systemRoles: ['SYSTEM_ADMIN'],
+});
 
 const RESOURCE_COLLECTIONS = Object.freeze({
   project: 'projects',
@@ -12,6 +24,7 @@ const RESOURCE_COLLECTIONS = Object.freeze({
   card: 'cards',
   comment: 'comments',
   notification: 'notifications',
+  invitation: 'invitations',
 });
 
 function getNextIds(data) {
@@ -57,7 +70,7 @@ export function createSeedData() {
   ];
 
   const data = {
-    users: members,
+    users: [...members, { ...DEMO_ADMIN_USER }],
     projects: [
       {
         id: 1,
@@ -72,6 +85,7 @@ export function createSeedData() {
       { projectId: 1, userId: members[2].id, role: 'MEMBER' },
       { projectId: 1, userId: members[3].id, role: 'MEMBER' },
     ],
+    invitations: [],
     boards: [
       {
         id: 11,

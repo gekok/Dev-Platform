@@ -1,8 +1,9 @@
 import Column from './Column.jsx';
 
 export default function KanbanColumns({
+  projectId,
+  boardId,
   columns,
-  cards,
   members,
   isCreatingCard,
   cardCreateError,
@@ -15,6 +16,8 @@ export default function KanbanColumns({
   onMoveCard,
   onDropCard,
   onMoveColumn,
+  onCardsChange,
+  onRegisterColumnLoader,
 }) {
   const orderedColumns = [...columns].sort((left, right) => left.position - right.position);
 
@@ -28,7 +31,7 @@ export default function KanbanColumns({
       <div className="kanban-columns">
         {orderedColumns.map((column, index) => (
           <Column
-            cards={cards}
+            boardId={boardId}
             cardCreateError={cardCreateError}
             column={column}
             columns={orderedColumns}
@@ -40,11 +43,14 @@ export default function KanbanColumns({
             key={column.id}
             members={members}
             onCreateCard={onCreateCard}
+            onCardsChange={onCardsChange}
             onDropCard={onDropCard}
             onMoveCard={onMoveCard}
             onMoveColumn={onMoveColumn}
             onOpenCard={onOpenCard}
+            onRegisterColumnLoader={onRegisterColumnLoader}
             onResetCardCreate={onResetCardCreate}
+            projectId={projectId}
             totalColumns={orderedColumns.length}
           />
         ))}

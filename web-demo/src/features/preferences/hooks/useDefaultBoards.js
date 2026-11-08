@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../../shared/query/queryKeys.js';
+import { normalizeRuntimeMode } from '../../../shared/config/runtimeConfig.js';
 import {
   clearDefaultBoard,
   listDefaultBoards,
   setDefaultBoard,
 } from '../services/preferenceApi.js';
 
+export function isDefaultBoardPreferenceEnabled(userId, mode) {
+  return Boolean(userId) && normalizeRuntimeMode(mode) === 'demo';
+}
+
 export function useDefaultBoards(userId) {
   return useQuery({
     queryKey: queryKeys.defaultBoards(userId),
     queryFn: listDefaultBoards,
-    enabled: Boolean(userId),
+    enabled: isDefaultBoardPreferenceEnabled(userId, import.meta.env.MODE),
   });
 }
 

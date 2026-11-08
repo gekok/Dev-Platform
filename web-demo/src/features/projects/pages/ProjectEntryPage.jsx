@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import BoardCreateDialog from '../../boards/components/BoardCreateDialog.jsx';
+import ProjectMembersDialog from '../components/ProjectMembersDialog.jsx';
 import {
   useCreateProjectBoard,
   useProjectBoards,
@@ -18,6 +19,9 @@ import {
   resolveProjectEntry,
 } from '../projectEntry.js';
 import { useProject } from '../hooks/useProjects.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
+
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getErrorTitle(error) {
   switch (error.response?.status) {
@@ -41,12 +45,12 @@ function getErrorMessage(error) {
     case 404:
       return 'Check the Project link and try again.';
     default:
-      return error.response?.data?.message ?? 'The request could not be completed. Try again.';
+      return getApiErrorMessage(error, 'The request could not be completed. Try again.');
   }
 }
 
 function getPreferenceErrorMessage(error) {
-  return error.response?.data?.message ?? 'The saved Board preference could not be cleared.';
+  return getApiErrorMessage(error, 'The saved Board preference could not be cleared.');
 }
 
 export default function ProjectEntryPage() {
@@ -54,11 +58,13 @@ export default function ProjectEntryPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
   const [cleanupAttempt, setCleanupAttempt] = useState(null);
   const cleanupAttemptRef = useRef(null);
   const [cleanupRetry, setCleanupRetry] = useState(0);
   const projectQuery = useProject(projectId);
   const boardsQuery = useProjectBoards(projectId);
+  const boards = boardsQuery.data?.items ?? [];
   const userQuery = useCurrentUser();
   const userId = userQuery.data?.id;
   const defaultBoardsQuery = useDefaultBoards(userId);
@@ -87,7 +93,7 @@ export default function ProjectEntryPage() {
     ? activeCleanupAttempt.error
     : null;
   const decision = resolveProjectEntry(
-    boardsQuery.data ?? [],
+    boards,
     projectId,
     defaultBoards,
     cleanupError,
@@ -96,17 +102,17 @@ export default function ProjectEntryPage() {
     projectQuery.isPending ||
     boardsQuery.isPending ||
     userQuery.isPending ||
-    (Boolean(userId) && defaultBoardsQuery.isPending);
+    (isDemoMode && Boolean(userId) && defaultBoardsQuery.isPending);
   const error =
     projectQuery.error ??
     boardsQuery.error ??
     userQuery.error ??
-    (userId ? defaultBoardsQuery.error : null);
+    (isDemoMode && userId ? defaultBoardsQuery.error : null);
   const isError = Boolean(
     projectQuery.isError ||
     boardsQuery.isError ||
     userQuery.isError ||
-    (userId && defaultBoardsQuery.isError),
+    (isDemoMode && userId && defaultBoardsQuery.isError),
   );
   const workspaceReady = !isPending && !isError && Boolean(userId);
   const isCleaningPreference = decision.needsCleanup && (
@@ -121,7 +127,7 @@ export default function ProjectEntryPage() {
   }, []);
 
   useEffect(() => {
-    if (!decision.needsCleanup || !cleanupKey) return;
+    if (!isDemoMode || !decision.needsCleanup || !cleanupKey) return;
 
     function releaseAttemptOnRouteChange(requestAttempt) {
       cleanupAttemptRef.current = releaseCleanupAttempt({
@@ -222,7 +228,7 @@ export default function ProjectEntryPage() {
     projectQuery.refetch();
     boardsQuery.refetch();
     userQuery.refetch();
-    if (userId) defaultBoardsQuery.refetch();
+    if (isDemoMode && userId) defaultBoardsQuery.refetch();
   }
 
   if (isPending || isCleaningPreference || (workspaceReady && decision.board)) {
@@ -284,6 +290,13 @@ export default function ProjectEntryPage() {
               <span aria-hidden="true">+</span> New Board
             </button>
           )}
+          <button
+            className="secondary-button"
+            onClick={() => setShowMembersDialog(true)}
+            type="button"
+          >
+            Project members
+          </button>
         </div>
       </section>
       <BoardCreateDialog
@@ -292,6 +305,12 @@ export default function ProjectEntryPage() {
         onClose={closeCreateDialog}
         onCreate={handleCreateBoard}
         open={showCreateDialog}
+      />
+      <ProjectMembersDialog
+        isOwner={isOwner}
+        onClose={() => setShowMembersDialog(false)}
+        open={showMembersDialog}
+        projectId={projectId}
       />
     </>
   );

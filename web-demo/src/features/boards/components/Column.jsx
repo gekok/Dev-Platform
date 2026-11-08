@@ -1,12 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import CardCreateForm from '../../cards/components/CardCreateForm.jsx';
 import CardItem from '../../cards/components/CardItem.jsx';
+import { getApiErrorMessage, getApiErrorStatus } from '../../../shared/services/apiErrors.js';
+import { queryKeys } from '../../../shared/query/queryKeys.js';
+import { useCards } from '../../cards/hooks/useCards.js';
+import { getMemberUserId } from '../../cards/memberIdentity.js';
+import { loadAllCardPages } from '../../cards/cardPageUtils.js';
 
 export default function Column({
+  projectId,
+  boardId,
   column,
   columns,
   index,
-  cards,
   members,
   isCreatingCard,
   cardCreateError,
@@ -19,13 +26,83 @@ export default function Column({
   onMoveCard,
   onDropCard,
   onMoveColumn,
+  onCardsChange,
+  onRegisterColumnLoader,
   totalColumns,
 }) {
   const [showCardForm, setShowCardForm] = useState(false);
-  const orderedCards = cards
-    .filter((card) => card.columnId === column.id)
-    .sort((left, right) => left.position - right.position);
-  const membersById = new Map(members.map((member) => [member.id, member]));
+  const queryClient = useQueryClient();
+  const cardsQuery = useCards(projectId, boardId, column.id);
+  const cardsQueryRef = useRef(cardsQuery);
+  const bodyRef = useRef(null);
+  const loadMoreSentinelRef = useRef(null);
+  const loaderRef = useRef(null);
+  cardsQueryRef.current = cardsQuery;
+  const orderedCards = cardsQuery.cards;
+  const membersById = new Map(
+    members
+      .map((member) => [getMemberUserId(member), member])
+      .filter(([memberId]) => memberId != null),
+  );
+  const staleCursorError = cardsQuery.isFetchNextPageError &&
+    getApiErrorStatus(cardsQuery.error) === 400;
+  const {
+    fetchNextPage,
+    hasDuplicateCards,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetchingNextPage,
+  } = cardsQuery;
+  const cardQueryKey = queryKeys.cards(projectId, boardId, column.id);
+
+  useEffect(() => {
+    onCardsChange(column.id, orderedCards);
+  }, [column.id, onCardsChange, orderedCards]);
+
+  loaderRef.current = {
+    loadAllCards: () => loadAllCardPages(cardsQueryRef.current),
+  };
+
+  useEffect(() => {
+    onRegisterColumnLoader(column.id, loaderRef);
+    return () => onRegisterColumnLoader(column.id, null);
+  }, [column.id, onRegisterColumnLoader]);
+
+  useEffect(() => {
+    if (
+      !hasNextPage ||
+      isFetchingNextPage ||
+      isFetchNextPageError ||
+      hasDuplicateCards ||
+      typeof IntersectionObserver === 'undefined' ||
+      !loadMoreSentinelRef.current
+    ) return undefined;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        fetchNextPage({ cancelRefetch: false }).catch(() => {});
+      }
+    }, {
+      root: bodyRef.current,
+      rootMargin: '120px 0px',
+    });
+    observer.observe(loadMoreSentinelRef.current);
+    return () => observer.disconnect();
+  }, [
+    fetchNextPage,
+    hasDuplicateCards,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetchingNextPage,
+  ]);
+
+  function reloadCards() {
+    return queryClient.resetQueries({ queryKey: cardQueryKey, exact: true });
+  }
+
+  function loadMoreCards() {
+    return cardsQuery.fetchNextPage({ cancelRefetch: false });
+  }
 
   function handleDrop(event, beforeCardId = null) {
     event.preventDefault();
@@ -43,7 +120,9 @@ export default function Column({
           <span className="column-position-mark" aria-hidden="true">{index + 1}</span>
           <div>
             <h3 id={`column-title-${column.id}`}>{column.name}</h3>
-            <span className="column-card-count">{orderedCards.length} {orderedCards.length === 1 ? 'card' : 'cards'}</span>
+            <span className="column-card-count">
+              {orderedCards.length}{cardsQuery.hasNextPage ? '+' : ''} {orderedCards.length === 1 && !cardsQuery.hasNextPage ? 'card' : 'cards'}
+            </span>
           </div>
         </div>
         <div className="column-header-actions">
@@ -100,6 +179,7 @@ export default function Column({
       )}
       <div
         className="kanban-column-body"
+        ref={bodyRef}
         onDragOver={(event) => {
           if (!isMovingCard) {
             event.preventDefault();
@@ -108,7 +188,16 @@ export default function Column({
         }}
         onDrop={(event) => handleDrop(event)}
       >
-        {orderedCards.length === 0 ? (
+        {cardsQuery.isPending ? (
+          <p className="column-card-state" aria-live="polite">Loading cards...</p>
+        ) : cardsQuery.isError && !cardsQuery.data ? (
+          <div className="column-card-state" role="alert">
+            <span>{getApiErrorMessage(cardsQuery.error, 'Cards could not be loaded.')}</span>
+            <button className="secondary-button" onClick={() => cardsQuery.refetch()} type="button">
+              Try again
+            </button>
+          </div>
+        ) : orderedCards.length === 0 ? (
           <div className="column-empty-hint">
             <span aria-hidden="true">＋</span>
             <span>No cards yet. Add one to get started.</span>
@@ -127,6 +216,45 @@ export default function Column({
             onOpen={onOpenCard}
           />
         ))}
+        {cardsQuery.hasDuplicateCards && (
+          <div className="column-card-state" role="status">
+            <span>Cards changed while loading. Reload this Column to refresh the list.</span>
+            <button className="secondary-button" onClick={reloadCards} type="button">
+              Reload Column
+            </button>
+          </div>
+        )}
+        {cardsQuery.isFetchNextPageError && !cardsQuery.hasDuplicateCards && (
+          <div className="column-card-state" role="alert">
+            <span>{staleCursorError
+              ? 'This page cursor is no longer valid. Reload this Column to continue.'
+              : getApiErrorMessage(cardsQuery.error, 'More cards could not be loaded.')}</span>
+            {staleCursorError ? (
+              <button className="secondary-button" onClick={reloadCards} type="button">
+                Reload Column
+              </button>
+            ) : (
+              <button className="secondary-button" onClick={loadMoreCards} type="button">
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+        {cardsQuery.hasNextPage && !cardsQuery.isFetchNextPageError && !cardsQuery.hasDuplicateCards && (
+          <div className="column-load-more" ref={loadMoreSentinelRef}>
+            <button
+              className="secondary-button"
+              disabled={cardsQuery.isFetchingNextPage}
+              onClick={loadMoreCards}
+              type="button"
+            >
+              {cardsQuery.isFetchingNextPage ? 'Loading...' : 'Load more cards'}
+            </button>
+          </div>
+        )}
+        {cardsQuery.isFetchingNextPage && !cardsQuery.isFetchNextPageError && (
+          <p className="column-card-state" aria-live="polite">Loading more cards...</p>
+        )}
       </div>
     </section>
   );

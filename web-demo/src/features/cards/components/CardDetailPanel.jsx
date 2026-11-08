@@ -5,9 +5,11 @@ import {
   useCard,
   useCardComments,
 } from '../hooks/useCards.js';
+import { getMemberDisplayName, getMemberUserId } from '../memberIdentity.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 
 function getErrorMessage(error, fallback) {
-  return error.response?.data?.message ?? fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 function formatDateTime(value) {
@@ -34,15 +36,19 @@ function formatCommentDate(value) {
   });
 }
 
-export default function CardDetailPanel({ cardId, boardId, members, onClose }) {
-  const cardQuery = useCard(cardId);
-  const commentsQuery = useCardComments(cardId);
-  const assignMutation = useAssignCard(boardId);
-  const addCommentMutation = useAddComment(boardId, cardId);
+export default function CardDetailPanel({ cardId, boardId, members, onClose, projectId }) {
+  const cardQuery = useCard(projectId, cardId);
+  const commentsQuery = useCardComments(projectId, cardId);
+  const assignMutation = useAssignCard(projectId, boardId);
+  const addCommentMutation = useAddComment(projectId, boardId, cardId);
   const closeButtonRef = useRef(null);
   const [comment, setComment] = useState('');
   const [mentionedUserIds, setMentionedUserIds] = useState([]);
-  const membersById = new Map(members.map((member) => [member.id, member]));
+  const membersById = new Map(
+    members
+      .map((member) => [getMemberUserId(member), member])
+      .filter(([memberId]) => memberId != null),
+  );
   const card = cardQuery.data;
 
   useEffect(() => {
@@ -168,9 +174,16 @@ export default function CardDetailPanel({ cardId, boardId, members, onClose }) {
                 value={card.assigneeId ?? ''}
               >
                 <option value="">Unassigned</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>{member.fullName}</option>
-                ))}
+                {members
+                  .filter((member) => getMemberUserId(member) != null)
+                  .map((member) => {
+                    const memberId = getMemberUserId(member);
+                    return (
+                      <option key={memberId} value={memberId}>
+                        {getMemberDisplayName(member)}
+                      </option>
+                    );
+                  })}
               </select>
               {assignMutation.isError && (
                 <p className="form-inline-error" role="alert">
@@ -201,7 +214,7 @@ export default function CardDetailPanel({ cardId, boardId, members, onClose }) {
                   {commentsQuery.data.map((item) => (
                     <li className="card-comment" key={item.id}>
                       <div className="card-comment-meta">
-                        <strong>{membersById.get(item.authorId)?.fullName ?? 'Project member'}</strong>
+                        <strong>{getMemberDisplayName(membersById.get(item.authorId))}</strong>
                         <time dateTime={item.createdAt}>{formatCommentDate(item.createdAt)}</time>
                       </div>
                       <p>{item.content}</p>
@@ -222,16 +235,21 @@ export default function CardDetailPanel({ cardId, boardId, members, onClose }) {
                 />
                 <fieldset className="card-mention-options">
                   <legend>Mention Project members</legend>
-                  {members.map((member) => (
-                    <label key={member.id}>
-                      <input
-                        checked={mentionedUserIds.includes(member.id)}
-                        onChange={() => toggleMention(member.id)}
-                        type="checkbox"
-                      />
-                      <span>{member.fullName}</span>
-                    </label>
-                  ))}
+                  {members
+                    .filter((member) => getMemberUserId(member) != null)
+                    .map((member) => {
+                      const memberId = getMemberUserId(member);
+                      return (
+                        <label key={memberId}>
+                          <input
+                            checked={mentionedUserIds.includes(memberId)}
+                            onChange={() => toggleMention(memberId)}
+                            type="checkbox"
+                          />
+                          <span>{getMemberDisplayName(member)}</span>
+                        </label>
+                      );
+                    })}
                 </fieldset>
                 {addCommentMutation.isError && (
                   <p className="form-inline-error" role="alert">

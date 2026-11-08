@@ -77,7 +77,7 @@ test('Board and Column routes require a valid bearer token', async () => {
     const boardCreateResponse = await postJson(
       `/projects/${board.projectId}/boards`,
       'invalid-token',
-      { name: 'Unauthenticated Board', key: 'UNAU' },
+      { name: 'Unauthenticated Board', boardKey: 'unau' },
     );
     const columnCreateResponse = await postJson(
       `/boards/${board.id}/columns`,
@@ -87,9 +87,9 @@ test('Board and Column routes require a valid bearer token', async () => {
     const columnReorderResponse = await fetch(
       apiUrl(`/boards/${board.id}/columns/order`),
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderedColumnIds: [103, 102, 101] }),
+        body: JSON.stringify({ columnIds: [103, 102, 101] }),
       },
     );
 
@@ -112,7 +112,7 @@ test('Owner can create a Board with default Columns under a Project', async () =
     const response = await postJson(
       `/projects/${projectId}/boards`,
       OWNER_TOKEN,
-      { name: 'Sprint Planning', key: 'SPR' },
+      { name: 'Sprint Planning', boardKey: 'sp' },
     );
     const created = await response.json();
 
@@ -133,7 +133,7 @@ test('Board creation rejects invalid and duplicate keys', async () => {
     const invalidResponse = await postJson(
       `/projects/${projectId}/boards`,
       OWNER_TOKEN,
-      { name: 'Invalid key', key: 'lower' },
+      { name: 'Invalid key', boardKey: 'bad_key' },
     );
     assert.equal(invalidResponse.status, 400);
     assert.equal((await invalidResponse.json()).code, 'BAD_REQUEST');
@@ -141,7 +141,7 @@ test('Board creation rejects invalid and duplicate keys', async () => {
     const duplicateResponse = await postJson(
       `/projects/${projectId}/boards`,
       OWNER_TOKEN,
-      { name: 'Duplicate key', key: 'PLAT' },
+      { name: 'Duplicate key', boardKey: 'plat' },
     );
     assert.equal(duplicateResponse.status, 409);
     assert.equal((await duplicateResponse.json()).code, 'CONFLICT');
@@ -156,10 +156,9 @@ test('Board creation rejects invalid and duplicate keys', async () => {
     const crossProjectDuplicateResponse = await postJson(
       `/projects/${secondProject.id}/boards`,
       OWNER_TOKEN,
-      { name: 'Cross-project duplicate', key: 'PLAT' },
+      { name: 'Cross-project duplicate', boardKey: 'plat' },
     );
-    assert.equal(crossProjectDuplicateResponse.status, 409);
-    assert.equal((await crossProjectDuplicateResponse.json()).code, 'CONFLICT');
+    assert.equal(crossProjectDuplicateResponse.status, 201);
   });
 });
 
@@ -169,11 +168,11 @@ test('concurrent Board creation with one key returns one conflict and persists o
     const responses = await Promise.all([
       postJson(`/projects/${projectId}/boards`, OWNER_TOKEN, {
         name: 'Concurrent Board A',
-        key: 'RACE',
+        boardKey: 'race',
       }),
       postJson(`/projects/${projectId}/boards`, OWNER_TOKEN, {
         name: 'Concurrent Board B',
-        key: 'RACE',
+        boardKey: 'race',
       }),
     ]);
     const responseBodies = await Promise.all(responses.map((response) => response.json()));
@@ -217,7 +216,7 @@ test('Members cannot create Boards or manage Columns', async () => {
     const createBoardResponse = await postJson(
       `/projects/${board.projectId}/boards`,
       MEMBER_TOKEN,
-      { name: 'Member Board', key: 'MEMB' },
+      { name: 'Member Board', boardKey: 'memb' },
     );
     assert.equal(createBoardResponse.status, 403);
 
@@ -231,12 +230,12 @@ test('Members cannot create Boards or manage Columns', async () => {
     const reorderResponse = await fetch(
       apiUrl(`/boards/${board.id}/columns/order`),
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           ...bearer(MEMBER_TOKEN),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderedColumnIds: [103, 102, 101] }),
+        body: JSON.stringify({ columnIds: [103, 102, 101] }),
       },
     );
     assert.equal(reorderResponse.status, 403);
@@ -269,12 +268,12 @@ test('Owner can add and reorder Columns; invalid cross-Board order is rejected',
     const invalidOrderResponse = await fetch(
       apiUrl(`/boards/${board.id}/columns/order`),
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           ...bearer(OWNER_TOKEN),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderedColumnIds: crossBoardColumnIds }),
+        body: JSON.stringify({ columnIds: crossBoardColumnIds }),
       },
     );
     assert.equal(invalidOrderResponse.status, 400);
@@ -294,12 +293,12 @@ test('Owner can add and reorder Columns; invalid cross-Board order is rejected',
     const reorderResponse = await fetch(
       apiUrl(`/boards/${board.id}/columns/order`),
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           ...bearer(OWNER_TOKEN),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderedColumnIds: [...currentIds].reverse() }),
+        body: JSON.stringify({ columnIds: [...currentIds].reverse() }),
       },
     );
     const reordered = await reorderResponse.json();
@@ -342,12 +341,12 @@ test('Column reorder rejects an order made stale by a concurrent Column addition
     };
 
     const response = await fetch(apiUrl(`/boards/${boardId}/columns/order`), {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         ...bearer(OWNER_TOKEN),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ orderedColumnIds }),
+      body: JSON.stringify({ columnIds: orderedColumnIds }),
     });
 
     assert.equal(response.status, 400);
