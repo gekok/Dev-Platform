@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEMO_CREDENTIALS, DEMO_OWNER_ID } from '../data/seed.js';
-import { DEMO_ACCESS_TOKEN } from './auth.js';
 import {
+  DEMO_ADMIN_CREDENTIALS,
+  DEMO_ADMIN_ID,
+  DEMO_CREDENTIALS,
+  DEMO_OWNER_ID,
+} from '../data/seed.js';
+import { DEMO_ACCESS_TOKEN, DEMO_ADMIN_ACCESS_TOKEN } from './auth.js';
+import {
+  ADMIN_TOKEN,
   MEMBER_ID,
   MEMBER_TOKEN,
   apiUrl,
@@ -21,6 +27,21 @@ test('accepts the seeded credentials and returns a bearer token', async () => {
 
     assert.equal(response.status, 200);
     assert.equal(body.accessToken, DEMO_ACCESS_TOKEN);
+    assert.equal(body.tokenType, 'Bearer');
+  });
+});
+
+test('accepts the admin credentials through the existing login endpoint', async () => {
+  await withMockServer(async () => {
+    const response = await fetch(apiUrl('/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(DEMO_ADMIN_CREDENTIALS),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.accessToken, DEMO_ADMIN_ACCESS_TOKEN);
     assert.equal(body.tokenType, 'Bearer');
   });
 });
@@ -55,6 +76,19 @@ test('resolves GET /users/me from the bearer identity', async () => {
       fullName: 'Sam Nguyen',
     });
     assert.notEqual(body.id, DEMO_OWNER_ID);
+  });
+});
+
+test('returns the admin role from the existing current-user endpoint', async () => {
+  await withMockServer(async () => {
+    const response = await fetch(apiUrl('/users/me'), {
+      headers: bearer(ADMIN_TOKEN),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.id, DEMO_ADMIN_ID);
+    assert.deepEqual(body.systemRoles, ['SYSTEM_ADMIN']);
   });
 });
 

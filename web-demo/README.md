@@ -1,6 +1,6 @@
-# Dev Platform Kanban Demo
+# Dev Platform Web Client
 
-This is a standalone React demo for the Project-first Kỳ 1 Kanban flow. It lives in `web-demo/` and does not change the backend services or API Gateway.
+This React client evolves the Project-first Kỳ 1 Kanban demo into the main web experience while the backend integration is still being completed. It lives in `web-demo/` and does not change the backend services or API Gateway.
 
 ## Run locally
 
@@ -18,6 +18,11 @@ Open the local URL printed by Vite. The demo account is:
 - Email: `owner@devplatform.demo`
 - Password: `kanban-demo`
 
+The separate System Admin demo account is:
+
+- Email: `admin@devplatform.demo`
+- Password: `admin-demo`
+
 ## Demo scope
 
 - Create Projects and Boards, then add and reorder Board Columns.
@@ -26,6 +31,7 @@ Open the local URL printed by Vite. The demo account is:
 - Open Card details, assign a member, add comments, and mention Project members.
 - View Notifications and mark them read.
 - Switch between Projects and their Boards.
+- Sign in as a System Admin to view the isolated `/admin` console.
 
 The sample Project contains multiple Boards and members for exercising assignment and mentions. A new Project starts with its creator as its only Owner; invitations, member administration, Project rename, and Project deletion are outside this demo scope.
 
@@ -41,7 +47,9 @@ The mock uses bearer-token identity and Project membership checks. The backend t
 
 MSW routes and payloads demonstrate the UI flow; they are not proof that backend controllers or database schemas implement the same contract. Where the demo differs from the approved backend decisions, the shared architecture/API documents are authoritative.
 
-Backend target detail: Project creation requires a Gateway-authenticated `ACTIVE` business Account; the actor comes from trusted identity context and Project + Owner membership commit together. `SYSTEM_ADMIN` alone grants no Project access. The demo's seeded bearer identity does not simulate system roles or Account snapshot/revocation; its Board-first mock routes may differ from Project-scoped backend Card routes. See [backend authorization decisions](../docs/project/architecture-decisions.md) and [Kanban API](../docs/api/kanban-api.md).
+The Admin console deliberately reuses `POST /api/v1/auth/login` and `GET /api/v1/users/me`. The mock adds a `systemRoles` projection for role-aware navigation, but it does not add an account-management endpoint. `POST /api/v1/admin/accounts` remains a documented proposal and is displayed as unavailable until the backend contract and Gateway enforcement are approved.
+
+Backend target detail: Project creation requires a Gateway-authenticated `ACTIVE` business Account; the actor comes from trusted identity context and Project + Owner membership commit together. `SYSTEM_ADMIN` alone grants no Project access. The Admin role in this client is a demo-only current-user projection; it does not prove Gateway role enforcement or Account snapshot/revocation. Its Board-first mock routes may differ from Project-scoped backend Card routes. See [backend authorization decisions](../docs/project/architecture-decisions.md) and [Kanban API](../docs/api/kanban-api.md).
 
 ## Development checks
 
