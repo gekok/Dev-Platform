@@ -50,6 +50,11 @@ class GlobalExceptionHandlerTest {
       throw new DataIntegrityViolationException("Cannot insert duplicate key in dbo.users");
     }
 
+    @GetMapping("/data-integrity-other")
+    public void throwOtherDataIntegrity() {
+      throw new DataIntegrityViolationException("Foreign key violation in dbo.user_system_roles");
+    }
+
     @GetMapping("/access-denied")
     public void throwAccessDenied() {
       throw new AccessDeniedException("SYSTEM_ADMIN required");
@@ -58,6 +63,11 @@ class GlobalExceptionHandlerTest {
     @GetMapping("/bad-request")
     public void throwBadRequest() {
       throw new IllegalArgumentException("Invalid state or parameter");
+    }
+
+    @GetMapping("/illegal-state")
+    public void throwIllegalState() {
+      throw new IllegalStateException("Internal state is not ready");
     }
 
     @GetMapping("/unsupported")
@@ -135,12 +145,21 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  @DisplayName("DataIntegrityViolationException (trùng lặp đồng thời) trả về 409 EMAIL_ALREADY_EXISTS thay vì 500")
-  void shouldHandleDataIntegrityViolationException() throws Exception {
+  @DisplayName("DataIntegrityViolationException không xác định constraint trả về lỗi 500 chung")
+  void shouldHandleUnclassifiedDataIntegrityViolationWithoutLeakingDetails() throws Exception {
     mockMvc.perform(get("/test/errors/data-integrity"))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"))
-        .andExpect(jsonPath("$.message").value("A user with this email or unique identifier already exists"));
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+        .andExpect(jsonPath("$.message").value("An unexpected internal error occurred"));
+  }
+
+  @Test
+  @DisplayName("DataIntegrityViolationException khác duplicate email không bị báo nhầm EMAIL_ALREADY_EXISTS")
+  void shouldNotMisclassifyOtherDataIntegrityViolations() throws Exception {
+    mockMvc.perform(get("/test/errors/data-integrity-other"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+        .andExpect(jsonPath("$.message").value("An unexpected internal error occurred"));
   }
 
   @Test
@@ -158,6 +177,14 @@ class GlobalExceptionHandlerTest {
     mockMvc.perform(get("/test/errors/bad-request"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+  }
+
+  @Test
+  @DisplayName("IllegalStateException là lỗi nội bộ, không phải BAD_REQUEST")
+  void shouldHandleIllegalStateAsInternalError() throws Exception {
+    mockMvc.perform(get("/test/errors/illegal-state"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"));
   }
 
   @Test

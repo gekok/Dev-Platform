@@ -13,7 +13,7 @@
 | Cột | Kiểu/mapping | Constraint |
 |---|---|---|
 | `id` | UUID | Primary key; tạo bằng `GenerationType.UUID` |
-| `email` | varchar(255) | not null, unique |
+| `email` | varchar(255) | not null, unique constraint `uq_users_email` |
 | `password_hash` | varchar | not null |
 | `full_name` | nvarchar(255) | nullable |
 | `status` | varchar(20) | not null; runtime enum hiện tại được đọc từ source; Kỳ 1 không dùng `DELETING` |
@@ -95,7 +95,7 @@ Entity `users` không khai báo index ngoài unique email. Column kiểu `String
 ## Database local, schema và vòng đời dữ liệu
 
 - SQL Server local dùng database `kanban_user_db`; cấu hình kết nối và credentials xem README ở root.
-- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=true` là cấu hình local hiện tại; `none` không tạo schema. Dùng [script khởi tạo local](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database trống. Kỳ 1 chưa dùng migration.
+- `spring.jpa.hibernate.ddl-auto=none` và `show_sql=false` là cấu hình local hiện tại; `none` không tạo schema. Dùng [script khởi tạo local](../../../sql/local-sqlserver-bootstrap.sql) cho bốn database trống. Script và entity cùng đặt tên unique constraint email là `uq_users_email`; database tạo từ bootstrap cũ cần chạy [script nâng cấp constraint](../../../sql/upgrade-user-email-constraint.sql). Kỳ 1 chưa dùng Flyway.
 - Account/status/system-role mutation, Outbox event và snapshot-sync job phải commit cùng transaction. Redis apply/retry là bước sau commit; snapshot cũ không được ghi đè version mới.
 - Kỳ 1 không có Account deletion operation, tombstone hoặc cascade completion consumer.
 
@@ -118,11 +118,11 @@ Các bảng dưới đây mô tả dữ liệu theo nghiệp vụ Kỳ 1. Entity
 | `status` | enum/string | not null | Dùng trạng thái Account Kỳ 1; không có `DELETING` |
 | `auth_version` | bigint | not null | Tăng khi status hoặc SystemRoles đổi; version trên snapshot Redis |
 
-`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. Account mang `SYSTEM_ADMIN` chỉ quản trị Account, không có quyền Project và không được làm Owner/Member (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Runtime Admin create request hiện có field `roles` tùy chọn; field này trái với quyết định không để client tự khai role khi tạo Account, nên được ghi nhận là sai khác implementation chưa được duyệt.
+`system_roles` chứa danh mục role hệ thống (`USER`, `SYSTEM_ADMIN`); `user_system_roles` gán role cho Account, khóa chính `(user_id,role_code)` và FK nội bộ tới `users`/`system_roles`. Account mang `SYSTEM_ADMIN` chỉ quản trị Account, không có quyền Project và không được làm Owner/Member (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Admin create request không có field `roles`; Account mới luôn nhận role `USER`.
 
 Không thêm `project_id`, `project_role` hay FK sang `board_db`. Account deletion/Owner succession được hoãn sang Kỳ 2; Kỳ 1 không cascade/xóa Project khi Account thay đổi.
 
-Chỉ System Admin được tạo Account; không mở public self-registration. Runtime Admin API nhận credential trong request và băm qua cùng `PasswordEncoderPort` với login; chính sách provisioning dài hạn (mật khẩu tạm hay flow reset lần đầu) chưa chốt. Không lưu plaintext password. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Nếu `roles` bị bỏ qua hoặc rỗng, Account mặc định nhận `USER`; system role được quản lý qua Admin role endpoints.
+Chỉ System Admin được tạo Account; không mở public self-registration. Runtime Admin API nhận credential trong request và băm qua cùng `PasswordEncoderPort` với login; BCrypt dùng strength 12, password tối đa 72 byte UTF-8. Không lưu plaintext password hoặc trả hash. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Tài khoản mới luôn nhận role `USER`; system role còn lại được quản lý qua Admin role endpoints.
 
 ### Account deletion — Kỳ 2
 

@@ -75,6 +75,8 @@ Sao chép `.env.example` thành `.env` ở thư mục gốc và điền `DB_USER
 
 Ví dụ chạy script bằng PowerShell: `sqlcmd -S 'localhost\PHUC' -U sa -C -b -f 65001 -i sql/local-sqlserver-bootstrap.sql`, rồi nhập mật khẩu khi được hỏi; đổi instance và tên đăng nhập theo máy. Spring đọc `.env` cho service, nhưng file này không tự đặt biến môi trường của terminal cho `sqlcmd`. Script chỉ dành cho local, tạo bảng vận hành rỗng và chứa dữ liệu Account demo; đăng nhập chưa nối end-to-end.
 
+Nếu `kanban_user_db` đã được tạo từ bootstrap cũ, chạy `sql/upgrade-user-email-constraint.sql` bằng `sqlcmd -b` hoặc SSMS để đặt tên constraint email là `uq_users_email`; script giữ nguyên dữ liệu và không chạy lại bootstrap trên database đang có bảng.
+
 Các đường dẫn `.env` được tìm theo thư mục làm việc: `../../.env` và `.env` ở thư mục hiện tại, trong đó `.env` hiện tại được ưu tiên. Khi chạy từ thư mục service, tránh tạo thêm `.env` trong service nếu muốn dùng cấu hình chung; khi chạy từ root, `../../.env` có thể trỏ ra ngoài repo. Chỉ chạy từ thư mục làm việc tin cậy.
 
 Chạy một lần từ thư mục gốc để build dự án và cài các module `shared/event-contracts`, `shared/messaging-support` vào Maven local, giúp từng service tìm được dependency:

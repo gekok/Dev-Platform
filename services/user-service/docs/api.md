@@ -89,12 +89,12 @@ Request gồm `email` hợp lệ và `password` không rỗng. Response:
 {"accessToken":"<token returned by login port>","tokenType":"Bearer"}
 ```
 
-JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot.
+JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot. Có thể cấu hình cặp PEM qua `APP_JWT_PRIVATE_KEY`/`APP_JWT_PUBLIC_KEY`, hoặc đường dẫn file qua `APP_JWT_KEY_FILE`; mặc định service dùng `.keys/dev-rsa-jwt.key` theo thư mục làm việc. Không thể ghi file khóa thì user-service dừng khởi động. Môi trường nhiều replica hoặc container cần dùng cùng cặp khóa ổn định hay mount file lưu trữ bền vững.
 
 | Field | Kiểu JSON | Bắt buộc/validation |
 |---|---|---|
-| `email` | string | Có; `@NotBlank`, `@Email` |
-| `password` | string | Có; `@NotBlank`; DTO không đặt giới hạn độ dài, adapter từ chối xác thực nếu vượt 72 byte UTF-8 |
+| `email` | string | Có; `@NotBlank`, `@Email`, tối đa 255 ký tự |
+| `password` | string | Có; `@NotBlank`, tối đa 72 byte UTF-8 |
 
 Response `TokenResponse` có `accessToken` (string) và `tokenType` (string, hiện luôn là `Bearer`); status thành công là `200 OK`.
 
@@ -123,7 +123,7 @@ Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), 
 
 User-service sở hữu Account/Auth và system role. Bảng dưới phân biệt API đã có controller runtime với API mục tiêu; contract chung chưa đồng nghĩa mọi route Project-first đã được nghiệm thu end-to-end:
 
-`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Admin API runtime nhận payload tạo Account gồm `email`, `password`, `fullName` và `roles` (tùy chọn; mặc định role `USER`), trả `UserResponse`; status và role management cũng đã có handler. Field `roles` hiện tại trái với quyết định không để client tự khai role khi tạo Account; đây là sai khác implementation, không phải contract đã duyệt. Formal contract, error mapping và cách cấp credential vẫn cần được đồng bộ.
+`POST /api/v1/auth/register` còn mapping legacy nhưng luôn bị từ chối; Kỳ 1 không public self-registration. Theo issue #54, chỉ System Admin tạo Account qua `POST /api/v1/admin/accounts`; payload chỉ gồm `email`, `password`, `fullName`. Role không nhận từ payload và Account mới luôn nhận `USER`, trạng thái `ACTIVE`. System Admin nhập mật khẩu ban đầu; mật khẩu được băm bằng BCrypt strength 12.
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
@@ -131,7 +131,7 @@ User-service sở hữu Account/Auth và system role. Bảng dưới phân biệ
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
 | `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email; mặc định `limit=20` | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | Account đã xác thực; privacy/query rules cần chốt |
 | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list; tối đa 100 IDs được xử lý | Runtime `200 UserProfile[]`: `id`, `displayName` | Account đã xác thực; tombstone chưa có trong runtime |
-| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "...", "roles": ["USER"] }` (`roles` tùy chọn) | `201 UserResponse` gồm `id`, `email`, `fullName`, `status`, `authVersion`, `roles` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` gồm `id`, `email`, `fullName`, `status`, `authVersion`, `roles` (`["USER"]`) | Runtime; chỉ `SYSTEM_ADMIN`; `roles` không thuộc request |
 | `PATCH` | `/api/v1/admin/users/{userId}/status` | `{ "status": "SUSPENDED" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 | `GET` | `/api/v1/admin/users/{userId}/roles` | Không body | `200 string[]` | Runtime; chỉ `SYSTEM_ADMIN` |
 | `POST` | `/api/v1/admin/users/{userId}/roles` | `{ "role": "SYSTEM_ADMIN" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
@@ -139,6 +139,14 @@ User-service sở hữu Account/Auth và system role. Bảng dưới phân biệ
 | `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | Không body | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 
 Runtime `UserCandidate` gồm `id`, `fullName`, `email`; runtime `UserProfile` gồm `id`, `displayName`. Email hiện được trả bởi directory handler; policy ai được tra cứu email còn mở. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
+
+### Tạo Account qua System Admin (`POST /api/v1/admin/accounts`)
+
+- Request bắt buộc `email`, `password`, `fullName`; không khai báo trường `roles`. Tài khoản mới có trạng thái `ACTIVE` và role `USER`.
+- `email` phải hợp lệ, không rỗng và tối đa 255 ký tự; `fullName` không rỗng và tối đa 255 ký tự. `password` dài 6–100 ký tự, đồng thời tối đa 72 byte UTF-8 theo giới hạn BCrypt.
+- Response `201 Created` trả `id`, `email`, `fullName`, `status`, `roles`, `authVersion`; không trả plaintext password hoặc hash.
+- Lỗi: `400 VALIDATION_FAILED`, `401 INVALID_CREDENTIALS`, `403 SYSTEM_ADMIN_REQUIRED`, `409 EMAIL_ALREADY_EXISTS`. Email race chỉ được nhận diện khi DB báo constraint `uq_users_email`; integrity error khác trả `500 INTERNAL_SERVER_ERROR`.
+- Việc System Admin đặt mật khẩu ban đầu là lựa chọn Kỳ 1; Kỳ 2 sẽ đánh giá link dùng một lần hoặc yêu cầu đổi mật khẩu lần đầu.
 
 Ví dụ response directory và bulk profile (shapes đề xuất):
 
@@ -166,8 +174,8 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 | Actor không phải System Admin | `403` | `SYSTEM_ADMIN_REQUIRED` |
 | Email đã được dùng | `409` | `EMAIL_ALREADY_EXISTS` |
 
-Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; status operation, error mapping cuối và credential provisioning còn mở. Admin route/payload nêu trên là runtime hiện tại, chưa thay thế việc duyệt contract chuẩn. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
+Không trả credential/hash trong response. Runtime dùng error envelope `{code,message,timestamp,path}`. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
 
-`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route Admin và role management có implementation source; contract chuẩn và credential provisioning cần được đồng bộ. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
+`SystemRoles` và `UserSystemRoles` được map trong user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account; issue #54 chốt Admin create contract nêu trên. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 
 Contract chung và field proposal nằm tại [Kanban API](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế); các API hiện có trong controller và khả năng khởi chạy vẫn được mô tả riêng ở phần runtime phía trên.

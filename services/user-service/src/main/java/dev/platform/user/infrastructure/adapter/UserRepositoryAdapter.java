@@ -2,6 +2,7 @@ package dev.platform.user.infrastructure.adapter;
 
 import dev.platform.user.domain.AccountStatus;
 import dev.platform.user.domain.aggregate.UserAggregate;
+import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import dev.platform.user.domain.repository.UserRepository;
 import dev.platform.user.infrastructure.persistence.entity.SystemRoleEntity;
 import dev.platform.user.infrastructure.persistence.entity.UserEntity;
@@ -14,14 +15,18 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements UserRepository {
+  private static final String EMAIL_UNIQUE_CONSTRAINT = "uq_users_email";
+
   private final SystemRoleJpaRepository systemRoleJpaRepository;
   private final UserJpaRepository userJpaRepository;
   private final UserSystemRoleJpaRepository userSystemRoleJpaRepository;
@@ -30,9 +35,27 @@ public class UserRepositoryAdapter implements UserRepository {
   @Transactional
   public UserAggregate save(UserAggregate user) {
     UserEntity userEntity = toEntity(user);
-    UserEntity savedUser = userJpaRepository.save(userEntity);
+    UserEntity savedUser;
+    try {
+      savedUser = userJpaRepository.saveAndFlush(userEntity);
+    } catch (DataIntegrityViolationException exception) {
+      if (violatesConstraint(exception, EMAIL_UNIQUE_CONSTRAINT)) {
+        throw new EmailAlreadyExistsException("Email already exists: " + user.getEmail());
+      }
+      throw exception;
+    }
     syncRoles(savedUser, user.getRoles());
     return toAggregate(savedUser);
+  }
+
+  private static boolean violatesConstraint(Throwable exception, String expectedConstraint) {
+    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConstraintViolationException violation
+          && expectedConstraint.equalsIgnoreCase(violation.getConstraintName())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void syncRoles(UserEntity user, Set<String> targetRoles) {

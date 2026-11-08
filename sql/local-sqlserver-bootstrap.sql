@@ -35,11 +35,12 @@ USE kanban_user_db;
 GO
 CREATE TABLE dbo.users (
     id uniqueidentifier NOT NULL PRIMARY KEY,
-    email varchar(255) NOT NULL UNIQUE,
+    email varchar(255) NOT NULL,
     password_hash varchar(255) NOT NULL,
     full_name nvarchar(255) NULL,
     status varchar(20) NOT NULL,
-    auth_version bigint NOT NULL
+    auth_version bigint NOT NULL,
+    CONSTRAINT uq_users_email UNIQUE (email)
 );
 CREATE TABLE dbo.system_roles (
     role_code varchar(40) NOT NULL PRIMARY KEY,

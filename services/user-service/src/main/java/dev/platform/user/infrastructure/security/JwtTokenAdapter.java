@@ -11,6 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -23,14 +26,13 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 public class JwtTokenAdapter implements TokenPort {
 
@@ -67,6 +69,14 @@ public class JwtTokenAdapter implements TokenPort {
   }
 
   public JwtTokenAdapter(KeyPair keyPair, long expirationMillis, String issuer) {
+    if (expirationMillis <= 0) {
+      throw new IllegalArgumentException("expirationMillis must be positive");
+    }
+    try {
+      Math.addExact(System.currentTimeMillis(), expirationMillis);
+    } catch (ArithmeticException exception) {
+      throw new IllegalArgumentException("expirationMillis is too large", exception);
+    }
     Objects.requireNonNull(keyPair, "keyPair cannot be null");
     if (issuer == null || issuer.isBlank()) {
       throw new IllegalArgumentException("issuer cannot be blank");
@@ -83,7 +93,7 @@ public class JwtTokenAdapter implements TokenPort {
   public String issue(UserAggregate user) {
     Objects.requireNonNull(user, "user cannot be null");
     Date now = new Date();
-    Date expiresAt = new Date(now.getTime() + expirationMillis);
+    Date expiresAt = new Date(Math.addExact(now.getTime(), expirationMillis));
 
     return JWT.create()
         .withIssuer(issuer)
@@ -123,6 +133,12 @@ public class JwtTokenAdapter implements TokenPort {
 
   private static KeyPair resolveKeyPair(
       String privateKeyPem, String publicKeyPem, String keyFilePath) {
+    return resolveKeyPair(
+        privateKeyPem, publicKeyPem, keyFilePath, Paths.get(DEFAULT_DEV_KEY_FILE));
+  }
+
+  static KeyPair resolveKeyPair(
+      String privateKeyPem, String publicKeyPem, String keyFilePath, Path defaultKeyFilePath) {
     boolean hasPrivatePem = privateKeyPem != null && !privateKeyPem.isBlank();
     boolean hasPublicPem = publicKeyPem != null && !publicKeyPem.isBlank();
 
@@ -136,11 +152,15 @@ public class JwtTokenAdapter implements TokenPort {
     }
 
     boolean hasExplicitFile = keyFilePath != null && !keyFilePath.isBlank();
-    String targetPath = hasExplicitFile ? keyFilePath : DEFAULT_DEV_KEY_FILE;
-    Path path = Paths.get(targetPath);
+    Path path = hasExplicitFile ? Paths.get(keyFilePath) : defaultKeyFilePath;
+    String targetPath = path.toString();
 
     try {
+      if (Files.exists(path) && !Files.isRegularFile(path)) {
+        throw new IllegalStateException("JWT RSA key path is not a regular file: " + targetPath);
+      }
       if (Files.exists(path) && Files.size(path) > 0) {
+        restrictKeyFilePermissions(path);
         String content = Files.readString(path);
         String[] parts = content.split("---KEY-SPLIT---");
         if (parts.length == 2) {
@@ -155,22 +175,43 @@ public class JwtTokenAdapter implements TokenPort {
       }
 
       KeyPair keyPair = generateRsaKeyPair();
-      try {
-        if (path.getParent() != null) {
-          Files.createDirectories(path.getParent());
-        }
-        String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
-        String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
-        Files.writeString(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
-      } catch (Exception writeEx) {
-        log.warn("Could not persist generated RSA key file to disk ({}), continuing with in-memory key: {}", targetPath, writeEx.getMessage());
-      }
+      String encodedPrivate = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+      String encodedPublic = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+      writeKeyFile(path, encodedPrivate + "---KEY-SPLIT---" + encodedPublic);
       return keyPair;
     } catch (Exception e) {
       if (e instanceof IllegalStateException ise) {
         throw ise;
       }
       throw new IllegalStateException("Failed to read/write RSA key file: " + targetPath, e);
+    }
+  }
+
+  private static void writeKeyFile(Path path, String content) throws java.io.IOException {
+    if (path.getParent() != null) {
+      Files.createDirectories(path.getParent());
+    }
+    if (Files.exists(path)) {
+      restrictKeyFilePermissions(path);
+    } else {
+      try {
+        Files.createFile(
+            path,
+            PosixFilePermissions.asFileAttribute(
+                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)));
+      } catch (UnsupportedOperationException unsupported) {
+        Files.createFile(path);
+      }
+    }
+    Files.writeString(path, content, StandardOpenOption.WRITE);
+  }
+
+  private static void restrictKeyFilePermissions(Path path) throws java.io.IOException {
+    try {
+      Files.setPosixFilePermissions(
+          path, EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+    } catch (UnsupportedOperationException unsupported) {
+      // Keep the platform's default access control on filesystems without POSIX permissions.
     }
   }
 
@@ -181,6 +222,9 @@ public class JwtTokenAdapter implements TokenPort {
     if (!(keyPair.getPublic() instanceof RSAPublicKey pubKey)
         || !(keyPair.getPrivate() instanceof RSAPrivateKey privKey)) {
       throw new IllegalStateException("KeyPair must be an RSA key pair");
+    }
+    if (pubKey.getModulus().bitLength() < 2048) {
+      throw new IllegalStateException("RSA keys must be at least 2048 bits");
     }
     if (!pubKey.getModulus().equals(privKey.getModulus())) {
       throw new IllegalStateException("RSA public and private keys do not match (modulus mismatch)");

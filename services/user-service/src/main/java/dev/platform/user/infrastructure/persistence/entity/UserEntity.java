@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,14 +22,16 @@ import org.hibernate.annotations.Nationalized;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints = @UniqueConstraint(name = "uq_users_email", columnNames = "email"))
 public class UserEntity {
 
   @Id
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @Column(name = "email", nullable = false, unique = true, length = 255)
+  @Column(name = "email", nullable = false, length = 255)
   private String email;
 
   @Column(name = "password_hash", nullable = false, length = 255)

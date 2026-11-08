@@ -8,7 +8,6 @@ import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -44,14 +43,6 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("EMAIL_ALREADY_EXISTS", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
   }
 
-  @ExceptionHandler(DataIntegrityViolationException.class)
-  public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
-      DataIntegrityViolationException ex, HttpServletRequest request) {
-    log.warn("Database data integrity violation at {}: {}", request.getRequestURI(), ex.getMessage());
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(new ErrorResponse("EMAIL_ALREADY_EXISTS", "A user with this email or unique identifier already exists", OffsetDateTime.now(), request.getRequestURI()));
-  }
-
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleAccessDenied(
       AccessDeniedException ex, HttpServletRequest request) {
@@ -59,9 +50,9 @@ public class GlobalExceptionHandler {
         .body(new ErrorResponse("SYSTEM_ADMIN_REQUIRED", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
   }
 
-  @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+  @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ErrorResponse> handleBadRequest(
-      RuntimeException ex, HttpServletRequest request) {
+      IllegalArgumentException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .body(new ErrorResponse("BAD_REQUEST", ex.getMessage(), OffsetDateTime.now(), request.getRequestURI()));
   }

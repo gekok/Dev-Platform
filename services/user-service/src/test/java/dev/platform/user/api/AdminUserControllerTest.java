@@ -18,6 +18,7 @@ import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.application.port.in.ManageSystemRolePort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.AccountStatus;
+import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -82,7 +82,7 @@ class AdminUserControllerTest {
           "email": "new@demo.local",
           "password": "Password123!",
           "fullName": "New User",
-          "roles": ["USER"]
+          "roles": ["SYSTEM_ADMIN"]
         }
         """;
 
@@ -91,7 +91,12 @@ class AdminUserControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(requestJson))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.email").value("new@demo.local"));
+        .andExpect(jsonPath("$.email").value("new@demo.local"))
+        .andExpect(jsonPath("$.roles[0]").value("USER"))
+        .andExpect(jsonPath("$.password").doesNotExist())
+        .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    verify(adminCreateAccountPort).createAccount(
+        new AdminCreateAccountCommand("new@demo.local", "Password123!", "New User"));
   }
 
   @Test
@@ -150,7 +155,7 @@ class AdminUserControllerTest {
     when(tokenPort.parseAndValidate("admin.token")).thenReturn(adminId);
     when(getCurrentUserPort.getCurrentUser(adminId)).thenReturn(adminUser);
     when(adminCreateAccountPort.createAccount(any(AdminCreateAccountCommand.class)))
-        .thenThrow(new DataIntegrityViolationException("Unique constraint violation: duplicate email in users"));
+        .thenThrow(new EmailAlreadyExistsException("Email already exists: duplicate@demo.local"));
 
     String requestJson = """
         {

@@ -11,12 +11,22 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 
 class JwtTokenAdapterTest {
+
+  @TempDir
+  Path temporaryDirectory;
 
   private final JwtTokenAdapter adapter = new JwtTokenAdapter(3600000L);
 
@@ -111,6 +121,50 @@ class JwtTokenAdapterTest {
     assertThatThrownBy(() -> new JwtTokenAdapter(mismatchedPair, 3600000L))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("do not match");
+  }
+
+  @Test
+  @DisplayName("Từ chối khóa RSA ngắn hơn 2048 bit")
+  void shouldRejectWeakRsaKeyPair() throws Exception {
+    KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
+    gen.initialize(1024);
+    KeyPair weakPair = gen.generateKeyPair();
+
+    assertThatThrownBy(() -> new JwtTokenAdapter(weakPair, 3600000L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("at least 2048 bits");
+  }
+
+  @Test
+  @DisplayName("Từ chối thời hạn token không dương")
+  void shouldRejectNonPositiveExpiration() throws Exception {
+    KeyPair keyPair = generateKeyPair();
+
+    assertThatThrownBy(() -> new JwtTokenAdapter(keyPair, 0L))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("expirationMillis must be positive");
+  }
+
+  @Test
+  @EnabledOnOs(OS.LINUX)
+  @DisplayName("Fail-fast khi không thể lưu cặp khóa RSA đã sinh")
+  void shouldFailFastWhenGeneratedKeyCannotBePersisted() {
+    assertThatThrownBy(
+            () -> JwtTokenAdapter.resolveKeyPair("", "", "", Path.of("/proc/dev-platform-jwt-test.key")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Failed to read/write RSA key file");
+  }
+
+  @Test
+  @EnabledOnOs(OS.LINUX)
+  @DisplayName("Khóa RSA tự sinh chỉ cho phép owner đọc và ghi")
+  void shouldRestrictGeneratedKeyFilePermissions() throws Exception {
+    Path keyFile = temporaryDirectory.resolve("jwt.key");
+
+    JwtTokenAdapter.resolveKeyPair("", "", "", keyFile);
+
+    assertThat(Files.getPosixFilePermissions(keyFile))
+        .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
   }
 
   @Test
