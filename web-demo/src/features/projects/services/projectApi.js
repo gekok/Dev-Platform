@@ -34,7 +34,7 @@ async function listProjectProfiles(projectId, userIds) {
       if (Array.isArray(profiles)) profileGroups.push(...profiles);
     } catch (error) {
       const status = error.response?.status;
-      if (status && status < 500) throw error;
+      if (status ? status < 500 : !error.isAxiosError) throw error;
     }
   }
 

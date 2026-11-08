@@ -88,12 +88,40 @@ test('keeps member IDs when the profile service is unavailable', async () => {
     if (config.url.startsWith('/projects/1/members')) {
       return response(config, { data: { items: [{ userId: 'member-1', role: 'MEMBER' }], page: 0, size: 100, totalElements: 1, totalPages: 1 } });
     }
-    throw new Error('Network unavailable');
+    throw Object.assign(new Error('Network unavailable'), { isAxiosError: true });
   }, async () => {
     const members = await listProjectMembers(1);
     assert.equal(members.items[0].id, 'member-1');
     assert.equal(members.items[0].fullName, 'Project member');
   });
+});
+
+test('does not hide profile authorization failures or programming errors', async () => {
+  for (const failure of [
+    Object.assign(new Error('Forbidden'), { response: { status: 403 } }),
+    new TypeError('Unexpected failure'),
+  ]) {
+    await withAdapter(async (config) => {
+      if (config.url.startsWith('/projects/1/members')) {
+        return response(config, { data: { items: [{ userId: 'member-1' }], page: 0, size: 100, totalElements: 1, totalPages: 1 } });
+      }
+      throw failure;
+    }, async () => assert.rejects(listProjectMembers(1), failure));
+  }
+});
+
+test('rejects changed pagination metadata and missing items', async () => {
+  for (const mode of ['metadata', 'missing']) {
+    await withAdapter(async (config) => response(config, {
+      data: {
+        items: config.params.page === 0 ? [{ id: 1 }] : mode === 'missing' ? [] : [{ id: 2 }],
+        page: config.params.page,
+        size: 100,
+        totalElements: mode === 'metadata' && config.params.page === 1 ? 3 : 2,
+        totalPages: 2,
+      },
+    }), async () => assert.rejects(listProjects(), /list changed/i));
+  }
 });
 
 test('rejects overlapping pages when the Project list changes', async () => {
