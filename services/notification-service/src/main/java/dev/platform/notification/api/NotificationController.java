@@ -31,10 +31,10 @@ public class NotificationController {
     @GetMapping("/me")
     public ResponseEntity<List<NotificationResponse>> listMine(
             @RequestParam(name = "unreadOnly", defaultValue = "false") boolean unreadOnly,
-            // TODO kỳ 1: lấy userId từ JWT sub, hiện đọc header stub.
+            // Gateway xác thực JWT và ghi đè X-User-Id; gọi thẳng service vẫn có thể giả mạo khi ingress còn mở.
             @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
         if (userId == null) {
-            throw new IllegalArgumentException("Thieu X-User-Id (stub cho JWT sub)");
+            throw new IllegalArgumentException("Thieu X-User-Id identity context tu Gateway");
         }
         return ResponseEntity.ok(listPort.listMine(userId, unreadOnly).stream()
                 .map(NotificationResponse::from)
@@ -45,10 +45,10 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     public ResponseEntity<NotificationResponse> markRead(
             @PathVariable("id") Long id,
-            // TODO kỳ 1: lấy userId từ JWT sub, hiện đọc header stub.
+            // Gateway xác thực JWT và ghi đè X-User-Id; gọi thẳng service vẫn có thể giả mạo khi ingress còn mở.
             @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
         if (userId == null) {
-            throw new IllegalArgumentException("Thieu X-User-Id (stub cho JWT sub)");
+            throw new IllegalArgumentException("Thieu X-User-Id identity context tu Gateway");
         }
         return ResponseEntity.ok(NotificationResponse.from(
                 markReadPort.markRead(new MarkReadCommand(id, userId))));

@@ -16,7 +16,7 @@ BoardController vẫn là skeleton Board-first. Các inbound use case chưa có 
 | POST | /api/v1/boards/{boardId}/columns | X-User-Id; name | 201 ColumnResponse |
 | PATCH | /api/v1/boards/{boardId}/columns/order | X-User-Id; orderedColumnIds | 200 ColumnResponse[] |
 
-X-User-Id là identity stub, chưa được Gateway xác thực và ghi đè. Board mapping hiện lưu owner_id trực tiếp, chưa có project_id; không xem các route này là Project membership authorization đã hoạt động.
+Với request đi qua Gateway, `X-User-Id` được ghi đè bằng JWT subject đã xác minh; gọi trực tiếp service vẫn có thể giả mạo header khi network ingress chưa bị giới hạn. Board mapping hiện lưu owner_id trực tiếp, chưa có project_id; không xem các route này là Project membership authorization đã hoạt động.
 
 ## API mục tiêu thuộc board-service
 

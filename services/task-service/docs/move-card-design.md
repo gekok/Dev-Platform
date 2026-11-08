@@ -17,4 +17,4 @@ Phương án được chọn: tách kiểm tra quan hệ Board/Column thành por
 
 ## Kiểm tra và giới hạn
 
-Kiểm tra move cùng/khác Column, vị trí biên, position trùng, Card sai Project, destination không hợp lệ, actor không có quyền, rollback và concurrent move bằng SQL Server. Issue chưa thể nghiệm thu E2E khi thiếu adapter xác minh quan hệ, Redis hoặc Gateway identity đáng tin cậy. Quy ước `toPosition` là chỉ số hiển thị là đề xuất cần xác nhận vì tài liệu cũ nêu position bắt đầu từ 0 trong khi list đã chốt DESC.
+Kiểm tra move cùng/khác Column, vị trí biên, position trùng, Card sai Project, destination không hợp lệ, actor không có quyền, rollback và concurrent move bằng SQL Server. Issue chưa thể nghiệm thu E2E khi thiếu adapter xác minh quan hệ hoặc Redis snapshot production; Gateway đã xác minh identity trên request đi qua cổng, nhưng direct-service ingress vẫn mở. Quy ước `toPosition` là chỉ số hiển thị là đề xuất cần xác nhận vì tài liệu cũ nêu position bắt đầu từ 0 trong khi list đã chốt DESC.

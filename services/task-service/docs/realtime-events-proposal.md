@@ -90,7 +90,7 @@ Ví dụ payload thực tế trong envelope:
 - Dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`. Mỗi event là một intent độc lập; không có thứ tự hoặc gap detection theo Card. Consumer dedup theo `(consumerName,eventId)`.
 - `EventEnvelope.aggregateVersion`, `outbox_events.aggregate_version`, `inbox_events`, `OutboxEventWriter` và `OutboxRelay` đã có. Không thêm `cards.aggregate_version`, cột Outbox hoặc migration theo contract này.
 - `OutboxEventWriter.append()` yêu cầu transaction đang mở; lỗi serialize/ghi Outbox làm rollback thay đổi Card/Comment. Retry relay giữ nguyên event envelope và ID.
-- Producer assignment vẫn bị gate bởi trusted Gateway identity. Comment có mention bị từ chối với 503 khi trusted identity chưa bật; không ghi Comment/Outbox trong trường hợp đó. `X-User-Id` không được xem là identity đáng tin cậy trước khi Gateway hardening hoàn tất.
+- Producer assignment vẫn bị gate bởi trusted Gateway identity. Comment có mention bị từ chối với 503 khi trusted identity chưa bật; không ghi Comment/Outbox trong trường hợp đó. Gateway hiện ghi đè `X-User-Id` cho request qua cổng, nhưng direct-service ingress chưa bị chặn nên Task gate vẫn phải giữ tắt.
 
 #### Ranh giới tích hợp và bằng chứng còn thiếu
 

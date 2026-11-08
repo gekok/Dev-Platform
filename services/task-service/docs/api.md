@@ -6,7 +6,7 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path. Mọi route Card/Comment trả 503 `CARD_OPERATION_UNAVAILABLE` trước khi đọc `X-User-Id` nếu trusted Gateway identity chưa được bật. Sau khi identity sẵn sàng, ProjectAuthorizationGuard kiểm tra Redis snapshot. Tạo/move còn trả 503 tới khi có adapter tin cậy xác minh Board/Column thuộc Project. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
+CardController hiện dùng Project-scoped path. Gateway đã xác thực JWT và ghi đè `X-User-Id` cho request đi qua Gateway, nhưng mọi route Card/Comment vẫn trả 503 `CARD_OPERATION_UNAVAILABLE` trước guard khi Task trusted identity gate mặc định tắt. Sau khi gate được bật an toàn, ProjectAuthorizationGuard kiểm tra Redis snapshot. Tạo/move còn trả 503 tới khi có adapter tin cậy xác minh Board/Column thuộc Project. Gateway + Task chưa được kiểm thử E2E; direct-service ingress hiện chưa bị chặn.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
@@ -36,7 +36,7 @@ Task đăng ký `WS /ws/boards/{boardId}` và handler chỉ khi `TASK_TRUSTED_GA
 
 Handshake yêu cầu identity `X-User-Id` do Gateway tin cậy chuyển tiếp; Task tự tra Board→Project và kiểm tra Account/membership trong snapshot. Session được kiểm tra lại định kỳ và ngay trước mỗi lần gửi; lookup hoặc snapshot lỗi đóng session. Event được phát sau transaction commit và chỉ fanout tới session cùng Board trong cùng Task instance. Đây là best-effort: không persistence/retry/replay hoặc bảo đảm nhận đủ/thứ tự; client refetch REST sau reconnect. Payload giữ nguyên event names và fields đã duyệt, không gồm Card title hay Comment body. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
 
-`X-User-Id` hiện là header bắt buộc nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Vì vậy mọi route REST Card/Comment kiểm tra cờ trusted Gateway identity trước guard và từ chối mặc định; không dùng UUID client gửi làm actor. Khi Gateway sẵn sàng, mỗi route kiểm tra snapshot Redis; snapshot thiếu, hỏng hoặc Redis lỗi trả 503 `AUTHORIZATION_SNAPSHOT_UNAVAILABLE`, membership không hợp lệ trả 403 `PROJECT_ACCESS_DENIED`.
+`X-User-Id` hiện là header bắt buộc. Với request đi qua Gateway, giá trị client gửi bị xóa và thay bằng UUID `sub` đã xác minh. Task vẫn kiểm tra cờ trusted Gateway identity trước guard và từ chối mặc định; không bật cờ này khi client còn gọi trực tiếp được Task. Khi guard chạy, mỗi route kiểm tra snapshot Redis; snapshot thiếu, hỏng hoặc Redis lỗi trả 503 `AUTHORIZATION_SNAPSHOT_UNAVAILABLE`, membership không hợp lệ trả 403 `PROJECT_ACCESS_DENIED`.
 
 CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List dùng keyset theo position DESC, id DESC; limit mặc định 5, khoảng hợp lệ 1–20. Cursor tạm thời ràng buộc project, board, column và sort; sai scope hoặc định dạng trả 400 BAD_REQUEST. `nextCursor` null là trang cuối. Đây là wire tạm thời, chưa phải contract đã duyệt.
 
@@ -55,7 +55,7 @@ Envelope dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, 
 
 ### Ví dụ request/response
 
-Các ví dụ này mô tả contract của code, không phải log nghiệm thu. Các request yêu cầu `X-User-Id` là UUID đã được Gateway xác thực và ghi đè. Mặc định trusted identity tắt; create/move cũng yêu cầu validator Column thật, nên các request đó trả 503 tới khi dependency được cấu hình.
+Các ví dụ này mô tả contract của code, không phải log nghiệm thu. Request qua Gateway nhận `X-User-Id` là UUID đã được xác thực và ghi đè; Task trusted identity mặc định tắt. Create/move cũng yêu cầu validator Column thật, nên các request đó trả 503 tới khi dependency được cấu hình.
 
 `POST /api/v1/projects/1/boards/2/cards` với body:
 

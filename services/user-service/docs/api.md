@@ -6,13 +6,13 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Controller hiện có
 
-`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, và `PUT /api/v1/admin/users/{userId}/roles` cập nhật vai trò hệ thống.
+`POST /api/v1/auth/register` khai báo đăng ký công khai (đã bãi bỏ), `POST /api/v1/auth/login` đăng nhập, `GET /api/v1/auth/public-key` xuất public key PEM, `GET /api/v1/users/me` lấy hồ sơ tài khoản hiện tại, `GET /api/v1/users` tìm kiếm ứng viên danh bạ, `GET /api/v1/users/profiles` lấy profile hiển thị theo danh sách UUIDs, `POST /api/v1/admin/accounts` tạo tài khoản bởi System Admin, `PATCH /api/v1/admin/users/{userId}/status` cập nhật trạng thái tài khoản, cùng các route `GET`, `POST`, `PUT`, `DELETE /api/v1/admin/users/{userId}/roles...` để xem và quản lý system role.
 
 - Mapping `/auth/register` vẫn tồn tại trong controller nhưng là route cũ, đã bị bãi bỏ theo quyết định #7; ném `OPERATION_NOT_SUPPORTED`. Chính sách đã chốt là chỉ System Admin mới tạo Account.
 - `/auth/login` gọi `LoginUserPort`; đã triển khai qua `LoginUserService` và `JwtTokenAdapter` sử dụng RSA256 (ký bằng Private Key, xác thực qua Public Key).
 - `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
-- `/admin/accounts`, `/admin/users/{userId}/status`, `/admin/users/{userId}/roles` được quản trị bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và Snapshot sync job trong cùng transaction.
-- `/users` và `/users/profiles` phục vụ Project Owner tìm kiếm thành viên và Frontend render tên hiển thị của Card/Member mà không làm lộ email hay dữ liệu nhạy cảm.
+- `/admin/accounts`, `/admin/users/{userId}/status` và các route `/admin/users/{userId}/roles...` được xử lý bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Gateway route `/api/v1/admin/**` tới user-service và áp dụng Account snapshot gate trước khi proxy. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và snapshot-sync job trong cùng transaction.
+- `/users` và `/users/profiles` có handler runtime: directory trả `id`, `fullName`, `email`; bulk profile trả `id`, `displayName`. Privacy policy và giới hạn directory cần được chốt riêng; hiện không mô tả email là field ẩn.
 
 
 ## Thiết kế mục tiêu đã thống nhất
@@ -20,7 +20,7 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 - System Admin quản lý vòng đời Account; Admin không có quyền nghiệp vụ trong Project.
 - `SYSTEM_ADMIN` là quyền hệ thống, không phải Project role. Account mang role này không được tạo Project hoặc làm Owner/Member. Nếu cùng một cá nhân cần tham gia Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`.
 - Owner duy nhất của Project không bị biến thành “admin hệ thống”. Account được mời chỉ thành Member sau khi chấp nhận Invitation.
-- Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account nên API directory/profile mục tiêu thuộc service này. Hai route dưới đây là đề xuất, chưa có controller.
+- Owner cần chọn User đã có tài khoản để mời; user-service là nguồn chuẩn Account. Directory/profile handlers đã có trong `UserController`; field trả về đang là implementation hiện tại, còn privacy policy, query rules và consumer authorization cần được chốt.
 - Schema mục tiêu lưu system role bằng `SystemRoles` và quan hệ `UserSystemRoles`. SQL bootstrap local seed Account System Admin mẫu và role tương ứng trong `user_db`; Kỳ 1 không dùng Flyway. Cách bootstrap cho môi trường triển khai có thể được thiết kế sau Kỳ 2.
 - Khi Account status hoặc system role đổi, tăng `auth_version`, ghi Outbox event và durable snapshot-sync job cùng transaction trong user_db.
 - user-service sở hữu Account authentication snapshot và retry apply vào Redis theo version. Snapshot version cũ không được ghi đè version mới.
@@ -28,15 +28,15 @@ Shared messaging của user-service: [hướng dẫn đọc và dùng](database.
 
 ## Chưa triển khai hoặc cần chốt
 
-- Login, provisioning Account qua Admin và phát token chưa đủ để coi Auth hoàn chỉnh.
-- Entity/repository `SystemRoles`/`UserSystemRoles` và Account snapshot recorder/Redis worker đã có skeleton; use case/API tạo Account qua Admin và quản lý role cần triển khai. SQL bootstrap local đã có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
-- Recorder chưa được nối vào các luồng tạo/thay đổi Account để ghi snapshot job cùng transaction; Redis worker chỉ chạy khi bật property. Vì vậy Account snapshot sync chưa hoạt động end-to-end. Gateway auth và Directory/profile controller cũng chưa có.
+- Login, provisioning Account qua Admin, quản lý system role và phát token đã có implementation source. Điều này chưa đồng nghĩa Gateway→Redis snapshot đã được tích hợp end-to-end.
+- Account create/status/role mutation gọi snapshot recorder trong cùng DB transaction với thay đổi Account, Outbox và durable snapshot-sync job. SQL bootstrap local có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
+- Redis snapshot-sync worker chỉ chạy khi bật `USER_AUTH_SNAPSHOT_SYNC_ENABLED=true` (mặc định `false`). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
 - Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project, chỉ System Admin tạo Account và không public self-registration. Nếu cùng một cá nhân cần làm việc trong Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`. Directory privacy và Account validation từ board-service vẫn còn mở.
 - Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 
 ## Nguồn code
 
-`UserController`, Account/role persistence cùng snapshot recorder/worker skeleton nằm trong `services/user-service/src/main/java`. Snapshot sync chưa được nối với lifecycle Account; Account deletion classes thuộc phạm vi Kỳ 2 và không nằm trong runtime Kỳ 1.
+`UserController`, `AdminUserController`, Account/role persistence, snapshot recorder và Redis worker nằm trong `services/user-service/src/main/java`. Snapshot sync cần bật worker để apply vào Redis; Account deletion classes thuộc phạm vi Kỳ 2 và không nằm trong runtime Kỳ 1.
 
 ## Chi tiết contract được khai báo trong source
 
@@ -89,7 +89,7 @@ Request gồm `email` hợp lệ và `password` không rỗng. Response:
 {"accessToken":"<token returned by login port>","tokenType":"Bearer"}
 ```
 
-Source hiện chưa định nghĩa expiry, refresh token hay JWT claims trong response contract.
+JWT hiện có claims `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat` và `exp`; issuer mặc định là `dev-platform-user-service`, thời hạn mặc định một giờ. Không có refresh-token flow. JWT được ký bằng RSA256, không mã hóa; Gateway chỉ dùng issuer, subject và time claims để xác thực, còn trạng thái Account lấy từ Redis snapshot.
 
 | Field | Kiểu JSON | Bắt buộc/validation |
 |---|---|---|
@@ -104,57 +104,41 @@ Controller xác thực danh tính trực tiếp từ header `Authorization: Bear
 
 Response `UserResponse` có `id` (UUID), `email` (string), `fullName` (string), status thành công là `200 OK`. Không trả về mật khẩu, hash hay dữ liệu nhạy cảm.
 
-*Ghi chú về ranh giới xác thực:* Theo quyết định kiến trúc (`architecture-decisions.md` mục 6), API Gateway sẽ là ranh giới xác thực chính và forward identity context tin cậy cho service phía sau. Việc `UserController.me()` tự xác thực Bearer token qua RSA256 hiện tại là giải pháp phòng vệ tạm thời khi service còn truy cập trực tiếp độc lập mà chưa có Gateway bảo vệ (Issue #34). Endpoint `GET /api/v1/auth/public-key` cung cấp Public Key cho Gateway để Gateway thực hiện xác thực tập trung.
+*Ghi chú về ranh giới xác thực:* Gateway hiện xác thực Bearer token qua RSA256, kiểm tra issuer/thời hạn/subject, đọc Account snapshot Redis rồi ghi đè `X-User-Id` cho request proxy. `UserController.me()` và Admin controller vẫn tự kiểm tra Bearer token; Gateway giữ nguyên Authorization header khi forward. Endpoint `GET /api/v1/auth/public-key` cung cấp public key, được Gateway cache đến khi process restart. Direct-service ingress chưa bị chặn, nên service gọi thẳng vẫn chưa nằm sau boundary Gateway.
 
 ### Error mapping và khả năng khởi chạy
 
 | Tình huống được handler bắt | HTTP | Mã code | Body |
 |---|---:|---|---|
-| Thiếu hoặc sai định dạng `Authorization` header, token sai chữ ký hoặc hết hạn (`AuthenticationException`) | `401` | `INVALID_CREDENTIALS` | `{ "code": "INVALID_CREDENTIALS", "message": "...", "timestamp": "...", "path": "..." }` |
-| Người gọi không có quyền System Admin (`AccessDeniedException`) | `403` | `SYSTEM_ADMIN_REQUIRED` | `{ "code": "SYSTEM_ADMIN_REQUIRED", "message": "...", "timestamp": "...", "path": "..." }` |
-| Không tìm thấy tài khoản trong DB (`AccountNotFoundException`) | `404` | `ACCOUNT_NOT_FOUND` | `{ "code": "ACCOUNT_NOT_FOUND", "message": "...", "timestamp": "...", "path": "..." }` |
-| Email đã tồn tại hoặc trùng lặp đồng thời (`EmailAlreadyExistsException`, `DataIntegrityViolationException`) | `409` | `EMAIL_ALREADY_EXISTS` | `{ "code": "EMAIL_ALREADY_EXISTS", "message": "...", "timestamp": "...", "path": "..." }` |
-| Dữ liệu DTO không hợp lệ, payload JSON hỏng hoặc sai kiểu tham số (`MethodArgumentNotValidException`, `HttpMessageNotReadableException`, `MethodArgumentTypeMismatchException`) | `400` | `VALIDATION_FAILED` | `{ "code": "VALIDATION_FAILED", "message": "...", "timestamp": "...", "path": "..." }` |
-| Tham số hoặc trạng thái không hợp lệ (`IllegalArgumentException`, `IllegalStateException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Thiếu hoặc sai định dạng `Authorization` header, token sai chữ ký hoặc hết hạn (`AuthenticationException`) | `401` | `UNAUTHORIZED` | `{ "code": "UNAUTHORIZED", "message": "...", "timestamp": "...", "path": "..." }` |
+| Tài khoản không ở trạng thái ACTIVE (`IllegalStateException`) | `403` | `FORBIDDEN` | `{ "code": "FORBIDDEN", "message": "Account is not active", "timestamp": "...", "path": "..." }` |
+| Không tìm thấy tài khoản trong DB (`NoSuchElementException`) | `404` | `USER_NOT_FOUND` | `{ "code": "USER_NOT_FOUND", "message": "User not found: ...", "timestamp": "...", "path": "..." }` |
+| Tham số không hợp lệ (`IllegalArgumentException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
+| Dữ liệu DTO không hợp lệ (`MethodArgumentNotValidException`) | `400` | `BAD_REQUEST` | `{ "code": "BAD_REQUEST", "message": "...", "timestamp": "...", "path": "..." }` |
 | Thao tác không được hỗ trợ như tự đăng ký (`UnsupportedOperationException`) | `400` | `OPERATION_NOT_SUPPORTED` | `{ "code": "OPERATION_NOT_SUPPORTED", "message": "...", "timestamp": "...", "path": "..." }` |
-| Phương thức HTTP không được hỗ trợ (`HttpRequestMethodNotSupportedException`) | `405` | `METHOD_NOT_ALLOWED` | `{ "code": "METHOD_NOT_ALLOWED", "message": "...", "timestamp": "...", "path": "..." }` |
-| Kiểu nội dung không được hỗ trợ (`HttpMediaTypeNotSupportedException`) | `415` | `UNSUPPORTED_MEDIA_TYPE` | `{ "code": "UNSUPPORTED_MEDIA_TYPE", "message": "...", "timestamp": "...", "path": "..." }` |
-| Lỗi nội bộ không xác định (`Exception`) | `500` | `INTERNAL_SERVER_ERROR` | `{ "code": "INTERNAL_SERVER_ERROR", "message": "An unexpected internal error occurred", "timestamp": "...", "path": "..." }` |
 
-`UserController` và `AdminUserController` đã được trang bị đầy đủ bean: `LoginUserService` cho đăng nhập, `GetCurrentUserService` cho truy vấn hồ sơ, `AdminCreateAccountService` cho tạo tài khoản quản trị, `ChangeUserStatusService` cho quản lý trạng thái/vai trò, và `JwtTokenAdapter` cho ký/xác thực token RSA256. `RegisterUserPort` được đánh dấu deprecated theo quyết định #7. Khả năng phòng vệ production bao gồm: bảo vệ chống lộ metadata database (CWE-209), in-memory fallback cho filesystem chỉ đọc trong container, và chuẩn hóa escape newline cho biến môi trường JWT.
+`UserController` đã được trang bị đầy đủ bean: `LoginUserService` cho đăng nhập, `GetCurrentUserService` cho truy vấn hồ sơ, và `JwtTokenAdapter` cho ký/xác thực token RSA256. `RegisterUserPort` được đánh dấu deprecated theo quyết định #7.
 
 ## API mục tiêu thuộc user-service
 
-User-service sở hữu Account/Auth và system role. Các route dưới đây là bản thiết kế, không phải controller runtime:
+User-service sở hữu Account/Auth và system role. Bảng dưới phân biệt API đã có controller runtime với API mục tiêu; contract chung chưa đồng nghĩa mọi route Project-first đã được nghiệm thu end-to-end:
 
-`POST /api/v1/auth/register` đã chính thức bãi bỏ theo quyết định #7 và #54. Chỉ System Admin mới được tạo Account qua route chính thức `POST /api/v1/admin/accounts` (chốt theo issue #54).
+`POST /api/v1/auth/register` hiện có trong mapping runtime nhưng không thuộc target Kỳ 1: không public self-registration, chỉ System Admin được tạo Account. Admin API runtime nhận payload tạo Account gồm `email`, `password`, `fullName` và `roles` (tùy chọn; mặc định role `USER`), trả `UserResponse`; status và role management cũng đã có handler. Field `roles` hiện tại trái với quyết định không để client tự khai role khi tạo Account; đây là sai khác implementation, không phải contract đã duyệt. Formal contract, error mapping và cách cấp credential vẫn cần được đồng bộ.
 
 | Method | Route mục tiêu | Request | Response | Quyền |
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 TokenResponse` | Public; chỉ Account `ACTIVE` |
 | `GET` | `/api/v1/users/me` | Không body | `200 UserSummary` | Account hiện tại từ Gateway identity |
-| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email | `200 UserCandidate[]` (đề xuất) | Account đã xác thực; chỉ tìm Account `ACTIVE`; quyền directory/privacy và giới hạn cần chốt |
-| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list | `200 UserProfile[]` (đề xuất) | Account đã xác thực; batch profile tối thiểu |
-| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "..." }` | `201 UserResponse` | System Admin; role mặc định USER, đã chốt theo issue #54 |
+| `GET` | `/api/v1/users?query={text}&limit=20` | Query tên/email; mặc định `limit=20` | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | Account đã xác thực; privacy/query rules cần chốt |
+| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID list; tối đa 100 IDs được xử lý | Runtime `200 UserProfile[]`: `id`, `displayName` | Account đã xác thực; tombstone chưa có trong runtime |
+| `POST` | `/api/v1/admin/accounts` | `{ "email": "...", "password": "...", "fullName": "...", "roles": ["USER"] }` (`roles` tùy chọn) | `201 UserResponse` gồm `id`, `email`, `fullName`, `status`, `authVersion`, `roles` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `PATCH` | `/api/v1/admin/users/{userId}/status` | `{ "status": "SUSPENDED" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `GET` | `/api/v1/admin/users/{userId}/roles` | Không body | `200 string[]` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `POST` | `/api/v1/admin/users/{userId}/roles` | `{ "role": "SYSTEM_ADMIN" }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `PUT` | `/api/v1/admin/users/{userId}/roles` | `{ "roles": ["USER", "SYSTEM_ADMIN"] }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
+| `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | Không body | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 
-### Tạo Account qua System Admin (`POST /api/v1/admin/accounts`)
-
-Quyết định #54 chốt hợp đồng API tạo tài khoản:
-* **Caller:** Yêu cầu header `Authorization: Bearer <accessToken>` của tài khoản mang role `SYSTEM_ADMIN`.
-* **Request DTO (`AdminCreateAccountRequest`):**
-  * `email` (string): Bắt buộc, `@NotBlank`, `@Email`.
-  * `password` (string): Bắt buộc, `@NotBlank`, 6–100 ký tự và tối đa 72 byte UTF-8 theo giới hạn BCrypt.
-  * `fullName` (string): Bắt buộc, `@NotBlank`.
-  * *Không nhận trường `roles` từ request payload*. Mọi tài khoản mới tạo luôn nhận vai trò mặc định là `USER` (hoặc `MEMBER`) và trạng thái `ACTIVE`.
-* **Response DTO (`UserResponse`):** `id` (UUID), `email` (string), `fullName` (string), `status` (`ACTIVE`), `roles` (`["USER"]`), `authVersion` (`1`). Tuyệt đối không trả mật khẩu hoặc hash. Status trả về: `201 Created`.
-* **Credential Provisioning:** Kỳ 1 áp dụng phương án Admin đặt mật khẩu ban đầu được băm bằng BCrypt (strength 12). Kỳ 2 đánh giá link một lần hoặc bắt buộc đổi mật khẩu lần đầu.
-* **Mã lỗi:**
-  * `400 Bad Request`: `VALIDATION_FAILED` (Dữ liệu không hợp lệ hoặc mật khẩu vượt quá 72 byte UTF-8).
-  * `401 Unauthorized`: `INVALID_CREDENTIALS` (Thiếu hoặc token không hợp lệ).
-  * `403 Forbidden`: `SYSTEM_ADMIN_REQUIRED` (Caller không có role `SYSTEM_ADMIN`).
-  * `409 Conflict`: `EMAIL_ALREADY_EXISTS` (Email đã tồn tại).
-
-`UserCandidate` đề xuất gồm `id`, `fullName`, `email`; email chỉ được trả trong luồng chọn người mời nếu quyền tra cứu directory được duyệt. `UserProfile` đề xuất gồm `id`, `displayName`. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
+Runtime `UserCandidate` gồm `id`, `fullName`, `email`; runtime `UserProfile` gồm `id`, `displayName`. Email hiện được trả bởi directory handler; policy ai được tra cứu email còn mở. Account tombstone chưa thuộc Kỳ 1. Để phân biệt người còn trong Project, client đối chiếu profile với Membership do board-service trả; cách compose và quyền profile lookup còn mở.
 
 Ví dụ response directory và bulk profile (shapes đề xuất):
 
@@ -182,8 +166,8 @@ Error contract mục tiêu (mã cụ thể là đề xuất):
 | Actor không phải System Admin | `403` | `SYSTEM_ADMIN_REQUIRED` |
 | Email đã được dùng | `409` | `EMAIL_ALREADY_EXISTS` |
 
-Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; route/payload Admin, status operation, error mapping cuối, cấp-thu hồi System Role và credential provisioning còn mở. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
+Không trả credential/hash trong response. Error envelope đề xuất là `{code,message,timestamp,path}`; status operation, error mapping cuối và credential provisioning còn mở. Admin route/payload nêu trên là runtime hiện tại, chưa thay thế việc duyệt contract chuẩn. `SYSTEM_ADMIN` chỉ bảo vệ Account Admin API, không cấp quyền Project (theo quyết định #7).
 
-`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route cấp/thu hồi role, Admin account API contract và credential provisioning còn mở. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
+`SystemRoles` và `UserSystemRoles` là schema mục tiêu của user_db. SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không làm Owner/Member Project và chỉ System Admin tạo Account, không public self-registration. Route Admin và role management có implementation source; contract chuẩn và credential provisioning cần được đồng bộ. Kỳ 1 không có Account deletion API, deletion status endpoint hoặc cascade `operationId`; soft delete và Owner succession được bàn ở Kỳ 2.
 
 Contract chung và field proposal nằm tại [Kanban API](../../../docs/api/kanban-api.md#2-contract-chi-tiết-project-first-mục-tiêu-bản-thiết-kế); các API hiện có trong controller và khả năng khởi chạy vẫn được mô tả riêng ở phần runtime phía trên.
