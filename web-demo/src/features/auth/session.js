@@ -10,6 +10,10 @@ export function getAccessToken() {
   return getStorage()?.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? null;
 }
 
+export function isAccessTokenStorageChange(event) {
+  return event?.key === ACCESS_TOKEN_STORAGE_KEY;
+}
+
 export function setAccessToken(token) {
   if (typeof token !== 'string' || token.trim().length === 0) {
     throw new TypeError('Access token must be a non-empty string');

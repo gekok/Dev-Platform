@@ -13,6 +13,24 @@ test('resolves explicit Demo mode and same-origin API base URL', () => {
   );
 });
 
+test('normalizes Demo mode consistently when casing and surrounding spaces vary', () => {
+  assert.deepEqual(
+    resolveRuntimeConfig({ MODE: 'demo', VITE_APP_MODE: ' DEMO ', VITE_API_BASE_URL: '/api/v1' }),
+    { mode: 'demo', apiBaseUrl: '/api/v1' },
+  );
+});
+
+test('rejects application mode that conflicts with the selected build mode', () => {
+  assert.throws(
+    () => resolveRuntimeConfig({
+      MODE: 'backend',
+      VITE_APP_MODE: 'DEMO',
+      VITE_API_BASE_URL: '/api/v1',
+    }),
+    /VITE_APP_MODE must match the selected Vite mode/,
+  );
+});
+
 test('resolves explicit Backend mode and absolute Gateway API URL', () => {
   assert.deepEqual(
     resolveRuntimeConfig({

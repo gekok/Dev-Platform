@@ -1,9 +1,12 @@
+import { normalizeRuntimeMode } from '../../shared/config/runtimeConfig.js';
+
 export function createCardApiRoutes(mode) {
-  if (mode !== 'demo' && mode !== 'backend') {
+  const normalizedMode = normalizeRuntimeMode(mode);
+  if (normalizedMode !== 'demo' && normalizedMode !== 'backend') {
     throw new Error('VITE_APP_MODE must be explicitly set to "demo" or "backend".');
   }
 
-  if (mode === 'demo') {
+  if (normalizedMode === 'demo') {
     return Object.freeze({
       card: (_projectId, cardId) => `/cards/${cardId}`,
       comments: (_projectId, cardId) => `/cards/${cardId}/comments`,

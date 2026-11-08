@@ -20,7 +20,7 @@ import {
 import { useProject } from '../hooks/useProjects.js';
 import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 
-const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getErrorTitle(error) {
   switch (error.response?.status) {

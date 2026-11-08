@@ -8,7 +8,7 @@ import NotificationPanel from '../../features/notifications/components/Notificat
 import '../../features/notifications/notifications.css';
 import AccountMenu from './AccountMenu.jsx';
 
-const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getActiveRouteParams(matches) {
   return matches.reduce((params, match) => ({ ...params, ...match.params }), {});

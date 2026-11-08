@@ -31,7 +31,7 @@ function renderStartupError(title, message) {
   );
 }
 
-const startDemoWorker = import.meta.env.VITE_APP_MODE === 'demo'
+const startDemoWorker = import.meta.env.MODE === 'demo'
   ? async () => {
     const { worker } = await import('./mocks/browser.js');
     await worker.start({ onUnhandledRequest: 'error' });

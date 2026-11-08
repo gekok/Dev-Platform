@@ -7,6 +7,10 @@ export class RuntimeConfigurationError extends Error {
   }
 }
 
+export function normalizeRuntimeMode(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 function normalizeApiBaseUrl(value) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new RuntimeConfigurationError(
@@ -46,13 +50,17 @@ function normalizeApiBaseUrl(value) {
 }
 
 export function resolveRuntimeConfig(env = {}) {
-  const mode = typeof env.VITE_APP_MODE === 'string'
-    ? env.VITE_APP_MODE.trim().toLowerCase()
-    : '';
+  const mode = normalizeRuntimeMode(env.VITE_APP_MODE);
 
   if (!SUPPORTED_MODES.has(mode)) {
     throw new RuntimeConfigurationError(
       'VITE_APP_MODE must be explicitly set to "demo" or "backend".',
+    );
+  }
+
+  if (typeof env.MODE === 'string' && normalizeRuntimeMode(env.MODE) !== mode) {
+    throw new RuntimeConfigurationError(
+      'VITE_APP_MODE must match the selected Vite mode (demo or backend).',
     );
   }
 

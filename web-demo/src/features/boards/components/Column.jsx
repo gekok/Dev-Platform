@@ -5,7 +5,8 @@ import CardItem from '../../cards/components/CardItem.jsx';
 import { getApiErrorMessage, getApiErrorStatus } from '../../../shared/services/apiErrors.js';
 import { queryKeys } from '../../../shared/query/queryKeys.js';
 import { useCards } from '../../cards/hooks/useCards.js';
-import { flattenCardPages } from '../../cards/cardPageUtils.js';
+import { getMemberUserId } from '../../cards/memberIdentity.js';
+import { loadAllCardPages } from '../../cards/cardPageUtils.js';
 
 export default function Column({
   projectId,
@@ -38,7 +39,11 @@ export default function Column({
   const loaderRef = useRef(null);
   cardsQueryRef.current = cardsQuery;
   const orderedCards = cardsQuery.cards;
-  const membersById = new Map(members.map((member) => [member.id, member]));
+  const membersById = new Map(
+    members
+      .map((member) => [getMemberUserId(member), member])
+      .filter(([memberId]) => memberId != null),
+  );
   const staleCursorError = cardsQuery.isFetchNextPageError &&
     getApiErrorStatus(cardsQuery.error) === 400;
   const {
@@ -55,16 +60,7 @@ export default function Column({
   }, [column.id, onCardsChange, orderedCards]);
 
   loaderRef.current = {
-    loadAllCards: async () => {
-      let result = cardsQueryRef.current;
-      let pageData = result.data;
-      while (result.hasNextPage) {
-        result = await result.fetchNextPage({ cancelRefetch: false });
-        if (result.isFetchNextPageError) throw result.error;
-        pageData = result.data;
-      }
-      return flattenCardPages(pageData?.pages ?? []);
-    },
+    loadAllCards: () => loadAllCardPages(cardsQueryRef.current),
   };
 
   useEffect(() => {

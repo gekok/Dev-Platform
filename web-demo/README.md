@@ -31,7 +31,7 @@ npm run dev:backend
 
 Backend mode sends `/api/v1` requests through the Vite proxy to `http://localhost:8080` (the Gateway). Start Gateway and the required backend dependencies first. For another local Gateway, update `VITE_API_PROXY_TARGET` in `.env.backend`. For a deployed build, configure `VITE_API_BASE_URL` to the Gateway or serve the frontend behind a same-origin `/api` reverse proxy, then run `npm run build:backend`.
 
-The checked-in `.env.demo` and `.env.backend` files select the mode explicitly and contain no secrets. Startup/build fails with a configuration error when the mode or API base URL is missing or invalid; the app does not switch modes automatically.
+The checked-in `.env.demo` and `.env.backend` files select the mode explicitly and contain no secrets. Startup/build fails with a configuration error when the mode does not match the selected Vite mode or the API base URL is missing or invalid; the app does not switch modes automatically. Mode names are case-insensitive and whitespace is trimmed.
 
 ## Demo scope
 
@@ -58,7 +58,7 @@ Feature pages call API modules through the shared Axios client. The mode is sele
 
 Demo credentials, the demo account picker, and the Reset demo data control are loaded only in Demo mode. Backend mode does not initialize the mock repository or show demo credentials; it stores only the signed-in access token in localStorage.
 
-Axios attaches the stored Bearer token. A `401` clears the stored token and the protected route returns to login; `403` remains a permission error. Network and `5xx` failures are normalized and may be retried once by React Query; `4xx` failures are not retried automatically.
+Axios attaches the stored Bearer token. A `401` clears the stored token and the protected route returns to login; `403` remains a permission error. Token changes in another tab clear the local query cache and send protected routes to login. Network and `5xx` failures are normalized and may be retried once by React Query; `4xx` failures are not retried automatically.
 
 The mock uses bearer-token identity and Project membership checks. The backend target and current source are tracked separately in the [shared document index](../docs/README.md), [Project-first API map](../docs/api/kanban-api.md), and [architecture decisions](../docs/project/architecture-decisions.md). The current verification inventory is in [Issue #58 WP1 contract register](docs/issue-58-contract-register.md). Source inspection is not E2E evidence: Project/Membership/Invitation APIs and Project-scoped Board use cases are incomplete; Task Card/Comment operations are fail-closed by default; Notification REST is implemented in source but event generation is not connected end-to-end. Gateway/backend runtime has not been verified from this web-demo.
 
@@ -66,7 +66,7 @@ MSW routes and payloads demonstrate the UI flow; they are not proof that backend
 
 Default Board preferences are Demo-only because no backend service owner or runtime contract has been approved. Backend mode does not request or mutate those preferences; the Board selector explains that limitation. Project-scoped Board list/create APIs also remain a backend dependency and have not been verified end to end.
 
-Backend Card list/detail/create/move/assignment/comment requests use the Project-scoped Task routes. Card lists request one Column at a time with `columnId`, a default `limit=5` (maximum 20), and the `nextCursor` returned in `{ items, nextCursor }`; scrolling loads later pages. The client deduplicates cards and offers a Column reload when a continuation request returns `400`. Demo/MSW exercises the same page shape while retaining its Board-scoped route. Task source has this list contract, but Gateway identity enforcement, authorization snapshots, and live Board/Column validation still determine whether Backend mode works end to end.
+Backend Card list/detail/create/move/assignment/comment requests use the Project-scoped Task routes. Card lists request one Column at a time with `columnId`, a default `limit=5` (maximum 20), and the `nextCursor` returned in `{ items, nextCursor }`; scrolling loads later pages. The client deduplicates cards and offers a Column reload when a continuation request returns `400`. Moving a Card to a Column's end waits for every destination page; a failed page load cancels the move. Demo/MSW exercises the same page shape while retaining its Board-scoped route. Task source has this list contract, but Gateway identity enforcement, authorization snapshots, and live Board/Column validation still determine whether Backend mode works end to end.
 
 The Admin console deliberately reuses `POST /api/v1/auth/login` and `GET /api/v1/users/me`. The mock adds a `systemRoles` projection for role-aware navigation, but it does not add an account-management endpoint. `POST /api/v1/admin/accounts` remains a documented proposal and is displayed as unavailable until the backend contract and Gateway enforcement are approved.
 

@@ -28,3 +28,11 @@ test('builds the project-scoped Card list route for cursor pagination in Backend
 
   assert.equal(routes.cards(11, 22), '/projects/11/boards/22/cards');
 });
+
+test('normalizes runtime mode casing before selecting Card routes', () => {
+  assert.equal(createCardApiRoutes(' DEMO ').cards(1, 2), '/boards/2/cards');
+  assert.equal(
+    createCardApiRoutes('BACKEND').cards(11, 22),
+    '/projects/11/boards/22/cards',
+  );
+});

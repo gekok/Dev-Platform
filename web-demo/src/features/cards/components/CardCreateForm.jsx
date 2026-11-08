@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getMemberUserId } from '../memberIdentity.js';
 
 export default function CardCreateForm({
   columnId,
@@ -83,9 +84,12 @@ export default function CardCreateForm({
             value={assigneeId}
           >
             <option value="">Unassigned</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>{member.fullName}</option>
-            ))}
+            {members.map((member) => {
+              const memberId = getMemberUserId(member);
+              return memberId == null ? null : (
+                <option key={memberId} value={memberId}>{member.fullName}</option>
+              );
+            })}
           </select>
         </div>
       </div>

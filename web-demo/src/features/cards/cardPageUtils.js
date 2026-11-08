@@ -14,3 +14,23 @@ export function hasDuplicateCardPages(pages = []) {
   const cardIds = pages.flatMap((page) => page.items ?? []).map((card) => String(card.id));
   return new Set(cardIds).size !== cardIds.length;
 }
+
+export async function loadAllCardPages(query) {
+  let result = query;
+
+  if (!result.data) {
+    result = await result.refetch({ cancelRefetch: false, throwOnError: true });
+  }
+  if (result.isError || !result.data) {
+    throw result.error ?? new Error('The first Card page could not be loaded.');
+  }
+
+  while (result.hasNextPage) {
+    result = await result.fetchNextPage({ cancelRefetch: false, throwOnError: true });
+    if (result.isFetchNextPageError || result.isError || !result.data) {
+      throw result.error ?? new Error('A Card page could not be loaded.');
+    }
+  }
+
+  return flattenCardPages(result.data.pages ?? []);
+}

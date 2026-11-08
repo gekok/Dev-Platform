@@ -25,7 +25,7 @@ import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 import '../../cards/cards.css';
 import '../boards.css';
 
-const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getErrorTitle(error) {
   switch (error.response?.status) {

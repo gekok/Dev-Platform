@@ -14,7 +14,7 @@ import { isSystemAdmin } from '../roles.js';
 import { queryKeys } from '../../../shared/query/queryKeys.js';
 import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 
-const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
+const isDemoMode = import.meta.env.MODE === 'demo';
 
 function getErrorMessage(error) {
   const fallback = error instanceof Error && !error.isAxiosError
@@ -24,12 +24,12 @@ function getErrorMessage(error) {
 }
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [demoAccounts, setDemoAccounts] = useState(null);
   const [sessionExpired, setSessionExpired] = useState(Boolean(location.state?.sessionExpired));
-  const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUser();
   const loginMutation = useMutation({
