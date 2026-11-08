@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  CardPaginationContractPendingError,
-  createCardApiRoutes,
-  requireCardListContract,
-} from './cardApiRoutes.js';
+import { createCardApiRoutes } from './cardApiRoutes.js';
 
 test('keeps Demo Card routes compatible with MSW', () => {
   const routes = createCardApiRoutes('demo');
@@ -27,12 +23,8 @@ test('uses Project-scoped Task routes in Backend mode', () => {
   assert.equal(routes.assignCard(11, 31), '/projects/11/cards/31/assignee');
 });
 
-test('blocks Backend Card listing until the per-Column cursor contract is approved', () => {
-  assert.throws(() => requireCardListContract('backend'), {
-    name: 'CardPaginationContractPendingError',
-    code: 'CARD_PAGINATION_CONTRACT_PENDING',
-  });
-  assert.equal(requireCardListContract('demo'), undefined);
-  assert.throws(() => requireCardListContract(undefined), /VITE_APP_MODE/);
-  assert.ok(new CardPaginationContractPendingError() instanceof Error);
+test('builds the project-scoped Card list route for cursor pagination in Backend mode', () => {
+  const routes = createCardApiRoutes('backend');
+
+  assert.equal(routes.cards(11, 22), '/projects/11/boards/22/cards');
 });

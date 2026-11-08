@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import { useProject, useProjectMembers } from '../../projects/hooks/useProjects.js';
-import { useCards, useCreateCard, useMoveCard } from '../../cards/hooks/useCards.js';
+import { useCreateCard, useMoveCard } from '../../cards/hooks/useCards.js';
 import CardDetailPanel from '../../cards/components/CardDetailPanel.jsx';
 import {
   useAddColumn,
@@ -28,9 +28,6 @@ import '../boards.css';
 const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
 
 function getErrorTitle(error) {
-  if (error?.code === 'CARD_PAGINATION_CONTRACT_PENDING') {
-    return 'Card list is not ready in Backend mode.';
-  }
   switch (error.response?.status) {
     case 401:
       return 'Your demo session has expired.';
@@ -44,9 +41,6 @@ function getErrorTitle(error) {
 }
 
 function getErrorMessage(error) {
-  if (error?.code === 'CARD_PAGINATION_CONTRACT_PENDING') {
-    return error.message;
-  }
   switch (error.response?.status) {
     case 401:
       return 'Sign in again to continue.';
@@ -76,12 +70,15 @@ export default function BoardPage() {
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [showBoardCreateDialog, setShowBoardCreateDialog] = useState(false);
   const [selectedCardContext, setSelectedCardContext] = useState(null);
+  const [loadedCardColumns, setLoadedCardColumns] = useState({ scope: null, columns: {} });
+  const [isPreparingCardMove, setIsPreparingCardMove] = useState(false);
+  const [cardMoveError, setCardMoveError] = useState(null);
+  const cardLoadersRef = useRef(new Map());
   const userQuery = useCurrentUser();
   const userId = userQuery.data?.id;
   const projectQuery = useProject(projectId);
   const projectBoardsQuery = useProjectBoards(projectId);
   const boardQuery = useBoard(boardId);
-  const cardsQuery = useCards(projectId, boardId);
   const membersQuery = useProjectMembers(projectId);
   const defaultBoardsQuery = useDefaultBoards(userId);
   const setDefaultMutation = useSetDefaultBoard(userId);
@@ -91,6 +88,12 @@ export default function BoardPage() {
   const createBoardMutation = useCreateProjectBoard(projectId);
   const createCardMutation = useCreateCard(projectId, boardId);
   const moveCardMutation = useMoveCard(projectId, boardId);
+  const cardScope = `${projectId}:${boardId}`;
+  const cardsByColumn = loadedCardColumns.scope === cardScope
+    ? loadedCardColumns.columns
+    : {};
+  const cards = Object.values(cardsByColumn).flat();
+  const isMovingCard = isPreparingCardMove || moveCardMutation.isPending;
   const isOwner = projectQuery.data?.role === 'OWNER';
   const defaultBoard = defaultBoardsQuery.data?.defaultBoards.find(
     (preference) => Number(preference.projectId) === Number(projectId),
@@ -141,6 +144,22 @@ export default function BoardPage() {
 
   const closeCardDetails = useCallback(() => setSelectedCardContext(null), []);
 
+  const handleCardsChange = useCallback((columnId, columnCards) => {
+    setLoadedCardColumns((current) => {
+      const currentColumns = current.scope === cardScope ? current.columns : {};
+      if (currentColumns[columnId] === columnCards) return current;
+      return {
+        scope: cardScope,
+        columns: { ...currentColumns, [columnId]: columnCards },
+      };
+    });
+  }, [cardScope]);
+
+  const registerColumnLoader = useCallback((columnId, loaderRef) => {
+    if (loaderRef) cardLoadersRef.current.set(columnId, loaderRef);
+    else cardLoadersRef.current.delete(columnId);
+  }, []);
+
   async function handleAddColumn(name) {
     await addColumnMutation.mutateAsync({ name });
     setShowColumnForm(false);
@@ -163,33 +182,51 @@ export default function BoardPage() {
     await createCardMutation.mutateAsync(payload);
   }
 
-  function handleMoveCard(cardId, toColumnId, requestedPosition = null) {
-    if (moveCardMutation.isPending) return;
-    const cards = cardsQuery.data ?? [];
+  async function handleMoveCard(cardId, toColumnId, requestedPosition = null) {
+    if (isMovingCard) return;
     const card = cards.find((item) => item.id === cardId);
     const destinationColumn = boardQuery.data?.columns.some((item) => item.id === toColumnId);
     if (!card || !destinationColumn) return;
 
-    const destinationCards = cards
-      .filter((item) => item.columnId === toColumnId && item.id !== cardId)
-      .sort((left, right) => left.position - right.position);
-    const toPosition = requestedPosition == null
-      ? destinationCards.length
-      : Math.min(Math.max(requestedPosition, 0), destinationCards.length);
-    if (card.columnId === toColumnId && card.position === toPosition) return;
+    setCardMoveError(null);
+    setIsPreparingCardMove(true);
+    moveCardMutation.reset();
+    try {
+      let destinationCards = cards
+        .filter((item) => item.columnId === toColumnId && item.id !== cardId)
+        .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)));
+      if (requestedPosition == null) {
+        const loaderRef = cardLoadersRef.current.get(toColumnId);
+        if (!loaderRef?.current) throw new Error('Destination Column cards are not ready.');
+        const allDestinationCards = await loaderRef.current.loadAllCards();
+        destinationCards = allDestinationCards.filter((item) => item.id !== cardId);
+      }
+      const toPosition = requestedPosition == null
+        ? destinationCards.length
+        : Math.min(Math.max(requestedPosition, 0), destinationCards.length);
+      const currentPosition = cards
+        .filter((item) => item.columnId === card.columnId)
+        .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)))
+        .findIndex((item) => item.id === cardId);
+      if (card.columnId === toColumnId && currentPosition === toPosition) return;
 
-    moveCardMutation.mutate({ cardId, toColumnId, toPosition });
+      await moveCardMutation.mutateAsync({ cardId, toColumnId, toPosition });
+    } catch (error) {
+      setCardMoveError(getApiErrorMessage(error, 'The Card could not be moved.'));
+    } finally {
+      setIsPreparingCardMove(false);
+    }
   }
 
   function handleDropCard(draggedCardId, toColumnId, beforeCardId) {
     if (draggedCardId === beforeCardId) return;
-    const destinationCards = (cardsQuery.data ?? [])
+    const destinationCards = cards
       .filter((item) => item.columnId === toColumnId && item.id !== draggedCardId)
-      .sort((left, right) => left.position - right.position);
+      .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)));
     const requestedPosition = beforeCardId == null
-      ? destinationCards.length
+      ? null
       : destinationCards.findIndex((item) => item.id === beforeCardId);
-    if (requestedPosition < 0) return;
+    if (requestedPosition != null && requestedPosition < 0) return;
     handleMoveCard(draggedCardId, toColumnId, requestedPosition);
   }
 
@@ -254,32 +291,28 @@ export default function BoardPage() {
   if (
     projectQuery.isPending ||
     boardQuery.isPending ||
-    cardsQuery.isPending ||
     membersQuery.isPending
   ) {
     return <div className="page-state" aria-live="polite">Loading Board…</div>;
   }
 
-  if (projectQuery.isError || boardQuery.isError || cardsQuery.isError || membersQuery.isError) {
-    const error = projectQuery.error ?? boardQuery.error ?? cardsQuery.error ?? membersQuery.error;
+  if (projectQuery.isError || boardQuery.isError || membersQuery.isError) {
+    const error = projectQuery.error ?? boardQuery.error ?? membersQuery.error;
     return (
       <div className="empty-state" role="alert">
         <strong>{getErrorTitle(error)}</strong>
         <span>{getErrorMessage(error)}</span>
-        {error?.code !== 'CARD_PAGINATION_CONTRACT_PENDING' && (
-          <button
-            className="secondary-button"
-            onClick={() => {
-              projectQuery.refetch();
-              boardQuery.refetch();
-              cardsQuery.refetch();
-              membersQuery.refetch();
-            }}
-            type="button"
-          >
-            Try again
-          </button>
-        )}
+        <button
+          className="secondary-button"
+          onClick={() => {
+            projectQuery.refetch();
+            boardQuery.refetch();
+            membersQuery.refetch();
+          }}
+          type="button"
+        >
+          Try again
+        </button>
         <Link className="board-text-link" to="/projects">Back to All Projects</Link>
       </div>
     );
@@ -390,19 +423,20 @@ export default function BoardPage() {
         </p>
       )}
 
-      {moveCardMutation.isError && (
+      {cardMoveError && (
         <p className="form-inline-error board-mutation-error" role="alert">
-          {getErrorMessage(moveCardMutation.error)}
+          {cardMoveError}
         </p>
       )}
 
       <KanbanColumns
+        projectId={projectId}
+        boardId={boardId}
         columns={board.columns}
-        cards={cardsQuery.data}
         members={membersQuery.data}
         isCreatingCard={createCardMutation.isPending}
         cardCreateError={createCardMutation.isError ? getErrorMessage(createCardMutation.error) : null}
-        isMovingCard={moveCardMutation.isPending}
+        isMovingCard={isMovingCard}
         isOwner={isOwner}
         isReordering={reorderMutation.isPending}
         onResetCardCreate={() => createCardMutation.reset()}
@@ -411,6 +445,8 @@ export default function BoardPage() {
         onMoveCard={handleMoveCard}
         onDropCard={handleDropCard}
         onMoveColumn={handleMoveColumn}
+        onCardsChange={handleCardsChange}
+        onRegisterColumnLoader={registerColumnLoader}
       />
     </section>
     {selectedCardId !== null && (

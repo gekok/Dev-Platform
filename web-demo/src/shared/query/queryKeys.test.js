@@ -15,6 +15,8 @@ test('Project list, detail, membership, and Board queries use stable Project-sco
 test('Board and Card detail keys stay scoped to their resource IDs', () => {
   assert.deepEqual(queryKeys.board('11'), ['board', '11']);
   assert.deepEqual(queryKeys.cards('1', '11'), ['cards', '1', '11']);
+  assert.deepEqual(queryKeys.cards('1', '11', 101), ['cards', '1', '11', 101]);
+  assert.notDeepEqual(queryKeys.cards('1', '11', 101), queryKeys.cards('1', '11', 102));
   assert.deepEqual(queryKeys.card('1', 201), ['card', '1', 201]);
   assert.deepEqual(queryKeys.comments('1', 201), ['comments', '1', 201]);
   assert.deepEqual(queryKeys.notifications('user-1'), ['notifications', 'user-1']);

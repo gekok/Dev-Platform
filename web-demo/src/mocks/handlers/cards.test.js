@@ -83,8 +83,9 @@ test('Project Members can list, create, and read Card details through Board-scop
     );
     const listed = await listResponse.json();
     assert.equal(listResponse.status, 200);
-    assert.deepEqual(listed.map((card) => card.id), [201, created.id]);
-    assert.ok(listed.every((card) => cardSummaryKeys(card).join() === CARD_SUMMARY_KEYS.join()));
+    assert.deepEqual(listed.items.map((card) => card.id), [created.id, 201]);
+    assert.equal(listed.nextCursor, null);
+    assert.ok(listed.items.every((card) => cardSummaryKeys(card).join() === CARD_SUMMARY_KEYS.join()));
 
     const detailResponse = await getJson(`/cards/${created.id}`, MEMBER_TOKEN);
     const detail = await detailResponse.json();
@@ -94,6 +95,76 @@ test('Project Members can list, create, and read Card details through Board-scop
       repository.read().cards.find((card) => card.id === created.id).dueDate,
       payload.dueDate,
     );
+  });
+});
+
+test('Card list uses per-Column keyset pages with default limit and stable position/id ordering', async () => {
+  await withMockServer(async ({ repository }) => {
+    const board = repository.read().boards.find((item) => item.key === 'PLAT');
+    const column = repository.read().columns.find((item) => item.boardId === board.id);
+    const template = repository.read().cards.find(
+      (item) => item.boardId === board.id && item.columnId === column.id,
+    );
+    repository.transact((draft, allocateId) => {
+      for (let index = 0; index < 11; index += 1) {
+        draft.cards.push({
+          ...template,
+          id: allocateId('card'),
+          title: `Paged Card ${index}`,
+          position: Math.floor(index / 2) + 1,
+        });
+      }
+    });
+
+    const expectedIds = repository.read().cards
+      .filter((card) => card.boardId === board.id && card.columnId === column.id)
+      .sort((left, right) => (right.position - left.position) || (right.id - left.id))
+      .map((card) => card.id);
+    const listedIds = [];
+    let cursor = null;
+    let firstCursor = null;
+    let pageNumber = 0;
+    do {
+      const query = new URLSearchParams({ columnId: String(column.id) });
+      if (cursor) query.set('cursor', cursor);
+      const response = await getJson(`/boards/${board.id}/cards?${query}`, MEMBER_TOKEN);
+      const page = await response.json();
+      assert.equal(response.status, 200);
+      if (pageNumber === 0) {
+        assert.equal(page.items.length, 5);
+        firstCursor = page.nextCursor;
+      }
+      listedIds.push(...page.items.map((card) => card.id));
+      cursor = page.nextCursor;
+      pageNumber += 1;
+    } while (cursor);
+
+    assert.equal(pageNumber, 3);
+    assert.deepEqual(listedIds, expectedIds);
+    assert.equal(new Set(listedIds).size, listedIds.length);
+
+    const maxLimitResponse = await getJson(
+      `/boards/${board.id}/cards?columnId=${column.id}&limit=20`,
+      MEMBER_TOKEN,
+    );
+    const maxLimitPage = await maxLimitResponse.json();
+    assert.equal(maxLimitResponse.status, 200);
+    assert.equal(maxLimitPage.items.length, expectedIds.length);
+    assert.equal(maxLimitPage.nextCursor, null);
+
+    const invalidLimitResponse = await getJson(
+      `/boards/${board.id}/cards?columnId=${column.id}&limit=21`,
+      MEMBER_TOKEN,
+    );
+    assert.equal(invalidLimitResponse.status, 400);
+
+    const wrongColumnResponse = await getJson(
+      `/boards/${board.id}/cards?columnId=${column.id + 1}&cursor=${encodeURIComponent(
+        firstCursor,
+      )}`,
+      MEMBER_TOKEN,
+    );
+    assert.equal(wrongColumnResponse.status, 400);
   });
 });
 
@@ -181,7 +252,7 @@ test('Project Members can move Cards across Columns with contiguous positions an
     const moved = await response.json();
     assert.equal(response.status, 200);
     assert.equal(moved.columnId, destination.id);
-    assert.equal(moved.position, 0);
+    assert.equal(moved.position, 1);
     assert.equal(moved.status, 'TODO');
 
     const cards = repository.read().cards;
@@ -190,9 +261,9 @@ test('Project Members can move Cards across Columns with contiguous positions an
       .map((item) => item.position);
     const destinationCards = cards
       .filter((item) => item.boardId === board.id && item.columnId === destination.id)
-      .sort((left, right) => left.position - right.position);
+      .sort((left, right) => (right.position - left.position) || (right.id - left.id));
     assert.deepEqual(sourcePositions, []);
-    assert.deepEqual(destinationCards.map((item) => item.position), [0, 1]);
+    assert.deepEqual(destinationCards.map((item) => item.position), [1, 0]);
     assert.equal(destinationCards[0].id, card.id);
     assert.equal(destinationCards.find((item) => item.id === card.id).status, 'TODO');
 
@@ -227,12 +298,12 @@ test('Project Members can reorder Cards inside one Column without leaving positi
     const cards = repository
       .read()
       .cards.filter((item) => item.boardId === board.id && item.columnId === column.id)
-      .sort((left, right) => left.position - right.position);
+      .sort((left, right) => (right.position - left.position) || (right.id - left.id));
 
     assert.equal(response.status, 200);
     assert.equal(moved.status, 'TODO');
     assert.deepEqual(cards.map((item) => item.id), [created.id, 201]);
-    assert.deepEqual(cards.map((item) => item.position), [0, 1]);
+    assert.deepEqual(cards.map((item) => item.position), [1, 0]);
   });
 });
 

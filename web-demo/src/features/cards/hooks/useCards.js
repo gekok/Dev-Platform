@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../../shared/query/queryKeys.js';
 import {
   addComment,
@@ -10,15 +11,32 @@ import {
   moveCard,
 } from '../services/cardApi.js';
 import { normalizeCardId } from '../cardIds.js';
+import { flattenCardPages, hasDuplicateCardPages } from '../cardPageUtils.js';
 
 const NOTIFICATIONS_QUERY_PREFIX = ['notifications'];
+const EMPTY_CARD_PAGES = [];
 
-export function useCards(projectId, boardId) {
-  return useQuery({
-    queryKey: queryKeys.cards(projectId, boardId),
-    queryFn: () => listCards(projectId, boardId),
-    enabled: Boolean(boardId),
+export function useCards(projectId, boardId, columnId) {
+  const query = useInfiniteQuery({
+    queryKey: queryKeys.cards(projectId, boardId, columnId),
+    queryFn: ({ pageParam }) => listCards(projectId, boardId, columnId, {
+      limit: 5,
+      cursor: pageParam,
+    }),
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: Boolean(projectId && boardId && columnId),
   });
+
+  const pages = query.data?.pages ?? EMPTY_CARD_PAGES;
+  const cards = useMemo(() => flattenCardPages(pages), [pages]);
+  const hasDuplicateCards = useMemo(() => hasDuplicateCardPages(pages), [pages]);
+
+  return {
+    ...query,
+    cards,
+    hasDuplicateCards,
+  };
 }
 
 export function useCard(projectId, cardId) {
@@ -45,7 +63,7 @@ export function useCreateCard(projectId, boardId) {
   return useMutation({
     mutationFn: (payload) => createCard(projectId, boardId, payload),
     onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
+      queryClient.resetQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_PREFIX }),
     ]),
   });
@@ -59,7 +77,7 @@ export function useMoveCard(projectId, boardId) {
       moveCard(projectId, normalizeCardId(cardId), { toColumnId, toPosition }),
     onSuccess: async (_card, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
+        queryClient.resetQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.card(projectId, normalizeCardId(variables.cardId)),
         }),

@@ -649,6 +649,26 @@
   font-size: 13px;
 }
 
+.column-card-state,
+.column-load-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px;
+  color: #68728a;
+  font-size: 11px;
+  text-align: center;
+}
+
+.column-card-state p {
+  margin: 0;
+}
+
+.column-load-more {
+  min-height: 1px;
+}
+
 @media (max-width: 760px) {
   .project-entry-page,
   .board-page {

@@ -1,16 +1,24 @@
 import api from '../../../shared/services/axios.js';
-import {
-  createCardApiRoutes,
-  requireCardListContract,
-} from '../cardApiRoutes.js';
+import { createCardApiRoutes } from '../cardApiRoutes.js';
 
 function routesForCurrentMode() {
   return createCardApiRoutes(import.meta.env.VITE_APP_MODE);
 }
 
-export async function listCards(projectId, boardId) {
-  requireCardListContract(import.meta.env.VITE_APP_MODE);
-  const response = await api.get(routesForCurrentMode().cards(projectId, boardId));
+export async function listCards(projectId, boardId, columnId, { limit = 5, cursor } = {}) {
+  const params = { columnId, limit };
+  if (cursor != null) params.cursor = cursor;
+  const response = await api.get(
+    routesForCurrentMode().cards(projectId, boardId),
+    { params },
+  );
+  if (
+    !response.data ||
+    !Array.isArray(response.data.items) ||
+    !(response.data.nextCursor === null || typeof response.data.nextCursor === 'string')
+  ) {
+    throw new Error('Task Card list returned an invalid page response.');
+  }
   return response.data;
 }
 
