@@ -66,7 +66,7 @@ public class CardController {
             @PathVariable("projectId") Long projectId,
             @PathVariable("boardId") Long boardId,
             @RequestBody CreateCardRequest request,
-            // TODO Gateway phải ghi đè header này từ principal đã xác thực.
+            // Gateway ghi đè header này từ JWT đã xác thực; gọi thẳng service vẫn có thể giả mạo khi ingress còn mở.
             @RequestHeader(value = "X-User-Id") UUID userId) {
         requireTrustedGatewayIdentity();
         authorizationGuard.requireProjectMember(projectId, userId);

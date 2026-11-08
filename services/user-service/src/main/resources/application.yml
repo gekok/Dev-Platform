@@ -1,6 +1,10 @@
 server:
   port: 8081
 
+app:
+  jwt:
+    issuer: ${USER_JWT_ISSUER:dev-platform-user-service}
+
 spring:
   config:
     import: optional:file:../../.env[.properties],optional:file:.env[.properties]

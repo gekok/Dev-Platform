@@ -4,7 +4,7 @@
 
 **Base URL mục tiêu qua Gateway:** `http://localhost:8080/api/v1`.
 
-**Runtime hiện tại:** backend vẫn chủ yếu dùng Board-first API. `user-service` đã triển khai login và `/users/me`; endpoint `/users/me` xác thực Bearer token bằng RSA256. Gateway hiện định tuyến Auth/User nhưng chưa xác thực JWT hoặc loại bỏ identity header do client gửi; một số controller legacy vẫn dùng `X-User-Id`. Phần Board-first ở cuối tài liệu được giữ làm tham chiếu cho code/tài liệu cũ, không phải contract để phát triển tính năng Project-first mới.
+**Runtime hiện tại:** backend vẫn chủ yếu dùng Board-first API. `user-service` đã triển khai login và `/users/me`; endpoint `/users/me` xác thực Bearer token bằng RSA256. Gateway xác thực JWT, kiểm tra Account snapshot Redis và ghi đè `X-User-Id` cho request đi qua Gateway; một số controller legacy vẫn dùng header này. Direct-service ingress chưa bị chặn, còn Gateway→Redis snapshot sync chưa được xác nhận end-to-end. Phần Board-first ở cuối tài liệu được giữ làm tham chiếu cho code/tài liệu cũ, không phải contract để phát triển tính năng Project-first mới.
 
 ## 1. Route map mục tiêu Project-first
 
@@ -13,9 +13,10 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Nhóm | Method | Endpoint | Hành vi mục tiêu |
 |---|---|---|---|
 | Auth | `POST` | `/api/v1/auth/login` | Đăng nhập theo contract hiện có |
+| Auth | `GET` | `/api/v1/auth/public-key` | Public key RS256 cho Gateway; public |
 | User | `GET` | `/api/v1/users/me` | Lấy tài khoản hiện tại |
-| User directory | `GET` | `/api/v1/users?query={text}&limit=20` | Tìm tài khoản đang hoạt động để Owner chọn mời; route đề xuất |
-| User profile | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | Lấy profile/tombstone tối thiểu cho Member và lịch sử; route đề xuất |
+| User directory | `GET` | `/api/v1/users?query={text}&limit=20` | Runtime handler tìm tài khoản; privacy/query contract cần chốt |
+| User profile | `GET` | `/api/v1/users/profiles?ids={uuid,...}` | Runtime handler lấy profile theo UUID; route rộng hơn thiết kế tombstone mục tiêu |
 | Project | `GET`, `POST` | `/api/v1/projects` | Liệt kê và tạo Project |
 | Project | `GET` | `/api/v1/projects/{projectId}` | Xem Project |
 | Membership | `GET` | `/api/v1/projects/{projectId}/members` | Liệt kê Member chính thức |
@@ -37,7 +38,7 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 | Comment | `GET`, `POST` | `/api/v1/projects/{projectId}/cards/{cardId}/comments` | Xem và tạo Comment |
 | Notification | `GET` | `/api/v1/notifications/me` | Liệt kê Notification của tài khoản hiện tại |
 | Notification | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Đánh dấu đã đọc |
-| Account Admin | `POST` | `/api/v1/admin/accounts` | Tạo Account hệ thống; route/payload đề xuất, chờ chốt |
+| Account Admin | `POST` | `/api/v1/admin/accounts` | Runtime route tạo Account; formal contract còn cần đồng bộ với tài liệu user-service |
 | Board preference | `GET` | `/api/v1/users/me/preferences/default-boards` | Route tham khảo từ demo; ownership/storage/access validation backend chưa chốt |
 | Board preference | `PUT`, `DELETE` | `/api/v1/users/me/preferences/default-boards/{projectId}` | Route tham khảo từ demo; service sở hữu và behavior khi Project/Board bị xóa chưa chốt |
 
@@ -46,12 +47,17 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 - Project là ranh giới membership; Board thuộc một Project. ID Project, Board, Column, Invitation, Card, Comment và Notification là số; User dùng UUID.
 - Owner và Member có quyền thao tác công việc như nhau. Owner có thêm quyền tạo Board, quản lý trạng thái Project/Board và membership.
 - Kỳ 1 chỉ thêm tài khoản đã có trong hệ thống bằng Invitation; người nhận chấp nhận mới trở thành Member. Mời người ngoài hệ thống và đổi vai trò để Kỳ 2.
-- Owner cần tra cứu tài khoản đang hoạt động để chọn người mời; API directory/bulk profile dưới đây là đề xuất bổ sung, chưa có route runtime.
+- Owner cần tra cứu tài khoản đang hoạt động để chọn người mời; directory/bulk profile handlers đã có source, nhưng policy quyền tra cứu, privacy và field contract vẫn cần chốt.
 - Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
 - API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Cặp `(position,id)` đã tạo thứ tự toàn phần vì `id` là duy nhất. Wire proposal cho infinite-scroll riêng từng Column yêu cầu `columnId` và cursor ràng buộc với `boardId` + `columnId` + sort; đây là scope API/UI cần duyệt, không phải điều kiện toán học của cursor.
-- Gateway là ranh giới xác thực mục tiêu. Identity phải được suy ra từ access token hợp lệ; Gateway loại bỏ/ghi đè identity header do client gửi trước khi chuyển tiếp. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
+- Gateway hiện kiểm tra token RS256, issuer, `exp`, `iat` hiện diện và UUID `sub`, sau đó đọc Account snapshot Redis; chỉ Account `ACTIVE` được đi tiếp. Gateway gỡ `X-User-Id` do client gửi, đặt giá trị từ `sub` và giữ Authorization Bearer.
+- User-service phát JWT gồm `iss`, `sub` UUID, `email`, `fullName`, `roles`, `authVersion`, `iat`, `exp`; issuer mặc định `dev-platform-user-service`, hạn dùng mặc định 1 giờ (`app.jwt.expiration-ms`). JWT được ký nhưng không mã hóa; email claim vẫn có trong Bearer token được Gateway forward. Token phát trước khi có issuer claim không hợp lệ với cấu hình mới; cần đăng nhập lại. Gateway không forward profile/role riêng trong header.
+- Public routes Gateway: `POST /api/v1/auth/login`, `GET /api/v1/auth/public-key`, `GET /actuator/health`. Protected request trả `401` với token thiếu/sai, `403` nếu snapshot cho biết Account không `ACTIVE`, `503` nếu key/snapshot không xác minh được.
+- Account snapshot key là `auth:account:{accountId}`, shape `{accountId,status,systemRoles,authVersion}`. Gateway đọc trực tiếp Redis mỗi request, không sở hữu hoặc cache snapshot. User-service ghi snapshot-sync job cùng Account mutation; worker mặc định tắt nên auth fail-closed nếu snapshot chưa được apply.
+- Gateway chỉ bảo vệ request qua Gateway; direct-service ports chưa bị giới hạn network ingress. CORS allowlist chưa cấu hình; browser cross-origin cần origin được chốt và cấu hình trước khi dùng.
+- Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
 - Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. Account mang `SYSTEM_ADMIN` không được tạo hoặc tham gia Project; cá nhân cần làm việc trong Project dùng Account nghiệp vụ không mang role này.
-- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Route/payload provisioning qua Admin còn mở. Consumer retry tối đa 3 lần, cách nhau 5 giây rồi chuyển DLQ đã chốt nhưng chưa nối runtime; cấu hình queue/DLQ và xử lý sau DLQ còn mở. API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
+- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Admin create/status/role routes có implementation; field `roles` trong request tạo Account trái với quyết định không để client tự khai role, nên là sai khác implementation chưa được duyệt. Contract mục tiêu và credential provisioning cần được đồng bộ riêng. Consumer retry tối đa 3 lần, cách nhau 5 giây rồi chuyển DLQ đã chốt nhưng chưa nối runtime; cấu hình queue/DLQ và xử lý sau DLQ còn mở. Directory/profile handlers có source; privacy, query rules và field contract, cùng lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope và Board preference còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -61,7 +67,7 @@ Phần này bổ sung payload/response và quyền theo service để làm nền
 
 ### Quy ước chung
 
-- Client gọi qua Gateway và gửi `Authorization: Bearer <accessToken>`. `userId` của người gọi được suy ra từ danh tính đã xác thực; Gateway phải loại bỏ/ghi đè `X-User-Id` do client gửi. Gateway hiện chưa hoàn thiện Auth/authorization.
+- Client gọi qua Gateway và gửi `Authorization: Bearer <accessToken>`. Gateway xác thực token rồi ghi đè `X-User-Id` theo `sub`; user-service vẫn nhận Bearer token để `/users/me` tự xác minh. Các service khác không được lấy actor ID hoặc role từ header/body do client kiểm soát.
 - Account không ở trạng thái `ACTIVE` không được dùng để cấp hoặc giữ quyền. Kỳ 1 chưa triển khai Account deletion; trạng thái Account và authorization snapshot phải được xác minh qua nguồn có thẩm quyền, không xác minh được thì fail closed.
 - Project, Board, Column, Invitation, Card, Comment và Notification dùng ID số; Account dùng UUID. ID giữa database/service chỉ là tham chiếu logic, không tạo FK chéo database.
 - Lỗi mục tiêu dùng envelope `{ "code", "message", "timestamp", "path" }` theo format đang được tham chiếu trong tài liệu. Mã lỗi cụ thể phải ổn định theo từng nghiệp vụ; mapping nào chưa chốt được đánh dấu ở dưới.
@@ -74,13 +80,14 @@ Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộ
 
 | Method | Route mục tiêu | Request | Thành công | Quyền/trạng thái |
 |---|---|---|---|---|
-| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 { "accessToken": "...", "tokenType": "Bearer" }` | Chỉ Account `ACTIVE`; token claims/expiry còn mở |
-| `GET` | `/api/v1/users/me` | Không body | `200 { "id": "uuid", "email": "...", "fullName": "..." }` | Chỉ Account hiện tại |
-| `GET` | `/api/v1/users?query={text}&limit=20` | Query tìm theo tên/email | `200 UserCandidate[]` (đề xuất) | User đã xác thực; chỉ trả Account đang hoạt động; privacy/limit còn mở |
-| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID batch trong query | `200 UserProfile[]` (đề xuất) | User đã xác thực; field tối thiểu phục vụ tên tác giả/member và tombstone |
-| `POST` | `/api/v1/admin/accounts` | Payload tạo Account **còn mở** | `201 AccountSummary` (đề xuất) | Chỉ System Admin; route/status/payload còn mở |
+| `POST` | `/api/v1/auth/login` | `{ "email": "...", "password": "..." }` | `200 { "accessToken": "...", "tokenType": "Bearer" }` | Public; chỉ Account `ACTIVE`; JWT RS256 với `iss`, `sub`, `email`, `fullName`, `roles`, `authVersion`, `iat`, `exp`; mặc định 1 giờ |
+| `GET` | `/api/v1/auth/public-key` | Không body | `200 { "algorithm": "RSA256", "publicKey": "PEM" }` | Public; Gateway lấy key này để kiểm tra JWT |
+| `GET` | `/api/v1/users/me` | `Authorization: Bearer <accessToken>` | `200 { "id": "uuid", "email": "...", "fullName": "..." }` | Account hiện tại; service tự xác minh Bearer token |
+| `GET` | `/api/v1/users?query={text}&limit=20` | Query tìm theo tên/email | Runtime `200 UserCandidate[]`: `id`, `fullName`, `email` | User đã xác thực; privacy, query/limit rules còn mở |
+| `GET` | `/api/v1/users/profiles?ids={uuid,...}` | UUID batch trong query | Runtime `200 UserProfile[]`: `id`, `displayName` | User đã xác thực; tối đa 100 IDs; tombstone chưa có trong runtime |
+| `POST` | `/api/v1/admin/accounts` | Runtime nhận `email`, `password`, `fullName`, `roles` tùy chọn | `201 UserResponse` runtime | Chỉ System Admin; formal contract cần đồng bộ với user-service |
 
-`UserCandidate` đề xuất chỉ gồm `id`, `fullName`, `email`; `UserProfile` đề xuất gồm `id`, `displayName`, `accountDeleted`. Email chỉ trả trong luồng chọn người mời nếu quyền directory được duyệt. Bulk profile trả dấu tombstone cho UUID đã xóa để UI giữ attribution. “Không còn trong Project” được xác định bằng đối chiếu với Membership hiện tại do board-service sở hữu. Cách client compose hai API, quyền tra cứu directory, query syntax và giới hạn batch còn mở.
+Runtime `UserCandidate` trả `id`, `fullName`, `email`; runtime `UserProfile` trả `id`, `displayName`. Target design còn đề xuất tombstone `accountDeleted`, chưa có trong runtime. Email hiện được trả bởi directory handler; policy ai được tra cứu email và cách client compose directory với Membership do board-service sở hữu vẫn cần chốt.
 
 Tạo/quản trị Account qua System Admin thuộc nghiệp vụ quản trị hệ thống, không cấp quyền Project. API xóa Account và operation status chưa thuộc Kỳ 1; soft delete, Owner succession và xử lý cascade được bàn ở Kỳ 2.
 
@@ -198,7 +205,7 @@ Backend đọc trạng thái hiện hành cho từng request. `position` đổi 
 
 ### Độ sẵn sàng
 
-Các route trên là target design; Board-first controllers hiện tại không cung cấp đầy đủ route Project-first. Auth/Gateway, Project/Membership entities, cursor API, invitation API, permission checks, Redis authorization snapshot và cleanup workers chưa hoàn chỉnh. Xem tài liệu API/schema riêng của service để đối chiếu source.
+Các route trên là target design; Board-first controllers hiện tại không cung cấp đầy đủ route Project-first. Gateway JWT filter đã có implementation và test source, nhưng Account snapshot production chưa được apply end-to-end; thiếu snapshot sẽ trả `503`. Project/Membership entities, cursor API, invitation API, permission checks và cleanup workers cũng chưa hoàn chỉnh. Xem tài liệu API/schema riêng của service để đối chiếu source.
 
 ## 3. Hợp đồng Board-first cũ — chỉ tham khảo runtime
 
@@ -210,7 +217,7 @@ Base URL cũ qua Gateway:
 http://localhost:8080/api/v1
 ```
 
-Contract cũ mô tả JWT `sub` làm danh tính và database riêng cho từng service. Thực tế một số controller hiện còn đọc `X-User-Id`; xem ghi chú runtime ở [README](../../README.md).
+Contract cũ mô tả JWT `sub` làm danh tính và database riêng cho từng service. Một số controller legacy còn đọc `X-User-Id`; request đi qua Gateway nhận giá trị đã xác minh, nhưng request gọi thẳng service có thể giả mạo header nếu network ingress vẫn mở. Xem ghi chú runtime ở [README](../../README.md).
 
 | Service | Port | DB |
 |---|---|---|
