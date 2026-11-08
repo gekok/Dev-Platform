@@ -4,6 +4,13 @@ server:
 app:
   jwt:
     issuer: ${USER_JWT_ISSUER:dev-platform-user-service}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:3600000}
+    private-key: ${APP_JWT_PRIVATE_KEY:}
+    public-key: ${APP_JWT_PUBLIC_KEY:}
+    key-file: ${APP_JWT_KEY_FILE:}
+  services:
+    board-service:
+      base-url: ${BOARD_SERVICE_BASE_URL:http://localhost:8082}
 
 spring:
   config:
@@ -38,6 +45,8 @@ spring:
       mandatory: true
 
 dev-platform:
+  security:
+    internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:
@@ -49,5 +58,5 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
   snapshot-sync:
     user:
-      enabled: ${USER_AUTH_SNAPSHOT_SYNC_ENABLED:false}
+      enabled: ${USER_AUTH_SNAPSHOT_SYNC_ENABLED:true}
       fixed-delay-ms: ${USER_AUTH_SNAPSHOT_SYNC_FIXED_DELAY_MS:1000}

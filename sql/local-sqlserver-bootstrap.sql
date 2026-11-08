@@ -1,4 +1,4 @@
-﻿/* Local SQL Server bootstrap for the four empty Kanban databases.
+/* Local SQL Server bootstrap for the four empty Kanban databases.
    Run only against four empty local databases, using a principal with DDL rights.
    For sqlcmd, use -b -f 65001. In SSMS, stop execution if any error is reported.
    Operational tables are created empty; sample credentials are local-only.
@@ -35,11 +35,12 @@ USE kanban_user_db;
 GO
 CREATE TABLE dbo.users (
     id uniqueidentifier NOT NULL PRIMARY KEY,
-    email varchar(255) NOT NULL UNIQUE,
+    email varchar(255) NOT NULL,
     password_hash varchar(255) NOT NULL,
     full_name nvarchar(255) NULL,
     status varchar(20) NOT NULL,
-    auth_version bigint NOT NULL
+    auth_version bigint NOT NULL,
+    CONSTRAINT uq_users_email UNIQUE (email)
 );
 CREATE TABLE dbo.system_roles (
     role_code varchar(40) NOT NULL PRIMARY KEY,
@@ -307,6 +308,12 @@ INSERT dbo.user_system_roles(user_id, role_code, granted_at, granted_by) VALUES
 ('11111111-1111-4111-8111-111111111111', 'SYSTEM_ADMIN', TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), NULL),
 ('22222222-2222-4222-8222-222222222222', 'USER', TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), NULL),
 ('33333333-3333-4333-8333-333333333333', 'USER', TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), NULL);
+INSERT dbo.account_authorization_snapshot_sync_jobs(
+    job_id, account_id, auth_version, snapshot_json, status, attempt_count, last_error, created_at, updated_at, next_attempt_at
+) VALUES
+('11111111-1111-4111-8111-999999999991', '11111111-1111-4111-8111-111111111111', 1, '{"accountId":"11111111-1111-4111-8111-111111111111","status":"ACTIVE","systemRoles":["SYSTEM_ADMIN"],"authVersion":1}', 'PENDING', 0, NULL, TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00')),
+('22222222-2222-4222-8222-999999999992', '22222222-2222-4222-8222-222222222222', 1, '{"accountId":"22222222-2222-4222-8222-222222222222","status":"ACTIVE","systemRoles":["USER"],"authVersion":1}', 'PENDING', 0, NULL, TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00')),
+('33333333-3333-4333-8333-999999999993', '33333333-3333-4333-8333-333333333333', 1, '{"accountId":"33333333-3333-4333-8333-333333333333","status":"ACTIVE","systemRoles":["USER"],"authVersion":1}', 'PENDING', 0, NULL, TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'));
 GO
 USE kanban_board_db;
 GO

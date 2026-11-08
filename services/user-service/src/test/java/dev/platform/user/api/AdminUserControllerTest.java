@@ -18,6 +18,7 @@ import dev.platform.user.application.port.in.GetCurrentUserPort;
 import dev.platform.user.application.port.in.ManageSystemRolePort;
 import dev.platform.user.application.port.out.TokenPort;
 import dev.platform.user.domain.AccountStatus;
+import dev.platform.user.domain.exception.EmailAlreadyExistsException;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,7 +82,7 @@ class AdminUserControllerTest {
           "email": "new@demo.local",
           "password": "Password123!",
           "fullName": "New User",
-          "roles": ["USER"]
+          "roles": ["SYSTEM_ADMIN"]
         }
         """;
 
@@ -90,7 +91,12 @@ class AdminUserControllerTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(requestJson))
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.email").value("new@demo.local"));
+        .andExpect(jsonPath("$.email").value("new@demo.local"))
+        .andExpect(jsonPath("$.roles[0]").value("USER"))
+        .andExpect(jsonPath("$.password").doesNotExist())
+        .andExpect(jsonPath("$.passwordHash").doesNotExist());
+    verify(adminCreateAccountPort).createAccount(
+        new AdminCreateAccountCommand("new@demo.local", "Password123!", "New User"));
   }
 
   @Test
@@ -117,6 +123,67 @@ class AdminUserControllerTest {
             .content(requestJson))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("SYSTEM_ADMIN_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/admin/accounts trả về 400 Bad Request khi mật khẩu vượt quá 72 bytes UTF-8")
+  void shouldReturn400WhenPasswordExceeds72Bytes() throws Exception {
+    String oversizedPassword = "a".repeat(73);
+    String requestJson = String.format("""
+        {
+          "email": "new@demo.local",
+          "password": "%s",
+          "fullName": "New User"
+        }
+        """, oversizedPassword);
+
+    mockMvc.perform(post("/api/v1/admin/accounts")
+            .header("Authorization", "Bearer admin.token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/admin/accounts trả về 409 Conflict khi xảy ra trùng lặp đồng thời (DataIntegrityViolationException)")
+  void shouldReturn409WhenConcurrentDuplicateEmailOccurs() throws Exception {
+    UUID adminId = UUID.randomUUID();
+    UserSummaryDto adminUser = new UserSummaryDto(
+        adminId, "admin@demo.local", "Admin", AccountStatus.ACTIVE, 1L, Set.of("SYSTEM_ADMIN"));
+
+    when(tokenPort.parseAndValidate("admin.token")).thenReturn(adminId);
+    when(getCurrentUserPort.getCurrentUser(adminId)).thenReturn(adminUser);
+    when(adminCreateAccountPort.createAccount(any(AdminCreateAccountCommand.class)))
+        .thenThrow(new EmailAlreadyExistsException("Email already exists: duplicate@demo.local"));
+
+    String requestJson = """
+        {
+          "email": "duplicate@demo.local",
+          "password": "Password123!",
+          "fullName": "Duplicate User"
+        }
+        """;
+
+    mockMvc.perform(post("/api/v1/admin/accounts")
+            .header("Authorization", "Bearer admin.token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestJson))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"));
+  }
+
+  @Test
+  @DisplayName("POST /api/v1/admin/accounts trả về 400 Bad Request khi gửi payload JSON hỏng (malformed JSON)")
+  void shouldReturn400WhenMalformedJsonSent() throws Exception {
+    String malformedJson = "{ \"email\": \"new@demo.local\", \"password\": ";
+
+    mockMvc.perform(post("/api/v1/admin/accounts")
+            .header("Authorization", "Bearer admin.token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(malformedJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
   }
 
   @Test
