@@ -1,7 +1,6 @@
 package dev.platform.user.domain.exception;
 
-public class AccountNotFoundException extends DomainException {
-
+public class AccountNotFoundException extends RuntimeException {
   public AccountNotFoundException(String message) {
     super(message);
   }

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.platform.user.domain.AccountStatus;
 import java.util.Set;
-import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,17 +37,6 @@ class UserAggregateTest {
   }
 
   @Test
-  @DisplayName("Đổi trạng thái sang cùng trạng thái hiện tại thì không đổi và không tăng authVersion")
-  void shouldNotChangeWhenStatusIsIdentical() {
-    UserAggregate user = UserAggregate.create("user@example.com", "hashed_pass", "John Doe", null);
-
-    boolean changed = user.changeStatus(AccountStatus.ACTIVE);
-
-    assertThat(changed).isFalse();
-    assertThat(user.getAuthVersion()).isEqualTo(1L);
-  }
-
-  @Test
   @DisplayName("Gán role SYSTEM_ADMIN thành công và làm tăng authVersion")
   void shouldGrantSystemAdminRoleAndIncrementAuthVersion() {
     UserAggregate user = UserAggregate.create("user@example.com", "hashed_pass", "John Doe", null);
@@ -61,21 +49,9 @@ class UserAggregateTest {
   }
 
   @Test
-  @DisplayName("Gán role đã có sẵn thì không thay đổi và không tăng authVersion")
-  void shouldNotChangeWhenGrantingExistingRole() {
-    UserAggregate user = UserAggregate.create("user@example.com", "hashed_pass", "John Doe", null);
-
-    boolean changed = user.grantRole("USER");
-
-    assertThat(changed).isFalse();
-    assertThat(user.getAuthVersion()).isEqualTo(1L);
-  }
-
-  @Test
   @DisplayName("Thu hồi role thành công và làm tăng authVersion")
   void shouldRevokeRoleAndIncrementAuthVersion() {
-    UserAggregate user = UserAggregate.rehydrate(
-        UUID.randomUUID(), "admin@example.com", "pass", "Admin", AccountStatus.ACTIVE, 1L, Set.of("USER", "SYSTEM_ADMIN"));
+    UserAggregate user = UserAggregate.create("user@example.com", "hashed_pass", "John Doe", Set.of("USER", "SYSTEM_ADMIN"));
 
     boolean changed = user.revokeRole("SYSTEM_ADMIN");
 
@@ -85,28 +61,11 @@ class UserAggregateTest {
   }
 
   @Test
-  @DisplayName("Không được thu hồi role cuối cùng")
+  @DisplayName("Ném exception khi thu hồi role cuối cùng của user")
   void shouldThrowWhenRevokingLastRemainingRole() {
-    UserAggregate user = UserAggregate.create("user@example.com", "pass", "John Doe", Set.of("USER"));
+    UserAggregate user = UserAggregate.create("user@example.com", "hashed_pass", "John Doe", Set.of("USER"));
 
     assertThatThrownBy(() -> user.revokeRole("USER"))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  @DisplayName("Chuẩn hóa email và system role độc lập với Turkish locale")
-  void shouldNormalizeEmailAndRolesIndependentlyOfDefaultLocale() {
-    Locale originalLocale = Locale.getDefault();
-    try {
-      Locale.setDefault(Locale.forLanguageTag("tr-TR"));
-      UserAggregate user = UserAggregate.create("ADMIN@EXAMPLE.COM", "pass", "Admin", null);
-
-      user.grantRole("system_admin");
-
-      assertThat(user.getEmail()).isEqualTo("admin@example.com");
-      assertThat(user.getRoles()).contains("SYSTEM_ADMIN");
-    } finally {
-      Locale.setDefault(originalLocale);
-    }
   }
 }

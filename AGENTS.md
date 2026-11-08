@@ -1,36 +1,11 @@
-# Repository Guidelines
+# Luôn Luôn Áp Dụng (Auto-Enforced)
 
-## Project Structure
-- `services/` holds four Spring Boot modules (`src/main/java/dev/platform`, per-service `docs/`).
-- `gateway/` is the HTTP entry point; `shared/` contains event contracts and Outbox/Inbox.
-- `web-demo/` is React/Vite with MSW; `mobile/` is Flutter; `docs/` holds shared architecture/API guidance.
-- Each service owns its database; do not add cross-service foreign keys.
+## 1. Tối Ưu Hóa Token & Phản Hồi
+- Không giải thích lại câu hỏi, không chào hỏi/kết thúc xã giao.
+- Khi sửa mã nguồn: Chỉ xuất unified diff hoặc đúng khối code cần sửa kèm số dòng, tuyệt đối không in lại cả file.
+- Khi đọc mã nguồn: Dùng grep/ripgrep để đọc các hàm/class liên quan, không đọc toàn bộ file vượt quá 100 dòng.
+- Phản hồi bằng chữ tối đa 3-5 gạch đầu dòng ngắn gọn.
 
-## Build, Test, and Development
-- `docker compose up -d` starts RabbitMQ and Redis; services use local SQL Server. See README for setup and readiness checks.
-- At the root, use `mvn -DskipTests package` to build or `mvn test` to run backend tests.
-- Run a service with `cd services/<service> && mvn spring-boot:run`; Gateway uses `cd gateway && mvn spring-boot:run`.
-- Demo: `cd web-demo && npm ci && npm run dev`; checks: `npm test`, `npm run lint`, `npm run build`.
-- Mobile: `cd mobile && flutter pub get`; check with `flutter analyze` and `flutter test`.
-
-## Code Style and Tests
-- Use Java 21, four spaces, and lower-case `dev.platform...` packages. Preserve `api` / `application` / `domain` / `infrastructure` boundaries: controllers delegate to application ports; persistence stays in `infrastructure`. Types are PascalCase; methods and fields are camelCase.
-- In React, follow `web-demo/src/features`; feature `services/` call APIs through shared Axios. Use two-space JS/JSX, PascalCase components, and `use...` hook names.
-- Name Java tests `*Test.java` under module `src/test/java`; demo tests `*.test.js` near the feature; Flutter tests go in `mobile/test` and follow `flutter_lints`. Cover behavior and authorization/error paths.
-
-## Documentation Workflow
-- Read `docs/README.md` first: architecture decisions record agreed/open design; `docs/api/kanban-api.md` describes target HTTP contracts; service docs distinguish runtime mappings from target schemas. Source code is runtime evidence.
-- Keep docs with related code in the same PR. Update architecture decisions for decision changes; shared API and owning service API docs for routes/payloads; Gateway routing docs when routes change; service database docs and versioned migrations once migration tooling is selected; integration and shared docs/contracts for cross-service events or flows.
-- Update task sheets/runtime descriptions as implementation status changes. Keep proposals marked open, never describe target design as shipped, and update `docs/README.md` when document ownership or navigation changes.
-
-## GitHub Issues and Acceptance
-- Follow `docs/project/github-issue-workflow.md` and the `.github/ISSUE_TEMPLATE/` forms when creating or rescoping work.
-- State phase, service owner, scope, dependencies, observable acceptance criteria, and verification evidence. Do not move an issue to `Done` or close it without linked acceptance evidence.
-
-## Commits and Pull Requests
-- Follow Conventional Commit prefixes in history (`feat:`, `fix:`, `docs:`, `refactor:`); keep commits focused.
-- Tiêu đề và nội dung Pull Request (PR) phải được viết bằng Tiếng Việt để cả nhóm và mentor dễ review; PR phải nêu rõ tóm tắt phạm vi, kết quả kiểm thử và liên kết `Closes #<id>`; tuyệt đối không gắn PR vào Project để tránh trùng lặp thẻ trên Kanban.
-- Mọi trao đổi, thảo luận, phản hồi review và comment giữa các thành viên trong nhóm trên GitHub (Issue, Pull Request, Commit discussions) đều bắt buộc sử dụng **Tiếng Việt**.
-
-## Security
-- Never commit credentials; `.env` is ignored. Treat `X-User-Id` as untrusted until Gateway authentication and identity-header enforcement are implemented.
+## 2. Quy Trình Làm Việc Kỷ Luật
+- Với tác vụ sửa/thêm code: Tự động phác thảo danh sách file cần sửa và kế hoạch kiểm thử trước khi ghi file.
+- Debug: Phân tích log/stack trace, tìm nguyên nhân gốc rễ (root cause) trước khi sửa, không sửa thử mò mẫm.

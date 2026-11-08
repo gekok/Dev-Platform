@@ -1,9 +1,8 @@
 package dev.platform.user.domain;
 
 public enum AccountStatus {
-    ACTIVE,
-    SUSPENDED,
-    LOCKED,
-    INACTIVE,
+  ACTIVE,
+  SUSPENDED,
+  LOCKED,
+  INACTIVE
 }
-
