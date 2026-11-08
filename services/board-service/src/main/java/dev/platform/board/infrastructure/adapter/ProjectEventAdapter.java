@@ -46,11 +46,12 @@ public class ProjectEventAdapter implements ProjectEventPort {
             UUID operationId,
             Long projectId,
             UUID userId,
+            long revokedMembershipVersion,
             long membershipVersion,
             long authorizationVersion,
             List<Long> boardIds) {
         OffsetDateTime now = OffsetDateTime.now();
-        snapshots.recordMembershipRemoved(operationId, projectId, userId,
+        snapshots.recordMembershipRemoved(operationId, projectId, userId ,revokedMembershipVersion,
                 membershipVersion, authorizationVersion, boardIds);
         append(EventTypes.MEMBER_REMOVED, "PROJECT_MEMBERSHIP", projectId + ":" + userId,
                 authorizationVersion, now,

@@ -58,6 +58,7 @@ public class ProjectAuthorizationSnapshotSyncRecorder {
             UUID operationId,
             Long projectId,
             UUID userId,
+            long revokedMembershipVersion,
             long membershipVersion,
             long authorizationVersion,
             List<Long> boardIds) {
@@ -66,10 +67,10 @@ public class ProjectAuthorizationSnapshotSyncRecorder {
                 projectId, userId, "REMOVED", null, membershipVersion, authorizationVersion);
         saveSnapshotJob(operationId, snapshot, now);
         append(EventTypes.MEMBERSHIP_REMOVED, projectId, userId, authorizationVersion, now,
-                new MembershipRemoved(projectId, userId, membershipVersion));
+                new MembershipRemoved(projectId, userId, revokedMembershipVersion , membershipVersion));
         append(EventTypes.MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED, projectId, userId, authorizationVersion, now,
                 new MemberAssignmentsCleanupRequested(
-                        operationId, projectId, userId, List.copyOf(boardIds), membershipVersion));
+                        operationId, projectId, userId, List.copyOf(boardIds), revokedMembershipVersion));
     }
 
     private void saveSnapshotJob(

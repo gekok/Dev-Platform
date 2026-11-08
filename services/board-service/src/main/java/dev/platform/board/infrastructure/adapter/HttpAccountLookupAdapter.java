@@ -2,6 +2,8 @@ package dev.platform.board.infrastructure.adapter;
 
 import dev.platform.board.application.port.out.AccountLookupPort;
 import dev.platform.board.domain.aggregate.ProjectRuleViolation;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;

@@ -2,6 +2,7 @@ package dev.platform.board.application.port.out;
 
 import dev.platform.board.application.query.ProjectPage;
 import dev.platform.board.application.query.InvitationInboxItem;
+import dev.platform.board.application.query.SnapshotSyncJobView;
 import dev.platform.board.domain.aggregate.Invitation;
 import dev.platform.board.domain.aggregate.MembershipVersion;
 import dev.platform.board.domain.aggregate.Project;
@@ -51,5 +52,9 @@ public interface ProjectDataPort {
     ProjectPage<InvitationInboxItem> listUserInvitations(UUID userId, String status, int page, int size);
 
     List<Long> listBoardIds(Long projectId);
+
+    Optional<SnapshotSyncJobView> findSyncJobByOperationId(UUID operationId);
+
+    boolean isActiveOwner(Long projectId, UUID userId);
 
 }

@@ -1,5 +1,6 @@
 package dev.platform.board.application.service;
 
+import dev.platform.board.api.dto.OperationResponse;
 import dev.platform.board.application.command.*;
 import dev.platform.board.application.port.in.ProjectUseCasePort;
 import dev.platform.board.application.port.out.*;
@@ -201,16 +202,16 @@ public class ProjectApplicationService implements ProjectUseCasePort {
 
     @Override
     @Transactional
-    public void removeMember(RemoveMemberCommand command) {
+    public UUID removeMember(RemoveMemberCommand command) {
         Project project = requireProjectForUpdate(command.projectId());
         requireOwner(project.id(), command.actorId());
         project.requireActive();
-        revokeMembership(project, command.memberId());
+        return revokeMembership(project, command.memberId());
     }
 
     @Override
     @Transactional
-    public void leaveProject(Long projectId, UUID actorId) {
+    public UUID leaveProject(Long projectId, UUID actorId) {
         Project project = requireProjectForUpdate(projectId);
         ProjectMembership membership = requireActiveMembership(project.id(), actorId);
         project.requireActive();
@@ -218,7 +219,7 @@ public class ProjectApplicationService implements ProjectUseCasePort {
             throw ProjectRuleViolation.conflict("OWNER_CANNOT_LEAVE",
                     "Transfer Project ownership before leaving.");
         }
-        revokeMembership(project, actorId);
+        return revokeMembership(project, actorId);
     }
 
     @Override
@@ -275,7 +276,21 @@ public class ProjectApplicationService implements ProjectUseCasePort {
                 project.status().name());
     }
 
-    private void revokeMembership(Project project, UUID userId) {
+    @Override
+    public OperationResponse getStatus(UUID operationId, UUID actorId) {
+        var job = data.findSyncJobByOperationId(operationId)
+                .orElseThrow(() -> ProjectRuleViolation.notFound("Operation not found."));
+
+        boolean allowed = job.userId().equals(actorId)
+                || data.isActiveOwner(job.projectId(), actorId);
+        if (!allowed) {
+            throw ProjectRuleViolation.notFound("Operation not found.");
+        }
+        return new OperationResponse(operationId, mapStatus(job.status()),
+                "/api/v1/operations/" + operationId);
+    }
+
+    private UUID revokeMembership(Project project, UUID userId) {
         ProjectMembership target = data.findMembershipForUpdate(project.id(), userId)
                 .filter(ProjectMembership::isActive)
                 .orElseThrow(() -> ProjectRuleViolation.notFound("Membership not found."));
@@ -284,12 +299,24 @@ public class ProjectApplicationService implements ProjectUseCasePort {
                     "The Project Owner cannot leave or be removed.");
         }
         try {
+            // 1. Đọc generation đang active TRƯỚC khi tăng
+            long revokedMembershipVersion = data.findVersion(project.id(), userId)
+                    .map(MembershipVersion::membershipVersion)
+                    .orElseThrow(() -> ProjectRuleViolation.notFound("Membership version not found."));
+
             ProjectMembership removed = target.remove(now());
             data.saveMembership(removed);
+
+            // 2. Tăng version mới (dùng cho snapshot Redis, sync job)
             MembershipVersion version = nextVersion(project.id(), userId, true);
+
             UUID operationId = UUID.randomUUID();
             events.memberRemoved(operationId, project.id(), userId,
-                    version.membershipVersion(), version.authorizationVersion(), data.listBoardIds(project.id()));
+                    revokedMembershipVersion,              // generation bị thu hồi
+                    version.membershipVersion(),           // version snapshot mới
+                    version.authorizationVersion(),
+                    data.listBoardIds(project.id()));
+            return operationId;
         } catch (OptimisticLockingFailureException exception) {
             throw ProjectRuleViolation.conflict("VERSION_CONFLICT",
                     "Project membership changed concurrently; reload and retry.");
@@ -369,6 +396,15 @@ public class ProjectApplicationService implements ProjectUseCasePort {
 
     private OffsetDateTime now() {
         return OffsetDateTime.now(ZoneOffset.UTC);
+    }
+
+    private String mapStatus(String jobStatus) {
+        return switch (jobStatus) {
+            case "SUCCESS" -> "SUCCESS";
+            case "FAILED"  -> "FAILED";
+            case "RUNNING" -> "RUNNING";
+            default        -> "PENDING";
+        };
     }
 
 }

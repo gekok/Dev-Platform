@@ -73,6 +73,7 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.of(ProjectResponse.from(project.project(), project.myRole())));
     }
 
+    // Case này đang dình bên user service chưa mở port ẫn đến thiếu điều kiện chưa test được
     @PostMapping("/projects/{projectId}/invitations")
     public ResponseEntity<ApiResponse<InvitationResponse>> invite(
             @PathVariable Long projectId, @Valid @RequestBody InviteMemberRequest request, Principal principal) {
@@ -141,16 +142,20 @@ public class ProjectController {
     }
 
     @DeleteMapping("/projects/{projectId}/members/{userId}")
-    public ResponseEntity<Void> removeMember(
+    public ResponseEntity<OperationResponse> removeMember(
             @PathVariable Long projectId, @PathVariable UUID userId, Principal principal) {
-        projects.removeMember(new RemoveMemberCommand(projectId, userId, actor(principal)));
-        return ResponseEntity.noContent().build();
+        UUID operationId = projects.removeMember(new RemoveMemberCommand(projectId, userId, actor(principal)));
+        return ResponseEntity.accepted()
+                .location(URI.create("/api/v1/operations/" + operationId))
+                .body(OperationResponse.pending(operationId));
     }
 
     @PostMapping("/projects/{projectId}/leave")
-    public ResponseEntity<Void> leave(@PathVariable Long projectId, Principal principal) {
-        projects.leaveProject(projectId, actor(principal));
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<OperationResponse> leave(@PathVariable Long projectId, Principal principal) {
+        UUID operationId = projects.leaveProject(projectId, actor(principal));
+        return ResponseEntity.accepted()
+                .location(URI.create("/api/v1/operations/" + operationId))
+                .body(OperationResponse.pending(operationId));
     }
 
     @PostMapping("/projects/{projectId}/transfer-ownership")
@@ -161,6 +166,11 @@ public class ProjectController {
         ProjectMembership membership = projects.transferOwnership(
                 new TransferOwnershipCommand(projectId, request.newOwnerUserId(), actor(principal)));
         return ResponseEntity.ok(ApiResponse.of(MembershipResponse.from(membership)));
+    }
+
+    @GetMapping("/operations/{operationId}")
+    public OperationResponse status(@PathVariable UUID operationId, Principal principal) {
+        return projects.getStatus(operationId, actor(principal));
     }
 
     private UUID actor(Principal principal) {

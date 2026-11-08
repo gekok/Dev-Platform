@@ -12,6 +12,7 @@ public interface ProjectEventPort {
             UUID operationId,
             Long projectId,
             UUID userId,
+            long revokedMembershipVersion,
             long membershipVersion,
             long authorizationVersion,
             List<Long> boardIds);

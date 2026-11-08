@@ -3,6 +3,7 @@ package dev.platform.board.infrastructure.adapter;
 import dev.platform.board.application.port.out.ProjectDataPort;
 import dev.platform.board.application.query.ProjectPage;
 import dev.platform.board.application.query.InvitationInboxItem;
+import dev.platform.board.application.query.SnapshotSyncJobView;
 import dev.platform.board.domain.aggregate.Invitation;
 import dev.platform.board.domain.aggregate.MembershipVersion;
 import dev.platform.board.domain.aggregate.Project;
@@ -27,6 +28,7 @@ public class ProjectDataAdapter implements ProjectDataPort {
     private final ProjectMembershipVersionJpaRepository versions;
     private final InvitationJpaRepository invitations;
     private final BoardJpaRepository boards;
+    private final ProjectAuthorizationSnapshotSyncJobJpaRepository syncJobRepository;
 
     @Override
     public Project saveProject(Project project) {
@@ -185,6 +187,21 @@ public class ProjectDataAdapter implements ProjectDataPort {
     @Override
     public List<Long> listBoardIds(Long projectId) {
         return boards.findIdsByProjectId(projectId);
+    }
+
+    @Override
+    public Optional<SnapshotSyncJobView> findSyncJobByOperationId(UUID operationId) {
+        return syncJobRepository.findByOperationId(operationId)
+                .map(e -> new SnapshotSyncJobView(
+                        e.getOperationId(), e.getProjectId(), e.getUserId(), e.getStatus()));
+    }
+
+    @Override
+    public boolean isActiveOwner(Long projectId, UUID userId) {
+        return findMembership(projectId, userId)          // method đọc membership (không khóa) bạn đang có
+                .filter(ProjectMembership::isActive)
+                .map(m -> m.role() == ProjectMembership.Role.OWNER)
+                .orElse(false);
     }
 
     private Project toProject(ProjectEntity entity) {
