@@ -103,7 +103,7 @@ test('persists valid versioned data and reloads it in another repository', () =>
   const stored = JSON.parse(storage.getItem(DATABASE_STORAGE_KEY));
   const reloadedRepository = createMockRepository(storage);
 
-  assert.equal(stored.version, 2);
+  assert.equal(stored.version, 3);
   assert.equal(reloadedRepository.read().projects[0].name, 'Persisted project name');
 });
 
@@ -118,7 +118,7 @@ test('replaces invalid JSON and unsupported versions with the seed', () => {
     const repository = createMockRepository(storage);
     const stored = JSON.parse(storage.getItem(DATABASE_STORAGE_KEY));
 
-    assert.equal(stored.version, 2);
+    assert.equal(stored.version, 3);
     assert.ok(repository.read().projects.length > 0);
     assert.ok(repository.read().boards.length > 0);
   }
@@ -277,7 +277,17 @@ test('allocates positive monotonic IDs across reloads and resets above seeded ID
   }
 });
 
-test('migrates a valid v1 store to v2 without reseeding product data and removes the legacy key', () => {
+test('allocates persistent IDs for invitations in the v3 mock store', () => {
+  const storage = createMemoryStorage();
+  const repository = createMockRepository(storage);
+
+  assert.equal(repository.transact((draft, allocateId) => allocateId('invitation')), 1);
+  const reloadedRepository = createMockRepository(storage);
+  assert.equal(reloadedRepository.transact((draft, allocateId) => allocateId('invitation')), 2);
+  assert.equal(JSON.parse(storage.getItem(DATABASE_STORAGE_KEY)).version, 3);
+});
+
+test('migrates a valid v1 store to v3 without reseeding product data and removes the legacy key', () => {
   const storage = createMemoryStorage();
   storage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(createVersionOneStore()));
 
@@ -287,7 +297,7 @@ test('migrates a valid v1 store to v2 without reseeding product data and removes
   assert.equal(DATABASE_STORAGE_KEY, V2_STORAGE_KEY);
   assert.equal(storageKeys.DATABASE_STORAGE_KEY, V2_STORAGE_KEY);
   assert.equal(storageKeys.LEGACY_DATABASE_STORAGE_KEY, LEGACY_STORAGE_KEY);
-  assert.equal(migratedStore.version, 2);
+  assert.equal(migratedStore.version, 3);
   assert.deepEqual(migratedStore.data.defaultBoardPreferences, []);
   assert.equal(migratedStore.data.projects[0].name, 'Edited v1 project');
   assert.equal(migratedStore.data.boards[0].id, 11);
@@ -297,7 +307,7 @@ test('migrates a valid v1 store to v2 without reseeding product data and removes
   assert.equal(repository.read().projects[0].name, 'Edited v1 project');
 });
 
-test('seeds v2 when v1 is missing or invalid', () => {
+test('seeds the current store when v1 is missing or invalid', () => {
   for (const legacyValue of [null, '{not-json']) {
     const storage = createMemoryStorage();
     if (legacyValue) storage.setItem(LEGACY_STORAGE_KEY, legacyValue);
@@ -305,7 +315,7 @@ test('seeds v2 when v1 is missing or invalid', () => {
     const repository = createMockRepository(storage);
     const stored = JSON.parse(storage.getItem(V2_STORAGE_KEY));
 
-    assert.equal(stored.version, 2);
+    assert.equal(stored.version, 3);
     assert.deepEqual(stored.data.defaultBoardPreferences, []);
     assert.equal(
       repository.read().projects[0].name,
@@ -323,7 +333,7 @@ test('does not resurrect v1 when an existing v2 store is invalid', () => {
   const repository = createMockRepository(storage);
 
   assert.equal(repository.read().projects[0].name, createSeedData().projects[0].name);
-  assert.equal(JSON.parse(storage.getItem(V2_STORAGE_KEY)).version, 2);
+  assert.equal(JSON.parse(storage.getItem(V2_STORAGE_KEY)).version, 3);
   assert.equal(storage.getItem(LEGACY_STORAGE_KEY), null);
 });
 

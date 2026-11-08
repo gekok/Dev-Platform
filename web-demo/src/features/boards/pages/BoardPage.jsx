@@ -13,6 +13,7 @@ import {
 } from '../hooks/useBoards.js';
 import BoardHeader from '../components/BoardHeader.jsx';
 import BoardCreateDialog from '../components/BoardCreateDialog.jsx';
+import ProjectMembersDialog from '../../projects/components/ProjectMembersDialog.jsx';
 import ColumnCreateForm from '../components/ColumnCreateForm.jsx';
 import KanbanColumns from '../components/KanbanColumns.jsx';
 import {
@@ -69,6 +70,7 @@ export default function BoardPage() {
   const navigate = useNavigate();
   const [showColumnForm, setShowColumnForm] = useState(false);
   const [showBoardCreateDialog, setShowBoardCreateDialog] = useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
   const [selectedCardContext, setSelectedCardContext] = useState(null);
   const [loadedCardColumns, setLoadedCardColumns] = useState({ scope: null, columns: {} });
   const [isPreparingCardMove, setIsPreparingCardMove] = useState(false);
@@ -80,6 +82,8 @@ export default function BoardPage() {
   const projectBoardsQuery = useProjectBoards(projectId);
   const boardQuery = useBoard(boardId);
   const membersQuery = useProjectMembers(projectId);
+  const projectBoards = projectBoardsQuery.data?.items ?? [];
+  const members = membersQuery.data?.items ?? [];
   const defaultBoardsQuery = useDefaultBoards(userId);
   const setDefaultMutation = useSetDefaultBoard(userId);
   const clearDefaultMutation = useClearDefaultBoard(userId);
@@ -182,7 +186,7 @@ export default function BoardPage() {
     await createCardMutation.mutateAsync(payload);
   }
 
-  async function handleMoveCard(cardId, toColumnId, requestedPosition = null) {
+  async function handleMoveCard(cardId, toColumnId, beforeCardId = null) {
     if (isMovingCard) return;
     const card = cards.find((item) => item.id === cardId);
     const destinationColumn = boardQuery.data?.columns.some((item) => item.id === toColumnId);
@@ -192,42 +196,45 @@ export default function BoardPage() {
     setIsPreparingCardMove(true);
     moveCardMutation.reset();
     try {
-      let destinationCards = cards
-        .filter((item) => item.columnId === toColumnId && item.id !== cardId)
-        .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)));
-      if (requestedPosition == null) {
-        const loaderRef = cardLoadersRef.current.get(toColumnId);
-        if (!loaderRef?.current) throw new Error('Destination Column cards are not ready.');
-        const allDestinationCards = await loaderRef.current.loadAllCards();
-        destinationCards = allDestinationCards.filter((item) => item.id !== cardId);
+      const sourceLoader = cardLoadersRef.current.get(card.columnId);
+      const destinationLoader = cardLoadersRef.current.get(toColumnId);
+      if (!sourceLoader?.current || !destinationLoader?.current) {
+        throw new Error('Source or destination Column cards are not ready. Reload the Board and retry.');
       }
-      const toPosition = requestedPosition == null
+
+      const sourceCards = await sourceLoader.current.loadAllCards();
+      const destinationCardsSnapshot = card.columnId === toColumnId
+        ? sourceCards
+        : await destinationLoader.current.loadAllCards();
+      const currentPosition = sourceCards.findIndex((item) => String(item.id) === String(cardId));
+      if (currentPosition < 0) {
+        throw new Error('This Card is no longer in the loaded Column. Reload and retry.');
+      }
+
+      const destinationCards = destinationCardsSnapshot
+        .filter((item) => String(item.id) !== String(cardId));
+      const toPosition = beforeCardId == null
         ? destinationCards.length
-        : Math.min(Math.max(requestedPosition, 0), destinationCards.length);
-      const currentPosition = cards
-        .filter((item) => item.columnId === card.columnId)
-        .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)))
-        .findIndex((item) => item.id === cardId);
+        : destinationCards.findIndex((item) => String(item.id) === String(beforeCardId));
+      if (toPosition < 0) {
+        throw new Error('The destination list changed. Reload the Column and retry.');
+      }
       if (card.columnId === toColumnId && currentPosition === toPosition) return;
 
       await moveCardMutation.mutateAsync({ cardId, toColumnId, toPosition });
     } catch (error) {
-      setCardMoveError(getApiErrorMessage(error, 'The Card could not be moved.'));
+      setCardMoveError(getApiErrorMessage(
+        error,
+        error?.message ?? 'The Card could not be moved.',
+      ));
     } finally {
       setIsPreparingCardMove(false);
     }
   }
 
   function handleDropCard(draggedCardId, toColumnId, beforeCardId) {
-    if (draggedCardId === beforeCardId) return;
-    const destinationCards = cards
-      .filter((item) => item.columnId === toColumnId && item.id !== draggedCardId)
-      .sort((left, right) => (right.position - left.position) || (Number(right.id) - Number(left.id)));
-    const requestedPosition = beforeCardId == null
-      ? null
-      : destinationCards.findIndex((item) => item.id === beforeCardId);
-    if (requestedPosition != null && requestedPosition < 0) return;
-    handleMoveCard(draggedCardId, toColumnId, requestedPosition);
+    if (String(draggedCardId) === String(beforeCardId)) return;
+    handleMoveCard(draggedCardId, toColumnId, beforeCardId);
   }
 
   function handleOpenCard(cardId) {
@@ -338,7 +345,7 @@ export default function BoardPage() {
       isDefault={isDefault}
       project={project}
       selectorProps={{
-        boards: projectBoardsQuery.data ?? [],
+        boards: projectBoards,
         currentBoardId: board.id,
         defaultBoardId,
         canCreate: isOwner,
@@ -388,6 +395,13 @@ export default function BoardPage() {
             {board.columns.length} stages for this team’s work
           </span>
         </div>
+        <button
+          className="secondary-button"
+          onClick={() => setShowMembersDialog(true)}
+          type="button"
+        >
+          Members ({members.length})
+        </button>
         {isOwner && (
           <button
             aria-controls="column-create-form"
@@ -433,7 +447,7 @@ export default function BoardPage() {
         projectId={projectId}
         boardId={boardId}
         columns={board.columns}
-        members={membersQuery.data}
+        members={members}
         isCreatingCard={createCardMutation.isPending}
         cardCreateError={createCardMutation.isError ? getErrorMessage(createCardMutation.error) : null}
         isMovingCard={isMovingCard}
@@ -454,7 +468,7 @@ export default function BoardPage() {
           boardId={boardId}
           cardId={selectedCardId}
           key={`${projectId}:${boardId}:${selectedCardId}`}
-          members={membersQuery.data}
+          members={members}
           onClose={closeCardDetails}
           projectId={projectId}
         />
@@ -467,6 +481,12 @@ export default function BoardPage() {
         onClose={closeBoardCreateDialog}
         onCreate={handleCreateBoard}
         open={showBoardCreateDialog}
+      />
+      <ProjectMembersDialog
+        isOwner={isOwner}
+        onClose={() => setShowMembersDialog(false)}
+        open={showMembersDialog}
+        projectId={projectId}
       />
     </>
   );

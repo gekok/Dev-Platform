@@ -32,5 +32,10 @@ export async function loadAllCardPages(query) {
     }
   }
 
-  return flattenCardPages(result.data.pages ?? []);
+  const pages = result.data.pages ?? [];
+  if (hasDuplicateCardPages(pages)) {
+    throw new Error('Card pages overlap. Reload this Column before moving a Card.');
+  }
+
+  return flattenCardPages(pages);
 }

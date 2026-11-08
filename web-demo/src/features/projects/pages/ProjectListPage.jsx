@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import ProjectCreateForm from '../components/ProjectCreateForm.jsx';
+import InvitationInbox from '../components/InvitationInbox.jsx';
 import { useProjects } from '../hooks/useProjects.js';
 import { createProject } from '../services/projectApi.js';
 import { getProjectCardMetadata } from '../projectSummary.js';
@@ -16,6 +17,7 @@ export default function ProjectListPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const queryClient = useQueryClient();
   const projectsQuery = useProjects();
+  const projects = projectsQuery.data?.items ?? [];
   const createMutation = useMutation({
     mutationFn: createProject,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.projects }),
@@ -49,6 +51,8 @@ export default function ProjectListPage() {
         </button>
       </div>
 
+      <InvitationInbox />
+
       {showCreateForm && (
         <ProjectCreateForm
           error={createMutation.isError ? getErrorMessage(createMutation.error) : null}
@@ -64,7 +68,7 @@ export default function ProjectListPage() {
       <div className="section-heading">
         <div>
           <h2>Your projects</h2>
-          <span>{projectsQuery.data?.length ?? 0} projects</span>
+          <span>{projectsQuery.data?.pagination.totalElements ?? projects.length} projects</span>
         </div>
         <span className="section-caption">Sorted by recently created</span>
       </div>
@@ -81,15 +85,15 @@ export default function ProjectListPage() {
           </button>
         </div>
       )}
-      {projectsQuery.isSuccess && projectsQuery.data.length === 0 && (
+      {projectsQuery.isSuccess && projects.length === 0 && (
         <div className="empty-state">
           <strong>No projects yet</strong>
           <span>Create your first project to start organizing boards.</span>
         </div>
       )}
-      {projectsQuery.isSuccess && projectsQuery.data.length > 0 && (
+      {projectsQuery.isSuccess && projects.length > 0 && (
         <div className="project-grid">
-          {projectsQuery.data.map((project, index) => {
+          {projects.map((project, index) => {
             const metadata = getProjectCardMetadata(project);
 
             return (

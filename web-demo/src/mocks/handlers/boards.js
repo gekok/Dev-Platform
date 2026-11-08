@@ -8,7 +8,7 @@ import {
 } from './utils.js';
 
 const DEFAULT_COLUMN_NAMES = ['To Do', 'In Progress', 'Done'];
-const BOARD_KEY_PATTERN = /^[A-Z0-9]{2,20}$/;
+const BOARD_KEY_PATTERN = /^[A-Z0-9][A-Z0-9-]{0,18}[A-Z0-9]$/;
 
 function mapBoard(board, data) {
   return {
@@ -69,14 +69,15 @@ function ownerOnly(request, authorization) {
 
 function parseBoardInput(request, payload) {
   const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
-  const key = typeof payload?.key === 'string' ? payload.key.trim() : '';
-  if (!name || name.length > 100) {
+  const submittedKey = payload?.boardKey ?? payload?.key;
+  const key = typeof submittedKey === 'string' ? submittedKey.trim().toUpperCase() : '';
+  if (!name || name.length > 255) {
     return {
       response: errorResponse(
         request,
         400,
         'BAD_REQUEST',
-        'Board name must contain 1 to 100 characters',
+        'Board name must contain 1 to 255 characters',
       ),
     };
   }
@@ -86,15 +87,17 @@ function parseBoardInput(request, payload) {
         request,
         400,
         'BAD_REQUEST',
-        'Board key must contain 2 to 20 uppercase letters or numbers',
+        'Board key must contain 2 to 20 lowercase letters, numbers, or hyphens',
       ),
     };
   }
 
-  const sourceNames = payload.columns === undefined
-    ? DEFAULT_COLUMN_NAMES
-    : payload.columns;
-  if (!Array.isArray(sourceNames) || sourceNames.length === 0) {
+  const sourceNames = payload.createDefaultColumns === false
+    ? []
+    : payload.columns === undefined
+      ? DEFAULT_COLUMN_NAMES
+      : payload.columns;
+  if (!Array.isArray(sourceNames) || (sourceNames.length === 0 && payload.createDefaultColumns !== false)) {
     return {
       response: errorResponse(
         request,
@@ -127,6 +130,61 @@ function parseBoardInput(request, payload) {
 }
 
 export function createBoardHandlers(repository, resolveUserFromToken) {
+  const reorderColumns = async ({ request, params }) => {
+    const boardId = parsePositiveId(params.boardId);
+    if (!boardId) {
+      return errorResponse(request, 404, 'NOT_FOUND', 'Board not found');
+    }
+
+    const authorization = authorizeBoard(
+      request,
+      repository,
+      resolveUserFromToken,
+      boardId,
+    );
+    if (authorization.response) return authorization.response;
+    const ownerError = ownerOnly(request, authorization);
+    if (ownerError) return ownerError;
+
+    const payload = await readJson(request);
+    const requestedIds = Array.isArray(payload?.columnIds)
+      ? payload.columnIds
+      : Array.isArray(payload?.orderedColumnIds)
+        ? payload.orderedColumnIds
+        : [];
+    const reorderResult = repository.transact((draft) => {
+      const columns = draft.columns.filter((column) => column.boardId === boardId);
+      const currentIds = new Set(columns.map((column) => column.id));
+      const hasValidOrder =
+        requestedIds.length === columns.length &&
+        requestedIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
+        new Set(requestedIds).size === requestedIds.length &&
+        requestedIds.every((id) => currentIds.has(id));
+      if (!hasValidOrder) return { invalidOrder: true };
+
+      const positions = new Map(
+        requestedIds.map((columnId, position) => [columnId, position]),
+      );
+      for (const column of draft.columns) {
+        if (column.boardId === boardId) {
+          column.position = positions.get(column.id);
+        }
+      }
+      const board = draft.boards.find((item) => item.id === boardId);
+      return { invalidOrder: false, board: mapBoardDetail(board, draft) };
+    });
+    if (reorderResult.invalidOrder) {
+      return errorResponse(
+        request,
+        400,
+        'BAD_REQUEST',
+        'Column order must include every Column in this Board exactly once',
+      );
+    }
+
+    return HttpResponse.json(reorderResult.board);
+  };
+
   return [
     http.get('*/api/v1/projects/:projectId/boards', ({ request, params }) => {
       const projectId = parsePositiveId(params.projectId);
@@ -171,7 +229,7 @@ export function createBoardHandlers(repository, resolveUserFromToken) {
 
       const createdAt = new Date().toISOString();
       const creationResult = repository.transact((draft, allocateId) => {
-        if (draft.boards.some((board) => board.key === parsed.key)) {
+        if (draft.boards.some((board) => board.projectId === projectId && board.key === parsed.key)) {
           return { conflict: true };
         }
 
@@ -272,58 +330,7 @@ export function createBoardHandlers(repository, resolveUserFromToken) {
 
       return HttpResponse.json(creationResult.column, { status: 201 });
     }),
-    http.patch('*/api/v1/boards/:boardId/columns/order', async ({ request, params }) => {
-      const boardId = parsePositiveId(params.boardId);
-      if (!boardId) {
-        return errorResponse(request, 404, 'NOT_FOUND', 'Board not found');
-      }
-
-      const authorization = authorizeBoard(
-        request,
-        repository,
-        resolveUserFromToken,
-        boardId,
-      );
-      if (authorization.response) return authorization.response;
-      const ownerError = ownerOnly(request, authorization);
-      if (ownerError) return ownerError;
-
-      const payload = await readJson(request);
-      const orderedColumnIds = payload?.orderedColumnIds;
-      const requestedIds = Array.isArray(orderedColumnIds)
-        ? orderedColumnIds
-        : [];
-      const reorderResult = repository.transact((draft) => {
-        const columns = draft.columns.filter((column) => column.boardId === boardId);
-        const currentIds = new Set(columns.map((column) => column.id));
-        const hasValidOrder =
-          requestedIds.length === columns.length &&
-          requestedIds.every((id) => Number.isSafeInteger(id) && id > 0) &&
-          new Set(requestedIds).size === requestedIds.length &&
-          requestedIds.every((id) => currentIds.has(id));
-        if (!hasValidOrder) return { invalidOrder: true };
-
-        const positions = new Map(
-          requestedIds.map((columnId, position) => [columnId, position]),
-        );
-        for (const column of draft.columns) {
-          if (column.boardId === boardId) {
-            column.position = positions.get(column.id);
-          }
-        }
-        const board = draft.boards.find((item) => item.id === boardId);
-        return { invalidOrder: false, board: mapBoardDetail(board, draft) };
-      });
-      if (reorderResult.invalidOrder) {
-        return errorResponse(
-          request,
-          400,
-          'BAD_REQUEST',
-          'Column order must include every Column in this Board exactly once',
-        );
-      }
-
-      return HttpResponse.json(reorderResult.board);
-    }),
+    http.put('*/api/v1/boards/:boardId/columns/order', reorderColumns),
+    http.patch('*/api/v1/boards/:boardId/columns/order', reorderColumns),
   ];
 }

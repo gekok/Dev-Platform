@@ -53,7 +53,7 @@ export default function AppLayout() {
     navigate(nextProjectId ? `/projects/${nextProjectId}` : '/projects');
   }
 
-  const projects = projectsQuery.data ?? [];
+  const projects = projectsQuery.data?.items ?? [];
   const project = projectQuery.data ?? projects.find(
     (candidate) => candidate.id === Number(projectId),
   );

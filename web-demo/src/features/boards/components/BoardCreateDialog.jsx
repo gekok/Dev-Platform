@@ -10,7 +10,7 @@ export default function BoardCreateDialog({
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
   const [name, setName] = useState('');
-  const [key, setKey] = useState('');
+  const [boardKey, setBoardKey] = useState('');
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -32,7 +32,11 @@ export default function BoardCreateDialog({
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      await onCreate({ name: name.trim(), key: key.trim() });
+      await onCreate({
+        name: name.trim(),
+        boardKey: boardKey.trim(),
+        createDefaultColumns: true,
+      });
     } catch {
       // The caller keeps the dialog open and renders the mutation error.
     }
@@ -80,7 +84,7 @@ export default function BoardCreateDialog({
                 autoComplete="off"
                 autoFocus
                 id="board-name"
-                maxLength={100}
+                maxLength={255}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Product roadmap"
                 required
@@ -90,17 +94,18 @@ export default function BoardCreateDialog({
             <div>
               <label htmlFor="board-key">Board key</label>
               <input
-                autoCapitalize="characters"
+                autoCapitalize="none"
                 autoComplete="off"
                 id="board-key"
                 maxLength={20}
                 minLength={2}
-                onChange={(event) => setKey(event.target.value.toUpperCase())}
-                pattern="[A-Z0-9]{2,20}"
-                placeholder="e.g. ROAD"
+                onChange={(event) => setBoardKey(event.target.value.toLowerCase())}
+                pattern="[a-z0-9][a-z0-9-]{0,18}[a-z0-9]"
+                placeholder="e.g. product-roadmap"
                 required
-                value={key}
+                value={boardKey}
               />
+              <p className="board-key-help">2–20 lowercase letters, numbers, or hyphens.</p>
             </div>
           </div>
           {error && <p className="form-inline-error" role="alert">{error}</p>}

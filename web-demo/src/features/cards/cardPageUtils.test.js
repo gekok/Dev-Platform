@@ -57,3 +57,18 @@ test('does not treat a failed initial page as an empty destination Column', asyn
 
   await assert.rejects(loadAllCardPages(query), error);
 });
+
+test('rejects overlapping cursor pages instead of using a deduplicated move position', async () => {
+  const query = {
+    data: {
+      pages: [
+        { items: [{ id: 9, position: 2 }, { id: 8, position: 1 }] },
+        { items: [{ id: 8, position: 1 }, { id: 7, position: 0 }] },
+      ],
+    },
+    hasNextPage: false,
+    isError: false,
+  };
+
+  await assert.rejects(loadAllCardPages(query), /pages overlap/i);
+});

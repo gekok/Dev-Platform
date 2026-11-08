@@ -4,6 +4,8 @@ Ngày khảo sát: 2026-11-08
 Checkout: `feature/web-demo-issue-58` @ `9f08b79afd45f774cca38d84de3cfadc881312d9`
 Phạm vi: FE `web-demo` và backend/Gateway chỉ để xác định dependency. Đây là đối chiếu source/tài liệu, không phải thiết kế API mới hoặc bằng chứng runtime end-to-end.
 
+Phần kiểm kê đầu tiên bên dưới ghi lại baseline ở commit `9f08b79` trước khi đồng bộ `main`. Các kết luận về trạng thái backend Project/Board trong baseline đã được thay thế bởi mục **Trạng thái sau đồng bộ main**; các giới hạn runtime vẫn còn hiệu lực.
+
 ## Cách phân loại
 
 - **Source implemented**: có route/controller và use case hoặc persistence implementation liên quan trong source.
@@ -29,6 +31,19 @@ Phạm vi: FE `web-demo` và backend/Gateway chỉ để xác định dependency
 | Comment & Mention | FE: `GET/POST /cards/{cardId}/comments`; POST `{content,mentionedUserIds}`; đọc array và ghép `authorId` với member `id/fullName` để hiển thị | Task: Project-scoped `GET/POST /projects/{projectId}/cards/{cardId}/comments`; GET array; POST trả `CommentResponse(id,cardId,authorId,content,createdAt)`. `CommentService` kiểm tra content, membership của mention, lưu comment và ghi notification intent | Trusted identity + Project snapshot; gate mặc định tắt. Mention IDs phải là Member active. Comment response không gồm mentioned IDs; profile hiển thị dựa vào Membership/User profile composition đang mở | **Source implemented nhưng gated; runtime chưa verify.** FE path thiếu Project; cần xác nhận author profile composition. Task-service sở hữu nghiệp vụ Comment; profile phụ thuộc user/board. |
 | Notification Inbox | FE: `GET /notifications/me`, tùy chọn `?unreadOnly=true`; kỳ vọng array notification có `id,type,title,projectId,cardId,boardId,read,createdAt` | `NotificationController.listMine` trả đúng array/shape; list service/repository source có. Gateway route tới notification-service | Gateway xác thực JWT và Account snapshot rồi set `X-User-Id`; list lọc theo recipient ID. Direct-service ingress vẫn mở nên header chỉ đáng tin qua Gateway | **Source implemented; runtime chưa verify.** REST read có thể tích hợp độc lập với event generation. Notification-service sở hữu. |
 | Mark Notification read | FE: `PATCH /notifications/{notificationId}/read`, không body; cập nhật cache sau response | `NotificationController.markRead` gọi service; `MarkReadService` tìm notification, kiểm tra `userId` sở hữu rồi lưu | Qua Gateway cần Bearer/Account snapshot; sai recipient bị từ chối ở service. Chưa có kiểm thử Gateway + Notification thật | **Source implemented; runtime chưa verify.** Notification-service sở hữu. |
+
+## Trạng thái sau đồng bộ main
+
+Đối chiếu source hiện tại tại nhánh `feature/web-demo-issue-58` sau merge `origin/main` (`fe4376c`). Các route dưới đây có controller và application service trong source; đây không phải bằng chứng chúng đã chạy end-to-end.
+
+| Nhóm | API source hiện tại | Request/response và trạng thái frontend | Giới hạn xác minh |
+|---|---|---|---|
+| Project | `GET /api/v1/projects?page=&size=`, `POST /api/v1/projects`, `GET /api/v1/projects/{projectId}` trong `ProjectController`; use case ở `ProjectApplicationService` | List trả `ApiResponse<PageResponse<ProjectResponse>>`; create nhận `{name}`; response Project có `myRole`. FE unwrap envelope, nạp mọi page với `size=100`, giữ `totalElements/totalPages` và chuẩn hóa `myRole` thành `role`. | Gateway route đã có trong source. Chưa kiểm tra runtime với JWT, snapshot Redis và SQL Server. |
+| Membership | `GET /api/v1/projects/{projectId}/members?page=&size=`; remove qua `DELETE /api/v1/projects/{projectId}/members/{userId}` | Member list trả paged envelope với `{userId,role,joinedAt}`. FE tải profile bằng `GET /api/v1/users/profiles?projectId=...&ids=...` để hiển thị tên. UI hiện có danh sách member nhưng chưa có thao tác remove/leave. | Profile route yêu cầu caller active trong Project. Membership revoke trả `202` operation; UI chưa tích hợp thao tác này. Runtime chưa xác minh. |
+| Invitation | `POST/GET /api/v1/projects/{projectId}/invitations`; `POST /api/v1/projects/{projectId}/invitations/{invitationId}/cancel`; `GET /api/v1/invitations/me`; `POST /api/v1/invitations/{invitationId}/accept|reject` | Create nhận `{userId}` và trả envelope `InvitationResponse`; list trả paged envelope; accept trả envelope Membership, reject/cancel trả envelope Invitation. FE dùng `GET /api/v1/users?query=&limit=` để tìm tài khoản và đã nối mời, hủy, chấp nhận, từ chối. | `ProjectApplicationService` còn phụ thuộc `AccountLookupPort` và snapshot/event ports. Source có implementation nhưng chưa xác nhận Gateway/service runtime. |
+| Board/Column | `POST/GET /api/v1/projects/{projectId}/boards`; `GET /api/v1/boards/{boardId}`; `POST /api/v1/boards/{boardId}/columns`; `PUT /api/v1/boards/{boardId}/columns/order` trong `BoardController`; use case/persistence ở `BoardApplicationService` và `BoardDataAdapter` | Create Board nhận `{name,boardKey,createDefaultColumns}`; list trả paged envelope; response dùng `boardKey` và `myRole`; reorder nhận `{columnIds}`. FE gửi đúng body/PUT route, unwrap envelope, chuẩn hóa Board fields và tải mọi page. | Controller/use case kiểm tra Principal và Project role trong source; chưa xác minh runtime qua Gateway/database. Board preference vẫn Demo-only. |
+
+Gateway định tuyến các route public này theo service trong `gateway/src/main/resources/application.yml`. Web client không gọi `internal/boards/{boardId}` và không giữ HMAC secret: route nội bộ và credential HMAC chỉ dành cho tích hợp service-to-service phía backend.
 
 ## Nguồn xác minh và giới hạn
 
@@ -59,7 +74,7 @@ Phạm vi: FE `web-demo` và backend/Gateway chỉ để xác định dependency
 
 ## Kết luận WP1
 
-Register xác nhận FE hiện chủ yếu là Demo/MSW. Login/current account và Notification REST có implementation source; Card/Comment source có nhưng fail-closed theo readiness; Board/Column chỉ còn Board-first skeleton; Project/Membership/Invitation chưa có API backend; event-generated Notification chưa được nối ở Notification listener. Frontend/backend E2E chưa được xác minh. Các API mismatch và service-level blockers được ghi ở bảng trên để làm đầu vào WP2–WP8, không tự chốt contract còn mở.
+Kết luận WP1 phản ánh baseline tại `9f08b79`: FE khi đó chủ yếu là Demo/MSW và chưa có Project/Invitation integration. Sau khi đồng bộ `main`, source Board Service đã có Project/Membership/Invitation và Project-scoped Board/Column routes/use cases như bảng cập nhật phía trên. Frontend/backend E2E vẫn chưa được xác minh; Task Card/Comment tiếp tục fail-closed theo readiness và Notification event generation chưa được nối end-to-end.
 
 ## Cập nhật trạng thái frontend sau WP2–WP8
 
@@ -67,8 +82,8 @@ Ma trận phía trên ghi nhận audit WP1 tại baseline; các điểm sau cậ
 
 - **WP2 — runtime/API foundation:** `VITE_APP_MODE` và `VITE_API_BASE_URL` phải khai báo rõ, mode được chuẩn hóa không phân biệt hoa/thường và phải khớp Vite build mode. Demo mới khởi động MSW; Backend không nạp worker và request chưa được MSW xử lý sẽ hiện lỗi. Axios gắn Bearer token và chuẩn hóa lỗi 401/403/network/5xx.
 - **WP3 — authentication:** Backend login dùng `POST /auth/login`; current account dùng `GET /users/me`. Session được kiểm tra khi khởi động/refresh; 401 trên request đã xác thực xóa session và cache. Thay đổi access token ở tab khác cũng xóa cache và đưa route bảo vệ về login. Không dùng demo token trong Backend mode.
-- **WP4 — Project:** phần UI đọc metadata Project tùy chọn mà backend chưa trả được. Project, Membership và Invitation API vẫn là dependency của board-service; không có fallback mock trong Backend mode.
-- **WP5 — Board/Column:** default Board preferences chỉ chạy trong Demo. Backend không gọi preference list/clear/update; selector ẩn nút thay đổi preference. Project-scoped Board list/create chưa được triển khai trong board-service source hiện kiểm tra, vì vậy chưa xác minh được luồng Board Backend.
+- **WP4 — Project:** Backend mode hiện đọc `myRole`, Project list/detail và paged member/invitation responses qua public API; UI có tìm tài khoản, mời/hủy và nhận lời/từ chối invitation. Profile names được nạp qua User Service. Chưa có UI remove/leave membership; runtime chưa xác minh.
+- **WP5 — Board/Column:** default Board preferences chỉ chạy trong Demo. Project-scoped Board list/create, Board detail, add Column và reorder Column đã có route/use case trong Board Service source; FE dùng `boardKey`, `{columnIds}` và `PUT /columns/order`, unwrap envelope và nạp page. Backend mode chưa xác minh end-to-end.
 - **WP6/WP7 — Card/Comment:** Backend mode dùng Project-scoped Task routes cho Card list/detail/create/move/assignment và Comment. List gọi riêng từng Column với `columnId`, `limit=5`, `cursor`; UI nhận `{items,nextCursor}`, tải tiếp khi cuộn, dedupe Card ID và yêu cầu reload Column khi request cursor tiếp theo trả `400`. Chuyển Card xuống cuối chờ tải trang đầu và toàn bộ trang còn lại; lỗi tải không gửi lệnh move. Thứ tự và move index theo `position DESC, id DESC`. Demo giữ Board-scoped mock routes nhưng MSW mô phỏng cùng page shape, cursor scope, giới hạn trang và move ordering. Member ID chấp nhận trường `userId` của target summary hoặc `id` của Demo; chỉ trường `fullName` được dùng làm tên hiển thị. Đây là frontend/source behavior; Task runtime qua Gateway chưa được xác minh, và Task hiện fail-closed nếu trusted identity hoặc validator Column chưa sẵn sàng.
 - **WP8 — Notification:** Inbox hỗ trợ lọc unread qua `unreadOnly=true`; query cache được tách theo filter và mark-read invalidates các biến thể của inbox. Event generation vẫn chưa được xác minh end-to-end.
 - **WP9/WP10 — errors/tests/docs:** loading/error states, retry có điều kiện, README và test evidence được cập nhật cùng code.

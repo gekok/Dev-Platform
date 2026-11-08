@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/hooks/useCurrentUser.js';
 import BoardCreateDialog from '../../boards/components/BoardCreateDialog.jsx';
+import ProjectMembersDialog from '../components/ProjectMembersDialog.jsx';
 import {
   useCreateProjectBoard,
   useProjectBoards,
@@ -57,11 +58,13 @@ export default function ProjectEntryPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
   const [cleanupAttempt, setCleanupAttempt] = useState(null);
   const cleanupAttemptRef = useRef(null);
   const [cleanupRetry, setCleanupRetry] = useState(0);
   const projectQuery = useProject(projectId);
   const boardsQuery = useProjectBoards(projectId);
+  const boards = boardsQuery.data?.items ?? [];
   const userQuery = useCurrentUser();
   const userId = userQuery.data?.id;
   const defaultBoardsQuery = useDefaultBoards(userId);
@@ -90,7 +93,7 @@ export default function ProjectEntryPage() {
     ? activeCleanupAttempt.error
     : null;
   const decision = resolveProjectEntry(
-    boardsQuery.data ?? [],
+    boards,
     projectId,
     defaultBoards,
     cleanupError,
@@ -287,6 +290,13 @@ export default function ProjectEntryPage() {
               <span aria-hidden="true">+</span> New Board
             </button>
           )}
+          <button
+            className="secondary-button"
+            onClick={() => setShowMembersDialog(true)}
+            type="button"
+          >
+            Project members
+          </button>
         </div>
       </section>
       <BoardCreateDialog
@@ -295,6 +305,12 @@ export default function ProjectEntryPage() {
         onClose={closeCreateDialog}
         onCreate={handleCreateBoard}
         open={showCreateDialog}
+      />
+      <ProjectMembersDialog
+        isOwner={isOwner}
+        onClose={() => setShowMembersDialog(false)}
+        open={showMembersDialog}
+        projectId={projectId}
       />
     </>
   );

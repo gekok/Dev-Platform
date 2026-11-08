@@ -24,6 +24,7 @@ const RESOURCE_COLLECTIONS = Object.freeze({
   card: 'cards',
   comment: 'comments',
   notification: 'notifications',
+  invitation: 'invitations',
 });
 
 function getNextIds(data) {
@@ -84,6 +85,7 @@ export function createSeedData() {
       { projectId: 1, userId: members[2].id, role: 'MEMBER' },
       { projectId: 1, userId: members[3].id, role: 'MEMBER' },
     ],
+    invitations: [],
     boards: [
       {
         id: 11,

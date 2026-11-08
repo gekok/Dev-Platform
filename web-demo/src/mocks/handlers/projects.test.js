@@ -130,3 +130,81 @@ test('validates Project names before creation', async () => {
     assert.equal((await response.json()).code, 'BAD_REQUEST');
   });
 });
+
+test('Owner can invite an account and the recipient can accept through Project invitation routes', async () => {
+  await withMockServer(async ({ repository }) => {
+    const projectId = repository.read().projects[0].id;
+    const searchResponse = await fetch(apiUrl('/users?query=outsider&limit=10'), {
+      headers: bearer(OWNER_TOKEN),
+    });
+    const candidates = await searchResponse.json();
+    assert.equal(searchResponse.status, 200);
+    assert.ok(candidates.some((user) => user.id === OUTSIDER_ID));
+
+    const createResponse = await fetch(apiUrl(`/projects/${projectId}/invitations`), {
+      method: 'POST',
+      headers: {
+        ...bearer(OWNER_TOKEN),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: OUTSIDER_ID }),
+    });
+    const created = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(created.userId, OUTSIDER_ID);
+    assert.equal(created.status, 'PENDING');
+
+    const inboxResponse = await fetch(apiUrl('/invitations/me?status=PENDING'), {
+      headers: bearer(OUTSIDER_TOKEN),
+    });
+    const inbox = await inboxResponse.json();
+    assert.equal(inboxResponse.status, 200);
+    assert.equal(inbox.length, 1);
+    assert.equal(inbox[0].id, created.id);
+    assert.equal(inbox[0].projectName, repository.read().projects[0].name);
+
+    const acceptResponse = await fetch(apiUrl(`/invitations/${created.id}/accept`), {
+      method: 'POST',
+      headers: bearer(OUTSIDER_TOKEN),
+    });
+    const membership = await acceptResponse.json();
+    assert.equal(acceptResponse.status, 200);
+    assert.equal(membership.userId, OUTSIDER_ID);
+    assert.equal(membership.role, 'MEMBER');
+    assert.ok(repository.read().projectMembers.some(
+      (item) => item.projectId === projectId && item.userId === OUTSIDER_ID,
+    ));
+  });
+});
+
+test('only a Project Owner can send or cancel invitations', async () => {
+  await withMockServer(async ({ repository }) => {
+    const projectId = repository.read().projects[0].id;
+    const deniedCreate = await fetch(apiUrl(`/projects/${projectId}/invitations`), {
+      method: 'POST',
+      headers: {
+        ...bearer(MEMBER_TOKEN),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: OUTSIDER_ID }),
+    });
+    assert.equal(deniedCreate.status, 403);
+
+    const createdResponse = await fetch(apiUrl(`/projects/${projectId}/invitations`), {
+      method: 'POST',
+      headers: {
+        ...bearer(OWNER_TOKEN),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: OUTSIDER_ID }),
+    });
+    const created = await createdResponse.json();
+    const deniedCancel = await fetch(
+      apiUrl(`/projects/${projectId}/invitations/${created.id}/cancel`),
+      { method: 'POST', headers: bearer(MEMBER_TOKEN) },
+    );
+
+    assert.equal(deniedCancel.status, 403);
+    assert.equal(repository.read().invitations[0].status, 'PENDING');
+  });
+});

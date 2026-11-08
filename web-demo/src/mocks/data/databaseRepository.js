@@ -5,7 +5,8 @@ import {
 } from '../../shared/constants/storageKeys.js';
 
 export { DATABASE_STORAGE_KEY, LEGACY_DATABASE_STORAGE_KEY };
-const STORE_VERSION = 2;
+const STORE_VERSION = 3;
+const PREVIOUS_STORE_VERSION = 2;
 const LEGACY_STORE_VERSION = 1;
 const RESOURCE_TYPES = [
   'project',
@@ -14,6 +15,7 @@ const RESOURCE_TYPES = [
   'card',
   'comment',
   'notification',
+  'invitation',
 ];
 const RESOURCE_COLLECTIONS = {
   project: 'projects',
@@ -22,6 +24,7 @@ const RESOURCE_COLLECTIONS = {
   card: 'cards',
   comment: 'comments',
   notification: 'notifications',
+  invitation: 'invitations',
 };
 
 function clone(value) {
@@ -59,7 +62,13 @@ function hasUniqueValues(values) {
 function isValidStore(store, expectedVersion = STORE_VERSION) {
   if (store?.version !== expectedVersion || !isRecord(store.data)) return false;
 
-  const hasCollections = Object.values(RESOURCE_COLLECTIONS).every(
+  const resourceTypes = expectedVersion < STORE_VERSION
+    ? RESOURCE_TYPES.filter((type) => type !== 'invitation')
+    : RESOURCE_TYPES;
+  const resourceCollections = Object.fromEntries(
+    resourceTypes.map((type) => [type, RESOURCE_COLLECTIONS[type]]),
+  );
+  const hasCollections = Object.values(resourceCollections).every(
     (collection) => Array.isArray(store.data[collection]),
   );
   const hasUsers = Array.isArray(store.data.users);
@@ -69,7 +78,7 @@ function isValidStore(store, expectedVersion = STORE_VERSION) {
   }
 
   const collections = Object.fromEntries(
-    Object.entries(RESOURCE_COLLECTIONS).map(([type, collection]) => [
+    Object.entries(resourceCollections).map(([type, collection]) => [
       type,
       store.data[collection],
     ]),
@@ -127,11 +136,11 @@ function isValidStore(store, expectedVersion = STORE_VERSION) {
       projectsById.has(board.projectId) &&
       hasText(board.name) &&
       typeof board.key === 'string' &&
-      /^[A-Z0-9]{2,20}$/.test(board.key) &&
+      /^[A-Z0-9][A-Z0-9-]{0,18}[A-Z0-9]$/.test(board.key) &&
       userIds.has(board.ownerId) &&
       isProjectMember(board.projectId, board.ownerId) &&
       hasTimestamp(board.createdAt),
-  ) && hasUniqueValues(store.data.boards.map((board) => board.key));
+  ) && hasUniqueValues(store.data.boards.map((board) => `${board.projectId}:${board.key}`));
   const hasValidColumns = store.data.columns.every(
     (column) =>
       isRecord(column) &&
@@ -188,7 +197,18 @@ function isValidStore(store, expectedVersion = STORE_VERSION) {
       hasTimestamp(notification.createdAt)
     );
   });
-  const hasValidCounters = RESOURCE_TYPES.every((type) => {
+  const hasValidInvitations = expectedVersion < STORE_VERSION || (
+    Array.isArray(store.data.invitations) &&
+    store.data.invitations.every((invitation) =>
+      isRecord(invitation) &&
+      projectsById.has(invitation.projectId) &&
+      userIds.has(invitation.userId) &&
+      userIds.has(invitation.invitedByUserId) &&
+      ['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED'].includes(invitation.status) &&
+      hasTimestamp(invitation.createdAt) &&
+      (invitation.respondedAt === null || hasTimestamp(invitation.respondedAt)))
+  );
+  const hasValidCounters = resourceTypes.every((type) => {
     const nextId = store.data.nextIds[type];
     const collection = collections[type];
     const maxId = collection.reduce((currentMax, item) => Math.max(currentMax, item.id), 0);
@@ -207,6 +227,7 @@ function isValidStore(store, expectedVersion = STORE_VERSION) {
     hasValidCards &&
     hasValidComments &&
     hasValidNotifications &&
+    hasValidInvitations &&
     hasValidCounters
   );
 }
@@ -285,6 +306,21 @@ function loadStore(storage) {
       removeLegacyStore(storage);
       return store;
     }
+
+    if (isValidStore(store, PREVIOUS_STORE_VERSION)) {
+      const migratedStore = createStore({
+        ...store.data,
+        invitations: [],
+        nextIds: { ...store.data.nextIds, invitation: 1 },
+      });
+      if (isValidStore(migratedStore)) {
+        normalizeDefaultBoardPreferences(migratedStore);
+        normalizeDemoAdmin(migratedStore);
+        saveStore(storage, migratedStore);
+        removeLegacyStore(storage);
+        return migratedStore;
+      }
+    }
   } else {
     const rawLegacyStore = storage.getItem(LEGACY_DATABASE_STORAGE_KEY);
     if (rawLegacyStore !== null) {
@@ -299,10 +335,16 @@ function loadStore(storage) {
         const migratedStore = createStore({
           ...legacyStore.data,
           defaultBoardPreferences: [],
+          invitations: [],
+          nextIds: { ...legacyStore.data.nextIds, invitation: 1 },
         });
-        saveStore(storage, migratedStore);
-        removeLegacyStore(storage);
-        return migratedStore;
+        if (isValidStore(migratedStore)) {
+          normalizeDefaultBoardPreferences(migratedStore);
+          normalizeDemoAdmin(migratedStore);
+          saveStore(storage, migratedStore);
+          removeLegacyStore(storage);
+          return migratedStore;
+        }
       }
     }
   }

@@ -36,6 +36,7 @@ The checked-in `.env.demo` and `.env.backend` files select the mode explicitly a
 ## Demo scope
 
 - Create Projects and Boards, then add and reorder Board Columns.
+- Search accounts, invite Project members, and accept or decline invitations.
 - Create Cards with a description, due date, and optional Project member assignment.
 - Move Cards with drag and drop or the keyboard-accessible Move to control.
 - Open Card details, assign a member, add comments, and mention Project members.
@@ -43,11 +44,11 @@ The checked-in `.env.demo` and `.env.backend` files select the mode explicitly a
 - Switch between Projects and their Boards.
 - Sign in as a System Admin to view the isolated `/admin` console.
 
-The sample Project contains multiple Boards and members for exercising assignment and mentions. A new Project starts with its creator as its only Owner; invitations, member administration, Project rename, and Project deletion are outside this demo scope.
+The sample Project contains multiple Boards and members for exercising assignment and mentions. A new Project starts with its creator as its only Owner. Demo mode also supports invitations and viewing the Project member list; member removal, Project rename, and Project deletion are not part of this UI.
 
 ## Data and reset
 
-MSW provides the mock HTTP API in Demo mode, and product data persists in browser localStorage under `dev-platform-demo:db:v1`. The access token is stored separately under `dev-platform-demo:access-token`. Use **Reset demo data** in the top bar and confirm to restore the seeded Project, Boards, Cards, Comments, and Notifications. Reset keeps the current login session. Data is local to one browser and is not synchronized across browsers.
+MSW provides the mock HTTP API in Demo mode, and product data persists in browser localStorage under `dev-platform-demo:db:v2` (the v1 data is migrated when possible). The access token is stored separately under `dev-platform-demo:access-token`. Use **Reset demo data** in the top bar and confirm to restore the seeded Projects, Boards, Cards, Comments, Invitations, and Notifications. Reset keeps the current login session. Data is local to one browser and is not synchronized across browsers.
 
 ## API boundary
 
@@ -60,11 +61,15 @@ Demo credentials, the demo account picker, and the Reset demo data control are l
 
 Axios attaches the stored Bearer token. A `401` clears the stored token and the protected route returns to login; `403` remains a permission error. Token changes in another tab clear the local query cache and send protected routes to login. Network and `5xx` failures are normalized and may be retried once by React Query; `4xx` failures are not retried automatically.
 
-The mock uses bearer-token identity and Project membership checks. The backend target and current source are tracked separately in the [shared document index](../docs/README.md), [Project-first API map](../docs/api/kanban-api.md), and [architecture decisions](../docs/project/architecture-decisions.md). The current verification inventory is in [Issue #58 WP1 contract register](docs/issue-58-contract-register.md). Source inspection is not E2E evidence: Project/Membership/Invitation APIs and Project-scoped Board use cases are incomplete; Task Card/Comment operations are fail-closed by default; Notification REST is implemented in source but event generation is not connected end-to-end. Gateway/backend runtime has not been verified from this web-demo.
+The mock uses bearer-token identity and Project membership checks. The backend target and current source are tracked separately in the [shared document index](../docs/README.md), [Project-first API map](../docs/api/kanban-api.md), and [architecture decisions](../docs/project/architecture-decisions.md). The current verification inventory is in [Issue #58 WP1 contract register](docs/issue-58-contract-register.md). The current `main` source includes Project, Membership, Invitation, and Project-scoped Board/Column controllers and application services. Source inspection is not E2E evidence: Gateway/backend runtime and the required service integrations have not been verified from this web-demo. Task Card/Comment operations remain fail-closed by default, and Notification event generation is not connected end-to-end.
 
 MSW routes and payloads demonstrate the UI flow; they are not proof that backend controllers or database schemas implement the same contract. Where the demo differs from the approved backend decisions, the shared architecture/API documents are authoritative.
 
-Default Board preferences are Demo-only because no backend service owner or runtime contract has been approved. Backend mode does not request or mutate those preferences; the Board selector explains that limitation. Project-scoped Board list/create APIs also remain a backend dependency and have not been verified end to end.
+Default Board preferences are Demo-only because no backend service owner or runtime contract has been approved. Backend mode does not request or mutate those preferences; the Board selector explains that limitation. Project-scoped Board list/create and Column add/reorder routes are implemented in the current Board Service source, and the web client unwraps their response envelopes and uses their request fields. They have not been verified end to end.
+
+Project, membership, invitation, and Board list endpoints return `ApiResponse` envelopes; paginated endpoints contain `PageResponse` metadata. The API layer unwraps envelopes, requests pages with the backend-supported maximum size of 100, loads the remaining pages, and retains the server pagination metadata with the resulting item collection. Project roles and Board keys are normalized from `myRole` and `boardKey`; invitation and member profile calls use the public `/api/v1` routes.
+
+The web client calls public APIs through Gateway. Internal service routes such as Board relationship lookups and their HMAC credentials are backend-to-backend concerns; do not place an HMAC key in a Vite environment variable or send it from the browser.
 
 Backend Card list/detail/create/move/assignment/comment requests use the Project-scoped Task routes. Card lists request one Column at a time with `columnId`, a default `limit=5` (maximum 20), and the `nextCursor` returned in `{ items, nextCursor }`; scrolling loads later pages. The client deduplicates cards and offers a Column reload when a continuation request returns `400`. Moving a Card to a Column's end waits for every destination page; a failed page load cancels the move. Demo/MSW exercises the same page shape while retaining its Board-scoped route. Task source has this list contract, but Gateway identity enforcement, authorization snapshots, and live Board/Column validation still determine whether Backend mode works end to end.
 

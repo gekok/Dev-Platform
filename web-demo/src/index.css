@@ -477,6 +477,71 @@ a {
   align-self: flex-end;
 }
 
+.invitation-inbox {
+  display: grid;
+  gap: 2px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.invitation-inbox .section-heading {
+  margin-bottom: 9px;
+}
+
+.invitation-inbox-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  color: #68728a;
+  font-size: 11px;
+}
+
+.invitation-inbox-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invitation-inbox-list > li,
+.invitation-inbox-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.invitation-inbox-list > li {
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+}
+
+.invitation-inbox-list > li > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.invitation-inbox-list strong {
+  color: #30394e;
+  font-size: 11px;
+}
+
+.invitation-inbox-list > li > div:first-child > span {
+  color: #828a9d;
+  font-size: 10px;
+}
+
+.invitation-inbox-actions {
+  flex-wrap: wrap;
+}
+
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
