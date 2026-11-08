@@ -12,6 +12,8 @@ public final class EventTypes {
     public static final String MEMBER_ADDED = "project.member.added";
     public static final String MEMBER_REMOVED = "project.member.removed";
     public static final String OWNER_TRANSFERRED = "project.owner.transferred";
+    public static final String CARD_ASSIGNED = "card.assigned";
+    public static final String COMMENT_MENTIONED = "comment.mentioned";
 
     private EventTypes() {
     }

@@ -7,40 +7,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import dev.platform.task.application.service.AuthorizationSnapshotUnavailableException;
-import dev.platform.task.application.service.BoardNotWritableException;
-import dev.platform.task.application.service.BoardStateUnavailableException;
-import dev.platform.task.application.service.InvalidBoardTargetException;
-import dev.platform.task.application.service.ProjectAccessDeniedException;
+import dev.platform.task.application.exception.AuthorizationSnapshotUnavailableException;
+import dev.platform.task.application.exception.ProjectAccessDeniedException;
+import dev.platform.task.application.exception.CardOperationUnavailableException;
+import dev.platform.task.application.exception.CardNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 
 // Bắt lỗi validate Aggregate, trả 400 theo kanban-api.md mục 6.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(InvalidBoardTargetException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidBoardTarget(
-            InvalidBoardTargetException ex, HttpServletRequest request) {
-        ErrorResponse body = new ErrorResponse(
-                "INVALID_COLUMN_TARGET", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+    @ExceptionHandler(CardNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCardNotFound(CardNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(
+                "CARD_NOT_FOUND", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
     }
 
-    @ExceptionHandler(BoardNotWritableException.class)
-    public ResponseEntity<ErrorResponse> handleBoardNotWritable(
-            BoardNotWritableException ex, HttpServletRequest request) {
-        ErrorResponse body = new ErrorResponse(
-                ex.code(), ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
-    }
-
-    @ExceptionHandler(BoardStateUnavailableException.class)
-    public ResponseEntity<ErrorResponse> handleBoardServiceUnavailable(
-            BoardStateUnavailableException ex, HttpServletRequest request) {
-        ErrorResponse body = new ErrorResponse(
-                "DEPENDENCY_UNAVAILABLE", ex.getMessage(), OffsetDateTime.now().toString(),
-                request.getRequestURI());
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    @ExceptionHandler(CardOperationUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleCardOperationUnavailable(
+            CardOperationUnavailableException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new ErrorResponse(
+                "CARD_OPERATION_UNAVAILABLE", ex.getMessage(), OffsetDateTime.now().toString(), request.getRequestURI()));
     }
 
     // Lỗi validate đầu vào (title trống, position âm...).

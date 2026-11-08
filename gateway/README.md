@@ -10,7 +10,7 @@ Gateway là cổng HTTP của Dev-Platform, dùng Spring Cloud Gateway Server We
 - Target: Gateway xác thực Account, loại bỏ/ghi đè X-User-Id do client gửi và chuyển identity đáng tin cậy. Account phải được xác minh ACTIVE. Gateway không sở hữu snapshot; user-service ghi Account snapshot, board-service ghi Project/Membership snapshot, Task đọc Redis và fail closed.
 - System Admin quản trị Account nhưng không tự có quyền Project. Kỳ 1 không có Account deletion endpoint/status hoặc Project cascade.
 - Project/Membership/Invitation routes hiện được route tới board-service nhưng controller target chưa có. Admin Account route và internal route chưa được cấu hình.
-- /ws/** được route tới task-service; task-service chưa đăng ký WebSocket handler nên route chưa chứng minh realtime hoạt động.
+- /ws/** có route tới task-service, nhưng Task chưa đăng ký handler. Gateway source hiện dùng HTTP upstream; auth/identity forwarding, WebSocket proxy và secured Board-to-Project lookup cần sẵn sàng trước khi bật runtime #24.
 
 ## Chạy local
 
@@ -18,7 +18,9 @@ Yêu cầu Java 21 và Maven. Từ root repo:
 
     mvn -pl gateway spring-boot:run
 
-Gateway nghe tại http://localhost:8080. Request chỉ thành công nếu upstream service tương ứng chạy đúng port. Upstream hiện hard-coded trong application.yml.
+Gateway nghe tại http://localhost:8080. Request chỉ thành công nếu upstream service tương ứng chạy. Upstream mặc định là localhost các cổng 8081–8084; có thể cấu hình qua các thuộc tính `gateway.upstream.user`, `gateway.upstream.board`, `gateway.upstream.task`, `gateway.upstream.notification`.
+
+Chạy `mvn -pl gateway test` từ root để kiểm tra khởi động, route HTTP với upstream giả và internal route không được expose. Các test này không chứng minh xác thực hay tích hợp service thật. Module Gateway dùng Spring Cloud 2025.1.4 tương thích Spring Boot 4.1.x; các module khác vẫn giữ phiên bản quản lý ở root.
 
 gateway/pom.xml dùng Spring Cloud Gateway Server WebFlux và Actuator. Gateway không có API/domain controller riêng.
 

@@ -1,23 +1,30 @@
 package dev.platform.user.infrastructure.security;
 
+import dev.platform.user.application.policy.BcryptPasswordPolicy;
 import dev.platform.user.application.port.out.PasswordEncoderPort;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.Objects;
-
-// Mã hoá mật khẩu (stub: trả raw, kỳ 1 thay bằng BCryptPasswordEncoder).
 @Component
 public class BcryptPasswordAdapter implements PasswordEncoderPort {
 
-    @Override
-    public String encode(String raw) {
-        // TODO kỳ 1: dùng BCryptPasswordEncoder thay vì trả raw.
-        return raw;
-    }
+  private final BCryptPasswordEncoder passwordEncoder =
+      new BCryptPasswordEncoder(BcryptPasswordPolicy.BCRYPT_STRENGTH);
 
-    @Override
-    public boolean matches(String raw, String hash) {
-        // TODO kỳ 1: so bằng BCryptPasswordEncoder.matches.
-        return Objects.equals(raw, hash);
+  @Override
+  public String encode(String rawPassword) {
+    if (rawPassword == null) {
+      throw new IllegalArgumentException("rawPassword cannot be null");
     }
+    BcryptPasswordPolicy.requireWithinLimit(rawPassword);
+    return passwordEncoder.encode(rawPassword);
+  }
+
+  @Override
+  public boolean matches(String rawPassword, String encodedPassword) {
+    if (rawPassword == null || encodedPassword == null || !BcryptPasswordPolicy.isWithinLimit(rawPassword)) {
+      return false;
+    }
+    return passwordEncoder.matches(rawPassword, encodedPassword);
+  }
 }

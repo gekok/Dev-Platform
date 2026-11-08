@@ -35,10 +35,16 @@ spring:
 
 dev-platform:
   security:
-    internal-service-token: ${INTERNAL_SERVICE_TOKEN:}
-  internal:
-    board-service:
-      base-url: ${BOARD_SERVICE_BASE_URL:http://localhost:8082}
+    trusted-gateway-identity:
+      enabled: ${TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED:false}
+  realtime:
+    board-lookup:
+      ready: ${TASK_BOARD_PROJECT_LOOKUP_READY:false}
+    gateway-proxy:
+      ready: ${TASK_GATEWAY_WEBSOCKET_PROXY_READY:false}
+    board-websocket:
+      enabled: ${TASK_BOARD_WEBSOCKET_ENABLED:false}
+      authorization-recheck-ms: ${TASK_BOARD_WEBSOCKET_AUTHORIZATION_RECHECK_MS:30000}
   messaging:
     enabled: ${MESSAGING_ENABLED:false}
     outbox-relay:
@@ -48,6 +54,10 @@ dev-platform:
       confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
     consumers:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
+      member-assignment-cleanup:
+        queue: ${MEMBER_ASSIGNMENT_CLEANUP_QUEUE:task-service.member-assignment-cleanup}
+        # Keep all three messaging/consumer gates false until shared retry/backoff/DLQ and Task behavior are verified.
+        retry-dlq-ready: ${MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY:false}
   assignment-cleanup:
     enabled: ${MEMBER_ASSIGNMENT_CLEANUP_ENABLED:false}
     fixed-delay-ms: ${MEMBER_ASSIGNMENT_CLEANUP_FIXED_DELAY_MS:1000}

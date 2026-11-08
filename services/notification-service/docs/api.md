@@ -12,7 +12,7 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 | PATCH | /api/v1/notifications/{id}/read | X-User-Id; body rỗng | 200 NotificationResponse |
 | POST | /internal/v1/notifications | userId, projectId?, type, title, cardId?, boardId? | 201 NotificationResponse |
 
-Client chỉ được list/mark-read Notification của Account hiện tại. POST internal route bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì hiện vẫn không kiểm tra service token, nên chỉ bật sau khi có bảo vệ service-to-service và không expose qua Gateway. TaskEventListener còn là placeholder, nên chưa có producer event tạo Notification end-to-end. Các inbound ports cũng chưa được nối hoàn chỉnh.
+Client chỉ được list/mark-read Notification của Account hiện tại. POST internal route bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì hiện vẫn không kiểm tra service token, nên chỉ bật sau khi có bảo vệ service-to-service và không expose qua Gateway. TaskEventListener còn là placeholder, nên chưa có producer event tạo Notification end-to-end. ListMyNotificationsPort và MarkReadPort đã có application service triển khai. Client routes vẫn lấy identity từ X-User-Id dạng stub; Gateway chưa xác thực và bảo vệ identity header. CreateNotificationPort cùng producer/consumer event flow chưa thuộc phạm vi hoàn thiện của hai route này.
 
 Response có id, type, title, projectId, cardId, boardId, read, createdAt. Client list hiện trả mảng không phân trang. Các error mapping cụ thể xem exception handler; không coi API contract draft là runtime behavior.
 

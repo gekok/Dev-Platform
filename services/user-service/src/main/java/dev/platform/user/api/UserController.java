@@ -1,59 +1,73 @@
 package dev.platform.user.api;
 
-import dev.platform.user.api.dto.LoginRequest;
-import dev.platform.user.api.dto.RegisterRequest;
-import dev.platform.user.api.dto.TokenResponse;
+import dev.platform.user.api.dto.UserCandidateResponse;
+import dev.platform.user.api.dto.UserProfileResponse;
 import dev.platform.user.api.dto.UserResponse;
-import dev.platform.user.application.command.LoginCommand;
-import dev.platform.user.application.command.RegisterCommand;
+import dev.platform.user.application.dto.UserSummaryDto;
 import dev.platform.user.application.port.in.GetCurrentUserPort;
-import dev.platform.user.application.port.in.LoginUserPort;
-import dev.platform.user.application.port.in.RegisterUserPort;
-import jakarta.validation.Valid;
+import dev.platform.user.application.port.in.UserDirectoryPort;
+import dev.platform.user.application.port.out.TokenPort;
+import dev.platform.user.domain.exception.AuthenticationException;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
-// Biên REST Auth/User: nhận DTO, gọi port in, không nhận userId trong body.
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
-    private final RegisterUserPort registerPort;
-    private final LoginUserPort loginPort;
-    private final GetCurrentUserPort mePort;
+  private final GetCurrentUserPort getCurrentUserPort;
+  private final UserDirectoryPort userDirectoryPort;
+  private final TokenPort tokenPort;
 
-    @PostMapping("/auth/register")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest req) {
-        UserResponse body = UserResponse.from(
-                registerPort.register(new RegisterCommand(req.email(), req.password(), req.fullName())));
-        return ResponseEntity.status(HttpStatus.CREATED).body(body);
-    }
+  @GetMapping("/me")
+  public ResponseEntity<UserResponse> me(
+      @RequestHeader(value = "Authorization", required = false) String authorization) {
+    UUID userId = verifyAuthenticated(authorization);
+    UserSummaryDto summary = getCurrentUserPort.getCurrentUser(userId);
+    return ResponseEntity.ok(UserResponse.from(summary));
+  }
 
-    @PostMapping("/auth/login")
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
-        String token = loginPort.login(new LoginCommand(req.email(), req.password()));
-        return ResponseEntity.ok(TokenResponse.of(token));
-    }
+  @GetMapping
+  public ResponseEntity<List<UserCandidateResponse>> searchUsers(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "query", required = false) String query,
+      @RequestParam(value = "limit", required = false, defaultValue = "20") int limit) {
+    verifyAuthenticated(authorization);
+    List<UserCandidateResponse> users = userDirectoryPort.searchUsers(query, limit).stream()
+        .map(UserCandidateResponse::from)
+        .toList();
+    return ResponseEntity.ok(users);
+  }
 
-    @GetMapping("/users/me")
-    public ResponseEntity<UserResponse> me(
-            @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestHeader(value = "X-User-Id", required = false) String xUserId) {
-        // TODO kỳ 1: parse JWT sub từ Authorization; hiện lấy X-User-Id để test.
-        if (xUserId == null || xUserId.isBlank()) {
-            throw new IllegalArgumentException("Thieu X-User-Id (stub cho JWT sub)");
-        }
-        UserResponse body = UserResponse.from(mePort.me(UUID.fromString(xUserId)));
-        return ResponseEntity.ok(body);
+  @GetMapping("/profiles")
+  public ResponseEntity<List<UserProfileResponse>> getProfiles(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "ids", required = false) Set<UUID> ids) {
+    verifyAuthenticated(authorization);
+    if (ids == null || ids.isEmpty()) {
+      return ResponseEntity.ok(List.of());
     }
+    Set<UUID> cappedIds = ids.stream().limit(100).collect(java.util.stream.Collectors.toSet());
+    List<UserProfileResponse> profiles = userDirectoryPort.getProfiles(cappedIds).stream()
+        .map(UserProfileResponse::from)
+        .toList();
+    return ResponseEntity.ok(profiles);
+  }
+
+  private UUID verifyAuthenticated(String authorization) {
+    if (authorization == null || !authorization.startsWith("Bearer ")) {
+      throw new AuthenticationException("Missing or invalid Authorization header");
+    }
+    String token = authorization.substring(7).trim();
+    return tokenPort.parseAndValidate(token);
+  }
 }

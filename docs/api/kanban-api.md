@@ -4,7 +4,7 @@
 
 **Base URL mục tiêu qua Gateway:** `http://localhost:8080/api/v1`.
 
-**Runtime hiện tại:** backend vẫn chủ yếu dùng Board-first API; Auth/Gateway cũng chưa được nối hoàn chỉnh (login port chưa có implementation, `/users/me` còn dùng `X-User-Id`). Phần Board-first ở cuối tài liệu được giữ làm tham chiếu cho code/tài liệu cũ, không phải contract để phát triển tính năng Project-first mới.
+**Runtime hiện tại:** backend vẫn chủ yếu dùng Board-first API. `user-service` đã triển khai login và `/users/me`; endpoint `/users/me` xác thực Bearer token bằng RSA256. Gateway hiện định tuyến Auth/User nhưng chưa xác thực JWT hoặc loại bỏ identity header do client gửi; một số controller legacy vẫn dùng `X-User-Id`. Phần Board-first ở cuối tài liệu được giữ làm tham chiếu cho code/tài liệu cũ, không phải contract để phát triển tính năng Project-first mới.
 
 ## 1. Route map mục tiêu Project-first
 
@@ -50,8 +50,8 @@ Các route dưới đây ghi lại phạm vi đã thống nhất và route đang
 - Project và Board dùng `ACTIVE`, `COMPLETED`, `CANCELLED`; transition cụ thể và route cập nhật trạng thái chưa chốt.
 - API list Card dùng cursor: mặc định 5, tối đa 20, `position DESC, id DESC`, cursor opaque gồm `position` và `id`. Cặp `(position,id)` đã tạo thứ tự toàn phần vì `id` là duy nhất. Wire proposal cho infinite-scroll riêng từng Column yêu cầu `columnId` và cursor ràng buộc với `boardId` + `columnId` + sort; đây là scope API/UI cần duyệt, không phải điều kiện toán học của cursor.
 - Gateway là ranh giới xác thực mục tiêu. Identity phải được suy ra từ access token hợp lệ; Gateway loại bỏ/ghi đè identity header do client gửi trước khi chuyển tiếp. Internal REST từ `task-service` sang `board-service` để kiểm tra quyền chưa triển khai cho tới khi bảo mật giao tiếp nội bộ được giải quyết.
-- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. `SYSTEM_ADMIN` tự nó không cấp quyền Project; theo quyết định #7, tài khoản System Admin bị cấm tham gia Project (bắt buộc dùng Account riêng).
-- Quyết định #7 đã chốt bootstrap System Admin đầu tiên qua Flyway SQL migration và chỉ System Admin tạo Account (không mở đăng ký tự do). API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope, retry/DLQ và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
+- Tạo Project yêu cầu Account nghiệp vụ `ACTIVE` đã được Gateway xác thực; board-service lấy actor từ identity context và ghi Project cùng Owner membership trong một transaction. Account mang `SYSTEM_ADMIN` không được tạo hoặc tham gia Project; cá nhân cần làm việc trong Project dùng Account nghiệp vụ không mang role này.
+- SQL bootstrap local seed Account System Admin mẫu trong `user_db`; Kỳ 1 không dùng Flyway. Issue #7 đã chốt chỉ System Admin được tạo Account, không mở public self-registration và Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project. Route/payload provisioning qua Admin còn mở. Consumer retry tối đa 3 lần, cách nhau 5 giây rồi chuyển DLQ đã chốt nhưng chưa nối runtime; cấu hình queue/DLQ và xử lý sau DLQ còn mở. API directory/bulk profile, lỗi nghiệp vụ Invitation, expiry/cancel, transition Project/Board, Card status, cursor wire/scope và Board preference cũng còn mở hoặc ở mức đề xuất. Account deletion/cascade thuộc Kỳ 2, không nằm trong API Kỳ 1.
 
 Các route preference và nhiều route Kanban bắt nguồn từ MSW demo; Invitation/Accept và quyền Project-first là quyết định backend sau đó, không phải endpoint đã có trong demo. Xem [chỉ mục tài liệu](../README.md) và [architecture decisions](../project/architecture-decisions.md) để biết thứ tự ưu tiên.
 
@@ -70,7 +70,7 @@ Phần này bổ sung payload/response và quyền theo service để làm nền
 
 ### `user-service`: Auth và System Admin
 
-Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; `SYSTEM_ADMIN` chỉ cho phép quản trị Account, không cấp quyền Project và bị cấm tham gia Project (theo quyết định #7). Bootstrap Admin đầu tiên được seed qua Flyway SQL migration. Kỳ 1 không triển khai Account deletion.
+Role hệ thống được lưu trong `SystemRoles` và `UserSystemRoles` thuộc `user_db`; Account mang `SYSTEM_ADMIN` chỉ được quản trị Account, không được làm Owner/Member trong Project (theo quyết định #7). SQL bootstrap local seed Account System Admin mẫu; Kỳ 1 không dùng Flyway. Kỳ 1 không triển khai Account deletion.
 
 | Method | Route mục tiêu | Request | Thành công | Quyền/trạng thái |
 |---|---|---|---|---|
@@ -89,7 +89,7 @@ Tạo/quản trị Account qua System Admin thuộc nghiệp vụ quản trị h
 | Method | Route mục tiêu | Request/Query | Thành công | Quyền chính |
 |---|---|---|---|---|
 | `GET` | `/api/v1/projects` | Không body | `200 ProjectSummary[]` | Member/Owner thấy Project mình tham gia |
-| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }`; không nhận `ownerId`/`userId` của actor | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ `ACTIVE`, danh tính do Gateway xác thực; System Admin-only không có quyền Project; quyền dùng Project của Account đa vai trò còn mở |
+| `POST` | `/api/v1/projects` | `{ "name": "MSS Platform" }`; không nhận `ownerId`/`userId` của actor | `201 ProjectSummary`; người tạo thành Owner | Account nghiệp vụ `ACTIVE`, danh tính do Gateway xác thực; Account mang `SYSTEM_ADMIN` bị từ chối; dùng Account nghiệp vụ không mang role này để làm Project |
 | `GET` | `/api/v1/projects/{projectId}` | Path ID | `200 ProjectDetail` | Member/Owner |
 | `GET` | `/api/v1/projects/{projectId}/members` | Path ID | `200 MemberSummary[]` | Member/Owner |
 | `POST` | `/api/v1/projects/{projectId}/invitations` | `{ "userId": "uuid" }` | `201 Invitation` có `status: PENDING` | Owner; tài khoản đã tồn tại |
@@ -184,7 +184,7 @@ Board/Column thuộc Project phải được xác minh từ nguồn đáng tin c
 | `GET` | `/api/v1/notifications/me?unreadOnly=false` | `unreadOnly` mặc định false | `200 Notification[]` | Chỉ Notification của Account hiện tại |
 | `PATCH` | `/api/v1/notifications/{notificationId}/read` | Không body | `200 Notification` đã đọc | Chỉ recipient |
 
-Shape tham khảo: `{ id, type, title, projectId, cardId, boardId, read, createdAt }`; `projectId`, `cardId`, `boardId` có thể null với Notification hệ thống hoặc Notification không gắn entity tương ứng. Demo hiện dùng `ASSIGNED`, `MENTIONED`, `MOVED`; type Kỳ 1 cần duyệt theo event thực tế. Notification được tạo từ domain event/internal integration, không cho client tự tạo. Internal route hiện là skeleton và bị tắt mặc định; nếu bật, nó vẫn chưa có bảo vệ service-to-service và không được expose qua Gateway.
+Shape tham khảo: `{ id, type, title, projectId, cardId, boardId, read, createdAt }`; `projectId`, `cardId`, `boardId` có thể null với Notification hệ thống hoặc Notification không gắn entity tương ứng. Kỳ 1 Task producer phát `card.assigned` → `ASSIGNED` cho assignee mới khác actor, và `comment.mentioned` → `MENTIONED` cho recipient IDs duy nhất còn là Project Member khi Comment được ghi, trừ tác giả. Không phát `MOVED`. Notification consumer tạo một record cho mỗi recipient trong transaction Inbox; title được tạo ở Notification service từ event type/context, không lấy từ Comment body. Task event payload chỉ mang recipient IDs và context IDs, không chứa Card title/Comment body. Producer Outbox đã có trong Task source; Notification consumer và E2E broker flow vẫn thuộc integration task. Notification được tạo từ event, không cho client tự tạo. Internal route hiện là skeleton và bị tắt mặc định; nếu bật, nó vẫn chưa có bảo vệ service-to-service và không được expose qua Gateway.
 
 Account/Project deletion và Notification retention thuộc Kỳ 2. Notification Kỳ 1 thuộc Account nhận; Project/Board/Card chỉ là context, không có cascade delete theo Project.
 
@@ -517,15 +517,19 @@ Response `200 OK`: thông báo sau khi đổi `read` thành `true`.
 
 ### Real-time
 
+Issue #24 architecture approved on 2026-11-06. This is the approved target contract; Task runtime must wait until Gateway identity, trusted Board lookup, and Gateway WebSocket proxy are ready.
+
 Web React giữ một kênh sống (WebSocket) theo bảng:
 
 ```text
 WS /ws/boards/{boardId}
 ```
 
-Header: `Authorization: Bearer <jwt>`.
+Header contract hiện ghi `Authorization: Bearer <jwt>`; Gateway phải xác thực handshake và chuyển identity tin cậy tới Task. Task không tin `X-User-Id` hay `projectId` do client gửi. Task resolve Board→Project từ nguồn persisted đáng tin cậy, rồi kiểm tra Account và Project membership qua snapshot ở lúc handshake, định kỳ khi socket mở và ngay trước mỗi lần gửi. Nếu không xác minh được identity, Board relation hoặc snapshot, Task từ chối handshake/đóng socket. Runtime chưa được bật trước khi các phụ thuộc này sẵn sàng. Cần xác nhận cách browser WebSocket cung cấp credential và cách Gateway chuyển identity trước khi tích hợp.
 
-Event server bắn xuống:
+Fanout chỉ tới các session cùng Board trong Task instance hiện tại. Event được gửi sau khi transaction Card/Comment commit; send/queue lỗi có thể làm rơi event nhưng không đổi kết quả HTTP đã commit. WebSocket không lưu bền, không retry/replay và không bảo đảm thứ tự hay nhận đủ. Khi reconnect, client refetch REST. Event không chứa title hoặc Comment body. Đây là semantics cho WebSocket #24, không phải RabbitMQ catalog của #25.
+
+Event server gửi xuống:
 
 ```json
 { "event": "card.moved", "cardId": 100, "toColumnId": 11, "toPosition": 0 }
@@ -538,6 +542,8 @@ Event server bắn xuống:
 ```json
 { "event": "comment.added", "cardId": 100, "commentId": 900 }
 ```
+
+Gateway auth runtime, Board-to-Project adapter an toàn và proxy WebSocket qua Gateway chưa sẵn sàng; Task handler hiện chưa được đăng ký.
 
 Mobile Flutter không giữ socket suốt. Nhận việc gán và mention qua đẩy
 (push FCM). Bấm vào tin mới mở app và gọi API lấy chi tiết.

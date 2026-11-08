@@ -6,41 +6,94 @@ Hướng dẫn Shared: [Shared README](../../../shared/README.md).
 
 ## Route được khai báo trong source
 
-CardController hiện dùng Project-scoped path và gọi ProjectAuthorizationGuard trước thao tác. Trước khi tạo hoặc di chuyển Card, controller cũng gọi Board Service nội bộ để xác minh Project, Board, Column và trạng thái ACTIVE. Đây là mapping của controller; các inbound port CRUD vẫn chưa có implementation hoàn chỉnh.
+CardController hiện dùng Project-scoped path. Mọi route Card/Comment trả 503 `CARD_OPERATION_UNAVAILABLE` trước khi đọc `X-User-Id` nếu trusted Gateway identity chưa được bật. Sau khi identity sẵn sàng, ProjectAuthorizationGuard kiểm tra Redis snapshot. Tạo/move còn trả 503 tới khi có adapter tin cậy xác minh Board/Column thuộc Project. Gateway chưa xác thực/chuyển tiếp identity và Board/Column-to-Project validation vẫn là integration TODO.
 
 | Method | Route | Request/query | Response |
 |---|---|---|---|
-| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 CardResponse |
-| GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId? | 200 CardResponse[] |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse |
-| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 200 CardResponse |
-| POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse |
+| POST | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId, title, description?, assigneeId?, dueDate? | 201 khi identity tin cậy và validator Column sẵn sàng; 503 `CARD_OPERATION_UNAVAILABLE` nếu thiếu một trong hai |
+| GET | /api/v1/projects/{projectId}/boards/{boardId}/cards | X-User-Id; columnId required, limit?, cursor? | 200 `{items, nextCursor}` sau khi identity tin cậy và authorization snapshot hợp lệ; nếu chưa, 503 |
+| GET | /api/v1/projects/{projectId}/cards/{cardId} | X-User-Id | 200 CardDetailResponse; 404 nếu Card không tồn tại trong Project; 503 khi identity chưa tin cậy |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/move | X-User-Id; toColumnId, toPosition | 200 CardResponse khi identity và validator Column sẵn sàng; nếu chưa, 503 `CARD_OPERATION_UNAVAILABLE` |
+| PATCH | /api/v1/projects/{projectId}/cards/{cardId}/assignee | X-User-Id; assigneeId: UUID|null | 503 `CARD_OPERATION_UNAVAILABLE` khi identity chưa tin cậy; sau khi tích hợp, 200 CardResponse hoặc 403 nếu assignee không hợp lệ/generation đã có fence |
+| POST | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id; content, mentionedUserIds? | 201 CommentResponse khi identity tin cậy và snapshot hợp lệ; nếu chưa, 503 `CARD_OPERATION_UNAVAILABLE` |
+| GET | /api/v1/projects/{projectId}/cards/{cardId}/comments | X-User-Id | 200 CommentResponse[] theo id tăng dần sau khi identity tin cậy; nếu chưa, 503 |
 
-X-User-Id hiện là header bắt buộc ở controller, nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Mọi route được bảo vệ bằng snapshot đọc trực tiếp từ Redis; snapshot thiếu, hỏng hoặc Redis lỗi thì trả 503 AUTHORIZATION_SNAPSHOT_UNAVAILABLE, membership không hợp lệ thì trả 403 PROJECT_ACCESS_DENIED.
+### WebSocket Board (#24) — service-side runtime có readiness gate
 
-CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List hiện trả toàn bộ kết quả; cursor chưa được nối vào controller.
+Contract mục tiêu giữ route và payload đã duyệt:
 
-## Board Service validation
+```text
+WS /ws/boards/{boardId}
+```
 
-| Method | Route | Authentication | Purpose |
+```json
+{"event":"card.moved","cardId":100,"toColumnId":11,"toPosition":0}
+{"event":"card.created","cardId":101,"columnId":10}
+{"event":"comment.added","cardId":100,"commentId":900}
+```
+
+Task đăng ký `WS /ws/boards/{boardId}` và handler chỉ khi `TASK_TRUSTED_GATEWAY_IDENTITY_ENABLED`, `TASK_BOARD_PROJECT_LOOKUP_READY`, `TASK_GATEWAY_WEBSOCKET_PROXY_READY` và `TASK_BOARD_WEBSOCKET_ENABLED` đều là `true`. Cả bốn mặc định là `false`; cần đăng ký adapter `BoardProjectLookupPort` dùng Board đã lưu trước khi bật. Cờ readiness là cấu hình triển khai, không phải bằng chứng Gateway/Board đã tích hợp.
+
+Handshake yêu cầu identity `X-User-Id` do Gateway tin cậy chuyển tiếp; Task tự tra Board→Project và kiểm tra Account/membership trong snapshot. Session được kiểm tra lại định kỳ và ngay trước mỗi lần gửi; lookup hoặc snapshot lỗi đóng session. Event được phát sau transaction commit và chỉ fanout tới session cùng Board trong cùng Task instance. Đây là best-effort: không persistence/retry/replay hoặc bảo đảm nhận đủ/thứ tự; client refetch REST sau reconnect. Payload giữ nguyên event names và fields đã duyệt, không gồm Card title hay Comment body. Message #24 không phải durable RabbitMQ event của #25. Xem [kế hoạch realtime](realtime-events-proposal.md).
+
+`X-User-Id` hiện là header bắt buộc nhưng chưa phải danh tính đáng tin cậy: Gateway chưa có auth filter để ghi đè header client gửi. Vì vậy mọi route REST Card/Comment kiểm tra cờ trusted Gateway identity trước guard và từ chối mặc định; không dùng UUID client gửi làm actor. Khi Gateway sẵn sàng, mỗi route kiểm tra snapshot Redis; snapshot thiếu, hỏng hoặc Redis lỗi trả 503 `AUTHORIZATION_SNAPSHOT_UNAVAILABLE`, membership không hợp lệ trả 403 `PROJECT_ACCESS_DENIED`.
+
+CardResponse gồm id, projectId, boardId, columnId, title, status, position, assigneeId. CommentResponse gồm id, cardId, authorId, content, createdAt. List dùng keyset theo position DESC, id DESC; limit mặc định 5, khoảng hợp lệ 1–20. Cursor tạm thời ràng buộc project, board, column và sort; sai scope hoặc định dạng trả 400 BAD_REQUEST. `nextCursor` null là trang cuối. Đây là wire tạm thời, chưa phải contract đã duyệt.
+
+Comment kiểm tra Card thuộc Project và actor qua guard; POST yêu cầu content không rỗng, mỗi mention phải có Account ACTIVE và Project Membership ACTIVE theo snapshot. `mentionedUserIds` được khử trùng lặp; tác giả bị loại khỏi recipient. Khi còn recipient, một event `comment.mentioned` được ghi cùng transaction với Comment. Chỉ lưu recipient IDs trong Outbox payload; không lưu lịch sử mention riêng hoặc gửi nội dung Comment. Cả POST và GET đều bị từ chối bằng 503 `CARD_OPERATION_UNAVAILABLE` khi trusted Gateway identity chưa bật. Chưa xác nhận E2E với Redis/Gateway.
+
+## Durable Task notification events (#25)
+
+Task ghi Notification intent vào `outbox_events` trong cùng SQL transaction với thay đổi Card/Comment, qua shared `OutboxEventWriter`. Lỗi ghi hoặc serialize Outbox làm rollback thay đổi nghiệp vụ. Hai event contract `schemaVersion=1`:
+
+| Wire event | Phát khi | Recipient | Payload |
 |---|---|---|---|
-| GET | `/internal/columns/{columnId}/task-count` | `X-Service-Token` | Đếm Card/Task trước khi Board Service xóa Column |
+| `card.assigned` | Tạo Card với assignee khác actor, hoặc assignee đổi sang user khác; không phát khi unassign, tự gán, no-op hay chỉ đổi membership generation | Assignee mới | `projectId`, `boardId`, `cardId`, `recipientUserId` |
+| `comment.mentioned` | Comment commit cùng Outbox sau khi mention IDs được xác thực | Mỗi recipient khác tác giả, một lần | `projectId`, `boardId`, `cardId`, `commentId`, `recipientUserIds` |
 
-Task create/move gọi `GET {BOARD_SERVICE_BASE_URL}/internal/boards/{boardId}` với `X-Service-Token`; Project/Board phải ACTIVE và Column phải thuộc Board. Dependency lỗi trả `503 DEPENDENCY_UNAVAILABLE`; target sai trả `422 INVALID_COLUMN_TARGET`; Board/Project đóng trả `409 BOARD_NOT_ACTIVE` / `PROJECT_NOT_ACTIVE`. Internal endpoints không được expose qua Gateway. Cấu hình token dùng chung qua `INTERNAL_SERVICE_TOKEN`.
+Envelope dùng `aggregateType=TASK_NOTIFICATION_INTENT`, `aggregateId=eventId`, `aggregateVersion=1`. Đây là event độc lập, không cam kết ordering theo Card; dedup dùng `(consumerName,eventId)`. Payload không có actor ID, membership version, Card title hoặc Comment body. Notification consumer ánh xạ hai event lần lượt sang `ASSIGNED` và `MENTIONED`; consumer, routing/ACK và retry/DLQ thuộc task tích hợp riêng. Relay/messaging hiện mặc định tắt và cần schema Outbox vật lý đã được xác minh trước khi bật.
+
+### Ví dụ request/response
+
+Các ví dụ này mô tả contract của code, không phải log nghiệm thu. Các request yêu cầu `X-User-Id` là UUID đã được Gateway xác thực và ghi đè. Mặc định trusted identity tắt; create/move cũng yêu cầu validator Column thật, nên các request đó trả 503 tới khi dependency được cấu hình.
+
+`POST /api/v1/projects/1/boards/2/cards` với body:
+
+```json
+{"columnId":3,"title":"Prepare release","description":null,"assigneeId":null,"dueDate":null}
+```
+
+Khi được phép và lưu thành công, response `201` có dạng `{"id":42,"projectId":1,"boardId":2,"columnId":3,"title":"Prepare release","status":"TODO","position":0,"assigneeId":null}`. Position thực tế phụ thuộc Card hiện có.
+
+`GET /api/v1/projects/1/boards/2/cards?columnId=3&limit=5` trả `200` với `{ "items": [...], "nextCursor": null }`; truyền `nextCursor` ở query `cursor` để lấy trang tiếp theo khi giá trị khác null.
+
+`PATCH /api/v1/projects/1/cards/42/move` với `{"toColumnId":4,"toPosition":0}` trả `200` và Card đã cập nhật khi nguồn xác minh Column chấp nhận cả source và destination.
+
+`POST /api/v1/projects/1/cards/42/comments` với `{"content":"Please review","mentionedUserIds":[]}` trả `201` với `id`, `cardId`, `authorId`, `content`, `createdAt`. GET cùng path trả mảng Comment theo id tăng dần. Card không tồn tại trong Project trả `404 CARD_NOT_FOUND`; content rỗng trả `400 BAD_REQUEST`.
 
 ## Contract mục tiêu và phần chưa có trong source
 
-Contract chung còn có GET /api/v1/projects/{projectId}/cards/{cardId} để đọc một Card. Route này chưa được khai báo trong controller hiện tại. Mọi route Card phải giữ projectId trong URL để giới hạn đọc/ghi theo cards.project_id; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
+GET `/api/v1/projects/{projectId}/cards/{cardId}` đã được khai báo qua inbound port; persistence query đồng thời lọc theo `project_id`, nên Card sai Project trả `404 CARD_NOT_FOUND`. Response chi tiết gồm `description` và `dueDate` ngoài các field Card cơ bản. Mọi route Card giữ projectId trong URL để giới hạn đọc/ghi theo `cards.project_id`; client không được gửi membershipVersion, Task lấy version của assignee từ Redis snapshot.
 
-Board/Column truyền khi tạo hoặc move Card được kiểm tra với Board Service thay vì tin riêng projectId caller gửi. Các Card CRUD ports chưa có implementations nên việc ghi Task vẫn chưa chạy end-to-end.
+Board/Column truyền khi tạo hoặc move Card phải được xác minh thuộc Project trong path. Internal REST đang hoãn vì chưa có bảo mật service-to-service, nên không được xem riêng projectId do caller gửi là bằng chứng cho quan hệ Board–Project. Đây là integration TODO trước khi bật luồng end-to-end.
 
-Phân trang mục tiêu theo từng Column: cursor opaque, mặc định 5, tối đa 20, position DESC, id DESC; controller hiện chưa có limit/cursor. Dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload.
+Move yêu cầu `toPosition`, dùng chỉ số hiển thị bắt đầu từ 0 theo thứ tự position DESC/id DESC, sau khi gỡ Card khỏi vị trí cũ. Tạo Card từ chối title rỗng hoặc dài quá 500 ký tự sau khi trim. Thuật toán khóa theo Project/Board bằng SQL Server application lock và cập nhật cả hai Column trong transaction; mọi đường ghi position phải dùng cùng khóa trước khi bật tích hợp. Chưa kiểm tra đồng thời trên SQL Server hoặc tích hợp adapter Column. WebSocket `card.moved` thuộc #24; chưa có durable `MOVED` Notification event trong catalog #25.
+
+Kiểm tra SQL Server tùy chọn: `mvn -pl services/task-service -am '-Dtask.sqlserver.integration=true' test`. Test hiện xác nhận create fail-closed và không ghi Card khi chưa có validator tin cậy. Nó không xác minh Board/Column thật, Gateway, Redis hoặc E2E; các kiểm tra liên service thuộc task tích hợp. Test chỉ chạy khi bật property trên và dùng cấu hình datasource local.
+
+### Xác minh quan hệ Board/Column
+
+`ColumnRelationshipValidator` vẫn là application port của task-service vì create/move cần kiểm tra quan hệ. Không còn mock profile hoặc allowlist giả. Infrastructure cung cấp adapter mặc định fail-closed bằng 503; adapter thật sẽ được nối khi có nguồn Board/Column đã xác minh. `projectId` trong request không được dùng làm bằng chứng quan hệ.
+
+Phân trang theo Column hỗ trợ `columnId`; dữ liệu thay đổi giữa các trang có thể cần client dedupe theo cardId và hiển thị banner yêu cầu reload. Cursor hiện tại là wire tạm thời; contract lỗi và stale-cursor chưa được chốt. Card detail GET scope theo Project đã có trong source. Các use case Card/Comment có implementation trong source, nhưng chưa xác nhận E2E qua Gateway, Redis và adapter Board/Column thật.
 
 ## Cleanup assignment của Membership
 
 Khi board-service thu hồi Membership, request envelope mang `aggregateVersion=authorizationVersion`; payload mang projectId, userId, boardIds, operationId, membershipVersion. Task ghi Inbox, generation fence và job bền vững (gồm source aggregate version) trong một transaction trước ACK; worker chỉ gỡ assignment cùng Project/User/membershipVersion và gửi completion qua Outbox với source aggregate version. Cleanup là tác vụ nền độc lập, không giữ quyền truy cập lại và không chặn operation revoke hoàn tất.
 
-Consumer listener/ACK wiring và migration chưa được nối; scheduler cleanup mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
+Assignment khóa Project/User trước khi khóa Card, lưu membership generation của assignee và từ chối generation đã có fence. Worker rollback batch khi xử lý hoặc ghi completion thất bại; lịch retry được ghi trong transaction riêng sau rollback. Source snapshot hiện không có cơ chế xác minh độ mới độc lập; stale snapshot và listener/ACK qua broker chưa được xác minh end-to-end.
+
+Task listener cho event cleanup đã có durable queue/routing binding và dùng `AUTO` ACK: container chỉ ACK khi listener trả về, sau khi transaction của recorder commit. Listener chỉ được đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều bật; cả ba mặc định false. JSON/contract sai được ném dưới dạng `AmqpRejectAndDontRequeueException` để container reject không requeue; DLX chung phải route poison message tới DLQ. Lỗi xử lý từ recorder được ném lên listener container để retry policy chung quyết định bounded retry/backoff và DLQ sau lượt cuối. Repo hiện chưa có policy đó; Spring container mặc định có thể requeue exception không được xử lý, nên không bật consumer cho tới khi cấu hình chung sẵn sàng. Unit test Task-side kiểm tra listener chỉ trả về sau handler, `AUTO` ACK mode, tín hiệu reject poison, lỗi handler được propagate và listener xử lý được một message hợp lệ sau poison; test chưa xác minh broker retries, DLQ routing hoặc queue ordering. Task-service không sở hữu topology RabbitMQ chung. Versioned migration chưa có, cleanup scheduler mặc định tắt. Đây là Member assignment cleanup, không phải Account deletion hoặc Project cascade. Account deletion/cascade thuộc Kỳ 2.
 
 ## Lỗi source hiện có
 
@@ -49,5 +102,7 @@ Consumer listener/ACK wiring và migration chưa được nối; scheduler clean
 | Input/domain validation | 400 | BAD_REQUEST |
 | Không có quyền Project | 403 | PROJECT_ACCESS_DENIED |
 | Không đọc/giải mã được snapshot | 503 | AUTHORIZATION_SNAPSHOT_UNAVAILABLE |
+| Trusted Gateway identity hoặc validator Board/Column chưa sẵn sàng | 503 | CARD_OPERATION_UNAVAILABLE |
+| Card không tồn tại trong Project | 404 | CARD_NOT_FOUND |
 
-Các use case inbound chưa có implementation, nên bảng trên mô tả mapping controller/handler, không khẳng định các thao tác CRUD đã chạy end-to-end.
+Bảng trên mô tả code và mapping hiện có; chưa có bằng chứng các thao tác đã chạy end-to-end với Gateway, Redis và adapter Column thật.

@@ -1,32 +1,59 @@
 package dev.platform.task.infrastructure.websocket;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+import java.util.Map;
 
 import dev.platform.task.application.port.out.CardEventPublisherPort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-// Adapter bắn event thẻ, kỳ này chỉ log stub.
+/** Publishes ephemeral Board updates only after the owning SQL transaction commits. */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class CardEventAdapter implements CardEventPublisherPort {
 
-    private static final Logger log = LoggerFactory.getLogger(CardEventAdapter.class);
+    private final ObjectProvider<BoardWebSocketHandler> handlers;
 
     @Override
     public void cardCreated(Long cardId, Long boardId, Long columnId) {
-        // TODO kỳ 1: bắn WS /ws/boards/{boardId} + gọi notification-service.
-        log.info("card.created cardId={} boardId={} columnId={}", cardId, boardId, columnId);
+        publishAfterCommit(boardId, Map.of("event", "card.created", "cardId", cardId, "columnId", columnId));
     }
 
     @Override
-    public void cardMoved(Long cardId, Long toColumnId, int toPosition) {
-        // TODO kỳ 1: bắn WS /ws/boards/{boardId} event card.moved.
-        log.info("card.moved cardId={} toColumnId={} toPosition={}", cardId, toColumnId, toPosition);
+    public void cardMoved(Long cardId, Long boardId, Long toColumnId, int toPosition) {
+        publishAfterCommit(boardId, Map.of(
+                "event", "card.moved", "cardId", cardId, "toColumnId", toColumnId, "toPosition", toPosition));
     }
 
     @Override
-    public void commentAdded(Long cardId, Long commentId) {
-        // TODO kỳ 1: bắn WS event comment.added + gọi notification-service.
-        log.info("comment.added cardId={} commentId={}", cardId, commentId);
+    public void commentAdded(Long cardId, Long boardId, Long commentId) {
+        publishAfterCommit(boardId, Map.of("event", "comment.added", "cardId", cardId, "commentId", commentId));
+    }
+
+    private void publishAfterCommit(Long boardId, Object payload) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()
+                || !TransactionSynchronizationManager.isActualTransactionActive()) {
+            log.debug("Dropping Board event outside a committed transaction for board {}", boardId);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    BoardWebSocketHandler handler = handlers.getIfAvailable();
+                    if (handler == null) {
+                        return;
+                    }
+                    handler.broadcast(boardId, payload);
+                } catch (RuntimeException exception) {
+                    log.debug("Best-effort Board event fanout failed for board {}", boardId, exception);
+                }
+            }
+        });
     }
 }
