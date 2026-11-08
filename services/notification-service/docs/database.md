@@ -21,6 +21,10 @@ JPA khai báo index (user_id, read). Query list theo recipient và thời gian c
 
 ## Outbox/Inbox và ownership
 
-outbox_events/inbox_events từ shared/messaging-support nằm trong notification_db riêng. Shared là thư viện, không phải database dùng chung. Notification service không có Account/Project deletion jobs hoặc deletion fences trong Kỳ 1.
+`outbox_events`/`inbox_events` từ shared/messaging-support nằm trong notification_db riêng. Shared là thư viện, không phải database dùng chung. Notification service không có Account/Project deletion jobs hoặc deletion fences trong Kỳ 1.
+
+Consumer dùng `inbox_events` với khóa `(consumer_name, event_id)` và `consumer_name=notification-service.task-events`. `ProcessTaskNotificationService` ghi Inbox cùng các row `notifications` trong một transaction: `card.assigned` tạo một row `ASSIGNED`, còn `comment.mentioned` tạo một row `MENTIONED` cho mỗi recipient. Nếu một lần tạo Notification thất bại, transaction phải rollback để message được retry; event trùng không tạo thêm row.
+
+Schema vật lý local phải khớp bảng Inbox hiện hành trong script bootstrap: `consumer_name`, `event_id`, `event_type`, `received_at`. Kỳ 1 chưa có migration tự động, nên database cũ có schema khác phải được xử lý thủ công trước khi bật consumer. Kiểm thử local đã xác nhận Inbox/Notification commit cho event hợp lệ, duplicate không tạo thêm row và event lỗi rollback trước khi vào DLQ; Task Outbox Relay và ACK-loss vẫn chưa được nghiệm thu end-to-end.
 
 Notification history không cascade theo Project/Board. Account deletion và retention policy được thiết kế ở Kỳ 2. Không thêm cross-database FK hoặc bảng Project membership vào notification_db.

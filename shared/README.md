@@ -119,7 +119,7 @@ Redis và RabbitMQ là hạ tầng tích hợp; code cụ thể phải được 
 | User | [`AccountAuthorizationSnapshotSyncRecorder`](../services/user-service/src/main/java/dev/platform/user/infrastructure/snapshot/AccountAuthorizationSnapshotSyncRecorder.java) | Có code ghi snapshot job và Outbox khi status/role thay đổi; chưa chứng minh đã nối vào toàn bộ lifecycle Account. |
 | Board | [`ProjectAuthorizationSnapshotSyncRecorder`](../services/board-service/src/main/java/dev/platform/board/infrastructure/snapshot/ProjectAuthorizationSnapshotSyncRecorder.java) | Tạo snapshot job và event Membership/cleanup; caller phải nối mutation trong cùng transaction. |
 | Task | [`MemberAssignmentCleanupListener`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupListener.java), [`MemberAssignmentCleanupRecorder`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupRecorder.java) và [`MemberAssignmentCleanupWorker`](../services/task-service/src/main/java/dev/platform/task/assignmentcleanup/MemberAssignmentCleanupWorker.java) | Consumer có durable queue, contract validation, Inbox transaction và AUTO ACK sau handler transaction; mặc định tắt. Poison contract phát tín hiệu reject không requeue; bounded retry/DLQ policy và broker E2E chưa được xác minh. |
-| Notification | [`TaskEventListener`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/TaskEventListener.java) | Có import cấu hình shared; listener nghiệp vụ hiện còn TODO. |
+| Notification | [`TaskEventListener`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/TaskEventListener.java), [`TaskNotificationEventMapper`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/TaskNotificationEventMapper.java) và [`NotificationRabbitConfiguration`](../services/notification-service/src/main/java/dev/platform/notification/infrastructure/event/NotificationRabbitConfiguration.java) | Consumer hai Notification intent đã có queue/binding, Inbox transaction, retry và DLQ; publish trực tiếp qua broker local đã pass, Task Outbox Relay và ACK-loss vẫn cần nghiệm thu. |
 
 ### Khi thêm luồng event mới
 
@@ -148,7 +148,7 @@ Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Mod
 | `card.assigned` | `projectId`, `boardId`, `cardId`, `recipientUserId` |
 | `comment.mentioned` | `projectId`, `boardId`, `cardId`, `commentId`, `recipientUserIds` |
 
-Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume end-to-end; cần xác minh riêng từng producer/consumer, Inbox transaction và ACK. Task có producer Outbox cho hai Notification intent `card.assigned` và `comment.mentioned`; Notification consumer và broker acceptance vẫn thuộc task tích hợp.
+Các field trong bảng là source shape đang khai báo và cần được giữ khớp với tên wire/payload tối thiểu trong architecture decisions. Việc có record/class không có nghĩa event đã được publish/consume end-to-end; cần xác minh riêng từng producer/consumer, Inbox transaction và ACK. Task có producer Outbox cho hai Notification intent `card.assigned` và `comment.mentioned`; Notification đã có consumer source, unit test và kiểm thử publish trực tiếp qua broker local, còn Task Outbox Relay/ACK-loss vẫn thuộc task tích hợp.
 
 Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership, Outbox và snapshot-sync job trước. Quyền chỉ bị thu hồi khi snapshot mới được apply vào Redis; nếu còn pending, API trả `202` cùng operation handle. Event này chỉ khởi chạy unassign nền, không phải tín hiệu thu hồi quyền. Cleanup mang `membershipVersion` và chỉ được bỏ assignment đúng generation đã revoke.
 
@@ -166,7 +166,7 @@ Task lưu `membershipVersion` trên từng assignment và durable fence theo `(p
 
 Hiện retry delay mặc định 5 giây, confirm timeout 5 giây, poll delay 1 giây. Chưa có giới hạn attempts, DLQ, retention/cleanup policy hoặc metrics/alerting.
 
-Kỳ 1 chỉ chạy một instance mỗi service; relay hiện chưa claim event cho nhiều instance. Chính sách consumer đã chốt là một lần xử lý đầu, tối đa 3 lần retry cách nhau 5 giây, rồi chuyển DLQ. Đây là chính sách consumer mục tiêu, chưa được listener/queue triển khai; không áp dụng giới hạn 3 lần này cho Outbox Relay. Tên queue, phân loại lỗi và cách xử lý DLQ còn cần thiết kế.
+Kỳ 1 chỉ chạy một instance mỗi service; relay hiện chưa claim event cho nhiều instance. Chính sách consumer đã chốt là một lần xử lý đầu, tối đa 3 lần retry cách nhau 5 giây, rồi chuyển DLQ. Notification consumer đã nối chính sách này; các consumer khác, phân loại lỗi sâu và cách xử lý sau DLQ còn cần thiết kế. Giới hạn 3 lần không áp dụng cho Outbox Relay.
 
 ### Inbox
 
@@ -223,9 +223,9 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
 ```
 
-Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. Consumer cleanup Task chỉ được đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều true; cấu hình queue mặc định là `task-service.member-assignment-cleanup`. Binding cleanup chỉ nhận event `member.assignments.cleanup-requested`; Notification consumer chưa được đăng ký cho `card.assigned`/`comment.mentioned`. Task listener dùng AUTO ACK sau recorder commit; poison contract được reject không requeue. Lỗi recorder chờ policy retry/backoff chung: một lần xử lý đầu, tối đa 3 retry cách 5 giây rồi DLQ; queue/DLX chưa được nối runtime.
+Relay chỉ được đăng ký khi cả `MESSAGING_ENABLED=true` và `OUTBOX_RELAY_ENABLED=true`. Consumer cleanup Task chỉ được đăng ký khi `MESSAGING_ENABLED`, `MESSAGING_CONSUMERS_ENABLED` và `MEMBER_ASSIGNMENT_CLEANUP_RETRY_DLQ_READY` đều true; cấu hình queue mặc định là `task-service.member-assignment-cleanup`. Notification consumer được đăng ký khi `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`, bind queue `notification-service.task-events` với `card.assigned`/`comment.mentioned`, dùng AUTO ACK, retry tối đa 3 lần cách 5 giây và DLQ `notification-service.task-events.dlq`.
 
-Không bật messaging như thể toàn bộ integration đã hoạt động. Trước khi nghiệm thu end-to-end cần kiểm tra producer Outbox Membership, broker routing, consumer ACK/redelivery, cleanup worker và completion publisher cùng retry/DLQ policy.
+Không bật messaging như thể toàn bộ integration đã hoạt động. Trước khi nghiệm thu end-to-end cần kiểm tra Task Notification Outbox/relay, broker routing, Notification consumer ACK/redelivery/DLQ, producer Outbox Membership, cleanup worker và completion publisher.
 
 ## Chạy và dùng local
 
@@ -257,5 +257,5 @@ docker compose up -d rabbitmq
 - Consumer cần Inbox theo `(consumerName, eventId)` và xử lý idempotent; không dùng `aggregateVersion` thay dedup.
 - Redis Authentication/Authorization Snapshot vẫn thuộc kiến trúc mục tiêu Kỳ 1; schema/key, TTL, consumer cập nhật snapshot và cách xử lý gap/stale event chưa được chốt. `shared/` hiện không triển khai Redis cache.
 - Account/Project deletion và Notification cascade không thuộc Kỳ 1. Event contracts Kỳ 1 gồm Membership, assignment cleanup và hai Notification intent của Task; Member assignment cleanup là tác vụ cleanup duy nhất, không có Card state stream hoặc `MOVED` notification event.
-- Schema evolution, chi tiết queue/binding/DLQ, phân loại lỗi và consumer ordering chưa được chốt đầy đủ. Retry consumer mục tiêu là một lần xử lý đầu, tối đa 3 lần retry cách nhau 5 giây rồi chuyển DLQ; policy này chưa được nối runtime.
+- Schema evolution, phân loại lỗi và consumer ordering chưa được chốt đầy đủ. Notification consumer đã có queue/binding/DLQ, retry và kiểm thử local; xử lý sau DLQ, Task Outbox Relay/ACK-loss và cấu hình của các consumer khác vẫn còn mở.
 - Các class hiện có là nền dùng chung, không chứng minh cascade Account/Project đã chạy end-to-end.
