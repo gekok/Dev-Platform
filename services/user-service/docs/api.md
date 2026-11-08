@@ -15,7 +15,7 @@ Endpoint nội bộ `GET /internal/users/{userId}` cho service khác xác minh A
 - `/users/me` xác thực token từ header `Authorization: Bearer <jwt>`, trích xuất subject UUID qua RSA256 và gọi `GetCurrentUserPort` (triển khai qua `GetCurrentUserService`); không cho phép client dùng `X-User-Id` giả mạo.
 - `/admin/accounts`, `/admin/users/{userId}/status` và các route `/admin/users/{userId}/roles...` được xử lý bởi `AdminUserController`, yêu cầu Bearer token của tài khoản mang role `SYSTEM_ADMIN`. Gateway route `/api/v1/admin/**` tới user-service và áp dụng Account snapshot gate trước khi proxy. Thao tác cập nhật trạng thái/vai trò đảm bảo tính nguyên tử: tăng `auth_version`, ghi Outbox và snapshot-sync job trong cùng transaction.
 - `/users` yêu cầu Account `ACTIVE`, giới hạn `limit` từ 1 đến 100 (mặc định 20), chỉ trả Account `ACTIVE` không mang `SYSTEM_ADMIN`, và không trả email.
-- `/users/profiles` yêu cầu caller `ACTIVE` và thành viên/Owner `ACTIVE` của Project được hỏi. User-service chuyển tiếp Bearer token sang Board để kiểm tra membership; Board endpoint chưa có thì request fail-closed bằng `503 AUTHORIZATION_UNAVAILABLE`.
+- `/users/profiles` yêu cầu caller `ACTIVE` và Member/Owner `ACTIVE` của Project đang `ACTIVE`. User-service gửi UUID caller cùng `X-Service-Token` tới Board `GET /internal/projects/{projectId}/members/{userId}`; nếu Board không xác minh được membership thì request fail-closed bằng `503 AUTHORIZATION_UNAVAILABLE`.
 
 
 ## Thiết kế mục tiêu đã thống nhất
@@ -141,7 +141,7 @@ User-service sở hữu Account/Auth và system role. Bảng dưới phân biệ
 | `PUT` | `/api/v1/admin/users/{userId}/roles` | `{ "roles": ["USER", "SYSTEM_ADMIN"] }` | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 | `DELETE` | `/api/v1/admin/users/{userId}/roles/{roleCode}` | Không body | `204 No Content` | Runtime; chỉ `SYSTEM_ADMIN` |
 
-Runtime `UserCandidate` gồm `id`, `fullName`; email chỉ được dùng để tìm kiếm, không có trong response. Runtime `UserProfile` gồm `id`, `displayName` và chỉ được trả sau khi Board xác minh caller là Member/Owner `ACTIVE` của Project. Account tombstone chưa thuộc Kỳ 1. Endpoint membership nội bộ của Board chưa được cung cấp; đến lúc đó profile request trả `503 AUTHORIZATION_UNAVAILABLE`.
+Runtime `UserCandidate` gồm `id`, `fullName`; email chỉ được dùng để tìm kiếm, không có trong response. Runtime `UserProfile` gồm `id`, `displayName` và chỉ được trả sau khi Board xác minh caller là Member/Owner `ACTIVE` của Project đang `ACTIVE`. Account tombstone chưa thuộc Kỳ 1. Nếu Board chưa triển khai endpoint membership nội bộ hoặc không thể xác minh request, profile request trả `503 AUTHORIZATION_UNAVAILABLE`.
 
 ### Account lookup nội bộ (`GET /internal/users/{userId}`)
 

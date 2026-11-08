@@ -62,14 +62,14 @@ public class UserController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "projectId", required = false) Long projectId,
       @RequestParam(value = "ids", required = false) Set<UUID> ids) {
-    requireActiveAuthenticated(authorization);
+    UUID callerId = requireActiveAuthenticated(authorization);
     if (projectId == null || projectId <= 0) {
       throw new IllegalArgumentException("projectId must be a positive number");
     }
     if (ids != null && ids.size() > MAX_PROFILE_IDS) {
       throw new IllegalArgumentException("ids must contain no more than " + MAX_PROFILE_IDS + " values");
     }
-    if (!projectMembershipPort.isActiveProjectMember(projectId, authorization)) {
+    if (!projectMembershipPort.isActiveProjectMember(projectId, callerId)) {
       throw new ProjectMembershipRequiredException();
     }
     if (ids == null || ids.isEmpty()) {

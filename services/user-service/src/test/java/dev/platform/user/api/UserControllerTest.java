@@ -208,7 +208,7 @@ class UserControllerTest {
     when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
     when(getCurrentUserPort.getCurrentUser(callerId)).thenReturn(new UserSummaryDto(
         callerId, "caller@demo.local", "Caller", AccountStatus.ACTIVE, 1L, Set.of("USER")));
-    when(projectMembershipPort.isActiveProjectMember(42L, "Bearer valid.token")).thenReturn(true);
+    when(projectMembershipPort.isActiveProjectMember(42L, callerId)).thenReturn(true);
     when(userDirectoryPort.getProfiles(Set.of(targetId))).thenReturn(List.of(summary));
 
     mockMvc.perform(get("/api/v1/users/profiles")
@@ -227,7 +227,7 @@ class UserControllerTest {
     when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
     when(getCurrentUserPort.getCurrentUser(callerId)).thenReturn(new UserSummaryDto(
         callerId, "caller@demo.local", "Caller", AccountStatus.ACTIVE, 1L, Set.of("USER")));
-    when(projectMembershipPort.isActiveProjectMember(42L, "Bearer valid.token")).thenReturn(false);
+    when(projectMembershipPort.isActiveProjectMember(42L, callerId)).thenReturn(false);
 
     mockMvc.perform(get("/api/v1/users/profiles")
             .header("Authorization", "Bearer valid.token")
@@ -235,7 +235,7 @@ class UserControllerTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("PROJECT_MEMBERSHIP_REQUIRED"));
 
-    verify(projectMembershipPort).isActiveProjectMember(42L, "Bearer valid.token");
+    verify(projectMembershipPort).isActiveProjectMember(42L, callerId);
     verifyNoInteractions(userDirectoryPort);
   }
 
@@ -247,7 +247,7 @@ class UserControllerTest {
         callerId, "caller@demo.local", "Caller", AccountStatus.ACTIVE, 1L, Set.of("USER"));
     when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
     when(getCurrentUserPort.getCurrentUser(callerId)).thenReturn(caller);
-    when(projectMembershipPort.isActiveProjectMember(42L, "Bearer valid.token")).thenReturn(false);
+    when(projectMembershipPort.isActiveProjectMember(42L, callerId)).thenReturn(false);
 
     mockMvc.perform(get("/api/v1/users/profiles")
             .header("Authorization", "Bearer valid.token")
@@ -298,7 +298,7 @@ class UserControllerTest {
     when(tokenPort.parseAndValidate("valid.token")).thenReturn(callerId);
     when(getCurrentUserPort.getCurrentUser(callerId)).thenReturn(new UserSummaryDto(
         callerId, "caller@demo.local", "Caller", AccountStatus.ACTIVE, 1L, Set.of("USER")));
-    when(projectMembershipPort.isActiveProjectMember(42L, "Bearer valid.token"))
+    when(projectMembershipPort.isActiveProjectMember(42L, callerId))
         .thenThrow(new AuthorizationUnavailableException("membership service unavailable"));
 
     mockMvc.perform(get("/api/v1/users/profiles")
