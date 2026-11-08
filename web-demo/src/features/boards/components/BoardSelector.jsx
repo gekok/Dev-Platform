@@ -7,6 +7,7 @@ export default function BoardSelector({
   currentBoardId,
   defaultBoardId,
   canCreate,
+  isPreferenceFeatureEnabled = true,
   isPreferenceLoading,
   isPreferenceReady,
   isPreferencePending,
@@ -124,10 +125,15 @@ export default function BoardSelector({
             value={search}
           />
 
-          {isPreferenceLoading && (
+          {!isPreferenceFeatureEnabled && (
+            <p aria-live="polite" className="board-selector-state">
+              Default Board preferences are available in Demo mode only.
+            </p>
+          )}
+          {isPreferenceFeatureEnabled && isPreferenceLoading && (
             <p aria-live="polite" className="board-selector-state">Loading saved Board…</p>
           )}
-          {preferenceError && (
+          {isPreferenceFeatureEnabled && preferenceError && (
             <div className="board-selector-error" role="alert">
               <span>{preferenceError}</span>
               <button onClick={onRetryPreferences} type="button">Try again</button>
@@ -164,28 +170,30 @@ export default function BoardSelector({
                         {isDefault && <span className="board-selector-default">Default</span>}
                       </span>
                     </button>
-                    <button
-                      aria-label={isDefault
-                        ? `Clear ${board.name} as the default Board`
-                        : `Set ${board.name} as the default Board`}
-                      className="board-selector-default-action"
-                      disabled={!isPreferenceReady || isPreferencePending}
-                      onClick={() => {
-                        if (isDefault) onClearDefault();
-                        else onSetDefault(board.id);
-                      }}
-                      type="button"
-                    >
-                      {isPreferenceLoading
-                        ? 'Loading…'
-                        : !isPreferenceReady
-                          ? 'Unavailable'
-                          : isPreferencePending
-                            ? 'Saving…'
-                            : isDefault
-                              ? 'Clear default'
-                              : 'Set default'}
-                    </button>
+                    {isPreferenceFeatureEnabled && (
+                      <button
+                        aria-label={isDefault
+                          ? `Clear ${board.name} as the default Board`
+                          : `Set ${board.name} as the default Board`}
+                        className="board-selector-default-action"
+                        disabled={!isPreferenceReady || isPreferencePending}
+                        onClick={() => {
+                          if (isDefault) onClearDefault();
+                          else onSetDefault(board.id);
+                        }}
+                        type="button"
+                      >
+                        {isPreferenceLoading
+                          ? 'Loading…'
+                          : !isPreferenceReady
+                            ? 'Unavailable'
+                            : isPreferencePending
+                              ? 'Saving…'
+                              : isDefault
+                                ? 'Clear default'
+                                : 'Set default'}
+                      </button>
+                    )}
                   </li>
                 );
               })}

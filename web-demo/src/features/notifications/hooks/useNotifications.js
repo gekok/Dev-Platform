@@ -5,10 +5,10 @@ import {
   markNotificationRead,
 } from '../services/notificationApi.js';
 
-export function useNotifications(userId) {
+export function useNotifications(userId, { unreadOnly = false } = {}) {
   return useQuery({
-    queryKey: queryKeys.notifications(userId),
-    queryFn: () => listMyNotifications(),
+    queryKey: queryKeys.notifications(userId, { unreadOnly }),
+    queryFn: () => listMyNotifications({ unreadOnly }),
     enabled: Boolean(userId),
   });
 }

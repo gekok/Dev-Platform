@@ -13,55 +13,55 @@ import { normalizeCardId } from '../cardIds.js';
 
 const NOTIFICATIONS_QUERY_PREFIX = ['notifications'];
 
-export function useCards(boardId) {
+export function useCards(projectId, boardId) {
   return useQuery({
-    queryKey: queryKeys.cards(boardId),
-    queryFn: () => listCards(boardId),
+    queryKey: queryKeys.cards(projectId, boardId),
+    queryFn: () => listCards(projectId, boardId),
     enabled: Boolean(boardId),
   });
 }
 
-export function useCard(cardId) {
+export function useCard(projectId, cardId) {
   const normalizedCardId = normalizeCardId(cardId);
   return useQuery({
-    queryKey: queryKeys.card(normalizedCardId),
-    queryFn: () => getCard(normalizedCardId),
+    queryKey: queryKeys.card(projectId, normalizedCardId),
+    queryFn: () => getCard(projectId, normalizedCardId),
     enabled: Boolean(cardId),
   });
 }
 
-export function useCardComments(cardId) {
+export function useCardComments(projectId, cardId) {
   const normalizedCardId = normalizeCardId(cardId);
   return useQuery({
-    queryKey: queryKeys.comments(normalizedCardId),
-    queryFn: () => listComments(normalizedCardId),
+    queryKey: queryKeys.comments(projectId, normalizedCardId),
+    queryFn: () => listComments(projectId, normalizedCardId),
     enabled: Boolean(cardId),
   });
 }
 
-export function useCreateCard(boardId) {
+export function useCreateCard(projectId, boardId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload) => createCard(boardId, payload),
+    mutationFn: (payload) => createCard(projectId, boardId, payload),
     onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.cards(boardId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_PREFIX }),
     ]),
   });
 }
 
-export function useMoveCard(boardId) {
+export function useMoveCard(projectId, boardId) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ cardId, toColumnId, toPosition }) =>
-      moveCard(normalizeCardId(cardId), { toColumnId, toPosition }),
+      moveCard(projectId, normalizeCardId(cardId), { toColumnId, toPosition }),
     onSuccess: async (_card, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.cards(boardId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.card(normalizeCardId(variables.cardId)),
+          queryKey: queryKeys.card(projectId, normalizeCardId(variables.cardId)),
         }),
         queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_PREFIX }),
       ]);
@@ -69,17 +69,17 @@ export function useMoveCard(boardId) {
   });
 }
 
-export function useAssignCard(boardId) {
+export function useAssignCard(projectId, boardId) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ cardId, assigneeId }) =>
-      assignCard(normalizeCardId(cardId), { assigneeId }),
+      assignCard(projectId, normalizeCardId(cardId), { assigneeId }),
     onSuccess: async (_card, variables) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.cards(boardId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.card(normalizeCardId(variables.cardId)),
+          queryKey: queryKeys.card(projectId, normalizeCardId(variables.cardId)),
         }),
         queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_PREFIX }),
       ]);
@@ -87,16 +87,18 @@ export function useAssignCard(boardId) {
   });
 }
 
-export function useAddComment(boardId, cardId) {
+export function useAddComment(projectId, boardId, cardId) {
   const queryClient = useQueryClient();
   const normalizedCardId = normalizeCardId(cardId);
 
   return useMutation({
-    mutationFn: (payload) => addComment(normalizedCardId, payload),
+    mutationFn: (payload) => addComment(projectId, normalizedCardId, payload),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.comments(normalizedCardId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.cards(boardId) }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.comments(projectId, normalizedCardId),
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cards(projectId, boardId) }),
         queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_PREFIX }),
       ]);
     },

@@ -6,11 +6,15 @@ import {
   setDefaultBoard,
 } from '../services/preferenceApi.js';
 
+export function isDefaultBoardPreferenceEnabled(userId, mode) {
+  return Boolean(userId) && mode === 'demo';
+}
+
 export function useDefaultBoards(userId) {
   return useQuery({
     queryKey: queryKeys.defaultBoards(userId),
     queryFn: listDefaultBoards,
-    enabled: Boolean(userId),
+    enabled: isDefaultBoardPreferenceEnabled(userId, import.meta.env.VITE_APP_MODE),
   });
 }
 

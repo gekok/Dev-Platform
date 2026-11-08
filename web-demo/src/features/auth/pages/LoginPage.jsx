@@ -1,24 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Kanban, ShieldCheck } from 'react-bootstrap-icons';
 import { getCurrentUser, login } from '../services/authApi.js';
 import { useCurrentUser } from '../hooks/useCurrentUser.js';
-import { clearSession, setAccessToken } from '../session.js';
-import { isSystemAdmin } from '../roles.js';
 import {
-  DEMO_ADMIN_CREDENTIALS,
-  DEMO_CREDENTIALS,
-} from '../../../mocks/data/seed.js';
+  clearSession,
+  getAccessToken,
+  SESSION_EXPIRED_EVENT,
+  setAccessToken,
+} from '../session.js';
+import { isSystemAdmin } from '../roles.js';
 import { queryKeys } from '../../../shared/query/queryKeys.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
+
+const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
 
 function getErrorMessage(error) {
-  return error.response?.data?.message ?? 'Unable to sign in. Please try again.';
+  const fallback = error instanceof Error && !error.isAxiosError
+    ? error.message
+    : 'Unable to sign in. Please try again.';
+  return getApiErrorMessage(error, fallback);
 }
 
 export default function LoginPage() {
-  const [email, setEmail] = useState(DEMO_CREDENTIALS.email);
-  const [password, setPassword] = useState(DEMO_CREDENTIALS.password);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [demoAccounts, setDemoAccounts] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(Boolean(location.state?.sessionExpired));
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -31,15 +40,46 @@ export default function LoginPage() {
       return { session, user };
     },
     onSuccess: ({ user }) => {
+      queryClient.removeQueries();
       queryClient.setQueryData(queryKeys.currentUser, user);
       const requestedPath = location.state?.from;
       const landingPath = isSystemAdmin(user) ? '/admin' : '/projects';
       navigate(requestedPath ?? landingPath, { replace: true });
     },
-    onError: () => clearSession(),
+    onError: () => {
+      clearSession();
+      queryClient.removeQueries();
+    },
   });
 
-  if (currentUserQuery.data) {
+  useEffect(() => {
+    function handleSessionExpired() {
+      setSessionExpired(true);
+    }
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
+    if (!isDemoMode) return undefined;
+
+    let active = true;
+    import('../../../mocks/data/seed.js').then((seed) => {
+      if (active) {
+        setDemoAccounts({
+          owner: seed.DEMO_CREDENTIALS,
+          admin: seed.DEMO_ADMIN_CREDENTIALS,
+        });
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (getAccessToken() && currentUserQuery.data) {
     return (
       <Navigate
         to={isSystemAdmin(currentUserQuery.data) ? '/admin' : '/projects'}
@@ -50,6 +90,8 @@ export default function LoginPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    clearSession();
+    queryClient.removeQueries();
     loginMutation.mutate({ email: email.trim(), password });
   }
 
@@ -102,9 +144,17 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {location.state?.sessionExpired && (
+          {sessionExpired && (
             <div className="form-alert" role="alert">
-              Your demo session expired. Sign in again to continue.
+              Your session expired. Sign in again to continue.
+            </div>
+          )}
+          {currentUserQuery.isError && !sessionExpired && (
+            <div className="form-alert" role="alert">
+              {getApiErrorMessage(
+                currentUserQuery.error,
+                'Your saved session could not be verified. Sign in to continue.',
+              )}
             </div>
           )}
           {loginMutation.isError && (
@@ -141,22 +191,24 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="demo-account-section">
-            <div className="demo-account-heading">
-              <span>Demo access</span>
-              <small>Choose an account to fill the form</small>
+          {isDemoMode && demoAccounts && (
+            <div className="demo-account-section">
+              <div className="demo-account-heading">
+                <span>Demo access</span>
+                <small>Choose an account to fill the form</small>
+              </div>
+              <div className="demo-account-grid">
+                <button type="button" onClick={() => selectDemoAccount(demoAccounts.owner)}>
+                  <span className="demo-account-icon"><Kanban /></span>
+                  <span><strong>Workspace owner</strong><small>{demoAccounts.owner.email}</small></span>
+                </button>
+                <button type="button" onClick={() => selectDemoAccount(demoAccounts.admin)}>
+                  <span className="demo-account-icon"><ShieldCheck /></span>
+                  <span><strong>System admin</strong><small>{demoAccounts.admin.email}</small></span>
+                </button>
+              </div>
             </div>
-            <div className="demo-account-grid">
-              <button type="button" onClick={() => selectDemoAccount(DEMO_CREDENTIALS)}>
-                <span className="demo-account-icon"><Kanban /></span>
-                <span><strong>Workspace owner</strong><small>{DEMO_CREDENTIALS.email}</small></span>
-              </button>
-              <button type="button" onClick={() => selectDemoAccount(DEMO_ADMIN_CREDENTIALS)}>
-                <span className="demo-account-icon"><ShieldCheck /></span>
-                <span><strong>System admin</strong><small>{DEMO_ADMIN_CREDENTIALS.email}</small></span>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </section>
     </main>

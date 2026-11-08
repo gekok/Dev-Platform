@@ -18,6 +18,9 @@ import {
   resolveProjectEntry,
 } from '../projectEntry.js';
 import { useProject } from '../hooks/useProjects.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
+
+const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
 
 function getErrorTitle(error) {
   switch (error.response?.status) {
@@ -41,12 +44,12 @@ function getErrorMessage(error) {
     case 404:
       return 'Check the Project link and try again.';
     default:
-      return error.response?.data?.message ?? 'The request could not be completed. Try again.';
+      return getApiErrorMessage(error, 'The request could not be completed. Try again.');
   }
 }
 
 function getPreferenceErrorMessage(error) {
-  return error.response?.data?.message ?? 'The saved Board preference could not be cleared.';
+  return getApiErrorMessage(error, 'The saved Board preference could not be cleared.');
 }
 
 export default function ProjectEntryPage() {
@@ -96,17 +99,17 @@ export default function ProjectEntryPage() {
     projectQuery.isPending ||
     boardsQuery.isPending ||
     userQuery.isPending ||
-    (Boolean(userId) && defaultBoardsQuery.isPending);
+    (isDemoMode && Boolean(userId) && defaultBoardsQuery.isPending);
   const error =
     projectQuery.error ??
     boardsQuery.error ??
     userQuery.error ??
-    (userId ? defaultBoardsQuery.error : null);
+    (isDemoMode && userId ? defaultBoardsQuery.error : null);
   const isError = Boolean(
     projectQuery.isError ||
     boardsQuery.isError ||
     userQuery.isError ||
-    (userId && defaultBoardsQuery.isError),
+    (isDemoMode && userId && defaultBoardsQuery.isError),
   );
   const workspaceReady = !isPending && !isError && Boolean(userId);
   const isCleaningPreference = decision.needsCleanup && (
@@ -121,7 +124,7 @@ export default function ProjectEntryPage() {
   }, []);
 
   useEffect(() => {
-    if (!decision.needsCleanup || !cleanupKey) return;
+    if (!isDemoMode || !decision.needsCleanup || !cleanupKey) return;
 
     function releaseAttemptOnRouteChange(requestAttempt) {
       cleanupAttemptRef.current = releaseCleanupAttempt({
@@ -222,7 +225,7 @@ export default function ProjectEntryPage() {
     projectQuery.refetch();
     boardsQuery.refetch();
     userQuery.refetch();
-    if (userId) defaultBoardsQuery.refetch();
+    if (isDemoMode && userId) defaultBoardsQuery.refetch();
   }
 
   if (isPending || isCleaningPreference || (workspaceReady && decision.board)) {

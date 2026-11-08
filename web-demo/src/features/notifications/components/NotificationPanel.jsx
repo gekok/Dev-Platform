@@ -4,6 +4,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from '../hooks/useNotifications.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -18,7 +19,7 @@ function formatDateTime(value) {
 }
 
 function getErrorMessage(error, fallback) {
-  return error.response?.data?.message ?? fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 function getTypeLabel(type) {
@@ -33,9 +34,10 @@ function getTypeLabel(type) {
 export default function NotificationPanel({ userId }) {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
-  const notificationsQuery = useNotifications(userId);
+  const notificationsQuery = useNotifications(userId, { unreadOnly: showUnreadOnly });
   const markReadMutation = useMarkNotificationRead(userId);
   const notifications = notificationsQuery.data ?? [];
   const unreadCount = notifications.reduce(
@@ -112,6 +114,17 @@ export default function NotificationPanel({ userId }) {
             <span className="notification-unread-count">{unreadCount} unread</span>
           </header>
 
+          <div className="notification-panel-filters">
+            <button
+              aria-pressed={showUnreadOnly}
+              className="notification-filter-button"
+              onClick={() => setShowUnreadOnly((current) => !current)}
+              type="button"
+            >
+              Unread only
+            </button>
+          </div>
+
           {notificationsQuery.isPending && (
             <p aria-live="polite" className="notification-panel-state">Loading notifications…</p>
           )}
@@ -124,7 +137,9 @@ export default function NotificationPanel({ userId }) {
             </div>
           )}
           {notificationsQuery.isSuccess && notifications.length === 0 && (
-            <p className="notification-panel-state">You’re all caught up.</p>
+            <p className="notification-panel-state">
+              {showUnreadOnly ? 'No unread Notifications.' : 'You’re all caught up.'}
+            </p>
           )}
           {notificationsQuery.isSuccess && notifications.length > 0 && (
             <ol className="notification-list">

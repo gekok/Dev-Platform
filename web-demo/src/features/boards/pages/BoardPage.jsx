@@ -21,10 +21,16 @@ import {
   useSetDefaultBoard,
 } from '../../preferences/hooks/useDefaultBoards.js';
 import { getPreferenceErrorClearPath } from '../preferenceNavigation.js';
+import { getApiErrorMessage } from '../../../shared/services/apiErrors.js';
 import '../../cards/cards.css';
 import '../boards.css';
 
+const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
+
 function getErrorTitle(error) {
+  if (error?.code === 'CARD_PAGINATION_CONTRACT_PENDING') {
+    return 'Card list is not ready in Backend mode.';
+  }
   switch (error.response?.status) {
     case 401:
       return 'Your demo session has expired.';
@@ -38,6 +44,9 @@ function getErrorTitle(error) {
 }
 
 function getErrorMessage(error) {
+  if (error?.code === 'CARD_PAGINATION_CONTRACT_PENDING') {
+    return error.message;
+  }
   switch (error.response?.status) {
     case 401:
       return 'Sign in again to continue.';
@@ -46,7 +55,7 @@ function getErrorMessage(error) {
     case 404:
       return 'Check the Board link and try again.';
     default:
-      return error.response?.data?.message ?? 'The Board workspace could not be loaded. Try again.';
+      return getApiErrorMessage(error, 'The Board workspace could not be loaded. Try again.');
   }
 }
 
@@ -54,7 +63,7 @@ function getPreferenceErrorMessage(
   error,
   fallback = 'The saved Board preference could not be updated.',
 ) {
-  return error.response?.data?.message ?? fallback;
+  return getApiErrorMessage(error, fallback);
 }
 
 export default function BoardPage() {
@@ -72,7 +81,7 @@ export default function BoardPage() {
   const projectQuery = useProject(projectId);
   const projectBoardsQuery = useProjectBoards(projectId);
   const boardQuery = useBoard(boardId);
-  const cardsQuery = useCards(boardId);
+  const cardsQuery = useCards(projectId, boardId);
   const membersQuery = useProjectMembers(projectId);
   const defaultBoardsQuery = useDefaultBoards(userId);
   const setDefaultMutation = useSetDefaultBoard(userId);
@@ -80,8 +89,8 @@ export default function BoardPage() {
   const addColumnMutation = useAddColumn(projectId, boardId);
   const reorderMutation = useReorderColumns(projectId, boardId);
   const createBoardMutation = useCreateProjectBoard(projectId);
-  const createCardMutation = useCreateCard(boardId);
-  const moveCardMutation = useMoveCard(boardId);
+  const createCardMutation = useCreateCard(projectId, boardId);
+  const moveCardMutation = useMoveCard(projectId, boardId);
   const isOwner = projectQuery.data?.role === 'OWNER';
   const defaultBoard = defaultBoardsQuery.data?.defaultBoards.find(
     (preference) => Number(preference.projectId) === Number(projectId),
@@ -99,7 +108,7 @@ export default function BoardPage() {
       : null;
   const preferenceError = preferenceMutationError
     ? getPreferenceErrorMessage(preferenceMutationError)
-    : defaultBoardsQuery.isError
+    : isDemoMode && defaultBoardsQuery.isError
       ? getPreferenceErrorMessage(
           defaultBoardsQuery.error,
           'The saved Board preference could not be loaded.',
@@ -257,18 +266,20 @@ export default function BoardPage() {
       <div className="empty-state" role="alert">
         <strong>{getErrorTitle(error)}</strong>
         <span>{getErrorMessage(error)}</span>
-        <button
-          className="secondary-button"
-          onClick={() => {
-            projectQuery.refetch();
-            boardQuery.refetch();
-            cardsQuery.refetch();
-            membersQuery.refetch();
-          }}
-          type="button"
-        >
-          Try again
-        </button>
+        {error?.code !== 'CARD_PAGINATION_CONTRACT_PENDING' && (
+          <button
+            className="secondary-button"
+            onClick={() => {
+              projectQuery.refetch();
+              boardQuery.refetch();
+              cardsQuery.refetch();
+              membersQuery.refetch();
+            }}
+            type="button"
+          >
+            Try again
+          </button>
+        )}
         <Link className="board-text-link" to="/projects">Back to All Projects</Link>
       </div>
     );
@@ -298,9 +309,10 @@ export default function BoardPage() {
         currentBoardId: board.id,
         defaultBoardId,
         canCreate: isOwner,
-        isPreferenceLoading: userQuery.isPending ||
-          (Boolean(userId) && defaultBoardsQuery.isPending),
-        isPreferenceReady: Boolean(userId) && defaultBoardsQuery.isSuccess,
+        isPreferenceFeatureEnabled: isDemoMode,
+        isPreferenceLoading: isDemoMode && (userQuery.isPending ||
+          (Boolean(userId) && defaultBoardsQuery.isPending)),
+        isPreferenceReady: isDemoMode && Boolean(userId) && defaultBoardsQuery.isSuccess,
         isPreferencePending,
         preferenceError,
         onRetryPreferences: handleRetryPreferences,
@@ -408,6 +420,7 @@ export default function BoardPage() {
           key={`${projectId}:${boardId}:${selectedCardId}`}
           members={membersQuery.data}
           onClose={closeCardDetails}
+          projectId={projectId}
         />
       )}
       <BoardCreateDialog

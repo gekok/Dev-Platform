@@ -1,36 +1,57 @@
 import api from '../../../shared/services/axios.js';
+import {
+  createCardApiRoutes,
+  requireCardListContract,
+} from '../cardApiRoutes.js';
 
-export async function listCards(boardId) {
-  const response = await api.get(`/boards/${boardId}/cards`);
+function routesForCurrentMode() {
+  return createCardApiRoutes(import.meta.env.VITE_APP_MODE);
+}
+
+export async function listCards(projectId, boardId) {
+  requireCardListContract(import.meta.env.VITE_APP_MODE);
+  const response = await api.get(routesForCurrentMode().cards(projectId, boardId));
   return response.data;
 }
 
-export async function getCard(cardId) {
-  const response = await api.get(`/cards/${cardId}`);
+export async function getCard(projectId, cardId) {
+  const response = await api.get(routesForCurrentMode().card(projectId, cardId));
   return response.data;
 }
 
-export async function createCard(boardId, payload) {
-  const response = await api.post(`/boards/${boardId}/cards`, payload);
+export async function createCard(projectId, boardId, payload) {
+  const response = await api.post(
+    routesForCurrentMode().createCard(projectId, boardId),
+    payload,
+  );
   return response.data;
 }
 
-export async function moveCard(cardId, payload) {
-  const response = await api.patch(`/cards/${cardId}/move`, payload);
+export async function moveCard(projectId, cardId, payload) {
+  const response = await api.patch(
+    routesForCurrentMode().moveCard(projectId, cardId),
+    payload,
+  );
   return response.data;
 }
 
-export async function assignCard(cardId, payload) {
-  const response = await api.patch(`/cards/${cardId}/assignee`, payload);
+export async function assignCard(projectId, cardId, payload) {
+  const response = await api.patch(
+    routesForCurrentMode().assignCard(projectId, cardId),
+    payload,
+  );
   return response.data;
 }
 
-export async function listComments(cardId) {
-  const response = await api.get(`/cards/${cardId}/comments`);
+export async function listComments(projectId, cardId) {
+  const response = await api.get(routesForCurrentMode().comments(projectId, cardId));
   return response.data;
 }
 
-export async function addComment(cardId, payload) {
-  const response = await api.post(`/cards/${cardId}/comments`, payload);
+export async function addComment(projectId, cardId, payload) {
+  const response = await api.post(
+    routesForCurrentMode().comments(projectId, cardId),
+    payload,
+  );
   return response.data;
 }

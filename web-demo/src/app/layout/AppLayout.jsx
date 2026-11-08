@@ -6,8 +6,9 @@ import { clearSession } from '../../features/auth/session.js';
 import { useProject, useProjects } from '../../features/projects/hooks/useProjects.js';
 import NotificationPanel from '../../features/notifications/components/NotificationPanel.jsx';
 import '../../features/notifications/notifications.css';
-import { resetDemoData } from '../../mocks/demoControls.js';
 import AccountMenu from './AccountMenu.jsx';
+
+const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo';
 
 function getActiveRouteParams(matches) {
   return matches.reduce((params, match) => ({ ...params, ...match.params }), {});
@@ -29,13 +30,16 @@ export default function AppLayout() {
     navigate('/login', { replace: true });
   }
 
-  function handleResetDemoData() {
+  async function handleResetDemoData() {
+    if (!isDemoMode) return;
+
     const shouldReset = window.confirm(
       'Reset demo data? New Projects, Boards, Cards, Comments, and Notifications will be removed.',
     );
     if (!shouldReset) return;
 
     try {
+      const { resetDemoData } = await import('../../mocks/demoControls.js');
       resetDemoData();
       queryClient.clear();
       window.location.assign('/projects');
@@ -84,17 +88,21 @@ export default function AppLayout() {
           </div>
 
           <div className="global-nav-actions">
-            <span className="demo-status"><i /> Demo environment</span>
+            <span className={isDemoMode ? 'demo-status' : 'backend-status'}>
+              <i /> {isDemoMode ? 'Demo environment' : 'Backend mode'}
+            </span>
             <div className="global-nav-tools">
-              <button
-                aria-label="Reset demo data"
-                className="icon-button reset-demo-button"
-                onClick={handleResetDemoData}
-                title="Reset demo data"
-                type="button"
-              >
-                <span aria-hidden="true">↻</span>
-              </button>
+              {isDemoMode && (
+                <button
+                  aria-label="Reset demo data"
+                  className="icon-button reset-demo-button"
+                  onClick={handleResetDemoData}
+                  title="Reset demo data"
+                  type="button"
+                >
+                  <span aria-hidden="true">↻</span>
+                </button>
+              )}
               <NotificationPanel userId={user?.id} />
             </div>
             <AccountMenu onSignOut={handleSignOut} user={user} />
