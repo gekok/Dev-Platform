@@ -294,8 +294,8 @@ DEALLOCATE dbs;
 GO
 
 /* Demo data only. All three accounts use the local-only password DemoPass123!.
-   No real account should use these credentials. Login is not yet wired end-to-end.
-   Seed membership generation because it is durable membership state, not a job. */
+   No real account should use these credentials. Seed initial authorization snapshots
+   through durable sync jobs so the local workers populate Redis before UI access. */
 USE kanban_user_db;
 GO
 INSERT dbo.system_roles(role_code, description) VALUES
@@ -327,6 +327,16 @@ INSERT dbo.project_memberships(project_id, user_id, role, status, joined_at, rem
 INSERT dbo.project_membership_versions(project_id, user_id, membership_version, authorization_version, row_version) VALUES
 (1, '22222222-2222-4222-8222-222222222222', 1, 1, 0),
 (1, '33333333-3333-4333-8333-333333333333', 1, 1, 0);
+INSERT dbo.project_authorization_snapshot_sync_jobs(
+    job_id, operation_id, project_id, user_id, membership_version, authorization_version,
+    snapshot_json, status, attempt_count, last_error, created_at, updated_at, next_attempt_at
+) VALUES
+(NEWID(), NEWID(), 1, '22222222-2222-4222-8222-222222222222', 1, 1,
+ '{"projectId":1,"userId":"22222222-2222-4222-8222-222222222222","status":"ACTIVE","role":"OWNER","membershipVersion":1,"authorizationVersion":1}',
+ 'PENDING', 0, NULL, TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00')),
+(NEWID(), NEWID(), 1, '33333333-3333-4333-8333-333333333333', 1, 1,
+ '{"projectId":1,"userId":"33333333-3333-4333-8333-333333333333","status":"ACTIVE","role":"MEMBER","membershipVersion":1,"authorizationVersion":1}',
+ 'PENDING', 0, NULL, TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'));
 SET IDENTITY_INSERT dbo.invitations ON;
 INSERT dbo.invitations(id, project_id, user_id, invited_by_user_id, status, created_at, updated_at, responded_at) VALUES
 (1, 1, '33333333-3333-4333-8333-333333333333', '22222222-2222-4222-8222-222222222222', 'ACCEPTED', TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'), TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'));

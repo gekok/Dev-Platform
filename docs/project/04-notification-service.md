@@ -8,7 +8,7 @@
 
 - **NotificationController** khai báo GET list và PATCH mark-read theo **X-User-Id**.
 - **InternalNotificationController** là skeleton cho **POST /internal/v1/notifications**, bị tắt mặc định bằng `INTERNAL_NOTIFICATIONS_ENABLED=false`; nếu bật thì chưa có authentication enforcement. Không coi route này là giao tiếp service-to-service an toàn.
-- **TaskEventListener** consume `card.assigned` và `comment.mentioned` từ queue `notification-service.task-events`; **NotificationRabbitConfiguration** khai báo binding, retry tối đa 3 lần cách nhau 5 giây và DLQ `notification-service.task-events.dlq`. Consumer mặc định tắt theo feature flag.
+- **TaskEventListener** consume `card.assigned` và `comment.mentioned` từ queue `notification-service.task-events`; **NotificationRabbitConfiguration** khai báo queue/binding/DLQ. Listener dùng shared retry factory: tối đa 3 lần retry cách 5 giây sau lần đầu; lỗi contract poison đi thẳng DLQ. Consumer mặc định tắt theo feature flags.
 - **ProcessTaskNotificationService** kiểm tra contract `TASK_NOTIFICATION_INTENT`, ghi Inbox cùng Notification trong một transaction, xử lý duplicate và tạo một Notification cho mỗi recipient. Không consume `MOVED` trong Kỳ 1.
 - Task-service đã có producer Outbox #25 cho hai Notification intent. Kiểm thử local bằng cách publish trực tiếp vào RabbitMQ đã xác nhận routing, nhiều recipient, duplicate, rollback và DLQ của consumer; Task Outbox Relay → broker và ACK-loss/redelivery vẫn chưa được nghiệm thu end-to-end.
 - `NotificationEntity` hiện có nullable `project_id` cùng recipient Account và Board/Card context. List/mark-read/create inbound ports đã có application service; controller đọc `X-User-Id`, được Gateway xác thực và ghi đè cho request đi qua Gateway. Direct-service ingress còn mở. Account/Project deletion jobs không thuộc Kỳ 1.
@@ -32,4 +32,4 @@
 - Account inbox có thể tổng hợp Notification từ nhiều Project và cả thông báo hệ thống không có Project context.
 - Kỳ 1 không cascade delete Notification theo Project và không có Notification deletion job.
 - Event trùng không tạo Notification lần hai; một `comment.mentioned` tạo đúng một Notification cho mỗi recipient duy nhất.
-- Lỗi xử lý được retry tối đa 3 lần cách nhau 5 giây rồi chuyển DLQ; consumer path đã có bằng chứng local, còn Task Outbox Relay và ACK-loss/redelivery cần nghiệm thu trước khi đóng issue.
+- Lỗi xử lý được retry tối đa 3 lần cách nhau 5 giây rồi chuyển DLQ theo shared policy; consumer path đã có bằng chứng local trước thay đổi này. Retry/DLQ qua policy chung, Task Outbox Relay và ACK-loss/redelivery cần nghiệm thu trước khi đóng issue.

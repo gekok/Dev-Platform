@@ -8,7 +8,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 
 ## Runtime đã đối chiếu
 
-- Gateway hiện route **/api/v1/auth/**, **/api/v1/users/** và **/api/v1/admin/** sang user-service; Admin controller yêu cầu role `SYSTEM_ADMIN`. Source có route `/ws/**` tới task-service nhưng đang khai báo HTTP upstream, cần xác nhận/chuyển sang WebSocket upstream trong phạm vi Gateway #31.
+- Gateway route **/api/v1/auth/**, **/api/v1/users/** và **/api/v1/admin/** sang user-service; Admin controller yêu cầu role `SYSTEM_ADMIN`. `/ws/**` dùng WebSocket upstream riêng `ws://localhost:8083`. Gateway có endpoint cấp ticket một lần cho browser; Task runtime vẫn mặc định tắt và chưa nghiệm thu E2E.
 - Route hiện tại đưa Project-scoped Card path cụ thể tới task-service trước `/api/v1/projects/**`; Board-first Board routes vẫn đi board-service.
 - Gateway có WebFilter xác thực JWT RSA256 bằng public key lấy từ user-service, issuer cấu hình, thời hạn token và UUID subject; public key được cache trong process đến khi Gateway khởi động lại. Mọi request không nằm trong ba route public phải có Bearer token.
 - Sau khi JWT hợp lệ, Gateway đọc `auth:account:{accountId}` từ Redis. Chỉ snapshot `ACTIVE` được đi tiếp; snapshot thiếu, sai cấu trúc hoặc Redis lỗi trả `503`, Account không ACTIVE trả `403`, token thiếu/sai trả `401`. Gateway gỡ `X-User-Id` do client gửi, đặt lại theo `sub` và giữ nguyên `Authorization` khi proxy.
@@ -29,7 +29,7 @@ Tài liệu nội bộ route/configuration: [Gateway README](../../gateway/READM
 - Với `POST /api/v1/projects`, chỉ chuyển tiếp identity Account nghiệp vụ `ACTIVE` đã xác thực; board-service dùng identity làm Owner và tạo Project + Owner membership cùng transaction.
 - Account phải ở trạng thái `ACTIVE`; Admin đổi Account status qua user-service API. Kỳ 1 không triển khai Account deletion. Gateway không sở hữu authorization snapshot; nguồn Account snapshot thuộc user-service và Project/Membership snapshot thuộc board-service.
 - Admin chỉ quản trị Account; không tự có quyền trong Project.
-- Internal REST giữa service chưa triển khai do chưa có bảo mật nội bộ. Gateway identity forwarding đã có cho HTTP request; direct-service restriction, CORS và refresh public key sau rotation còn mở.
+- Task dùng internal Board lookup `GET /internal/boards/{boardId}` qua `X-Service-Token`; đây chỉ là nguồn Board/Project/Column state, không thay thế membership authorization từ Redis. Internal User lookup và các API liên service khác còn thiếu hoặc chưa nghiệm thu. Gateway identity forwarding đã có cho HTTP request; direct-service restriction, HTTP CORS và refresh public key sau rotation còn mở.
 
 ## Việc cần làm
 

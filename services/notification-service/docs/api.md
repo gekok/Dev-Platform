@@ -18,7 +18,7 @@ Response có id, type, title, projectId, cardId, boardId, read, createdAt. Clien
 
 ## RabbitMQ consumer trong source
 
-Consumer được đăng ký khi đồng thời có `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`.
+Consumer được đăng ký khi đồng thời có `MESSAGING_ENABLED=true` và `MESSAGING_CONSUMERS_ENABLED=true`; hai cấu hình mặc định tắt. Listener dùng `sharedRabbitListenerContainerFactory` từ `messaging-support`, không tự cấu hình retry.
 
 - Exchange: `dev-platform.domain-events`.
 - Queue: `notification-service.task-events`.
@@ -28,8 +28,11 @@ Consumer được đăng ký khi đồng thời có `MESSAGING_ENABLED=true` và
 - `card.assigned` tạo một Notification loại `ASSIGNED`.
 - `comment.mentioned` tạo một Notification loại `MENTIONED` cho mỗi recipient.
 - Inbox và các Notification được ghi cùng transaction; event trùng không tạo side effect lần hai.
-- Listener dùng AUTO ACK sau khi xử lý thành công. Lỗi được retry tối đa 3 lần, cách nhau 5 giây, sau đó chuyển DLQ.
+- Listener dùng AUTO ACK sau khi Inbox/Notification transaction xử lý thành công. Lỗi nghiệp vụ/hạ tầng được retry tối đa 3 lần sau lần đầu, cách nhau cố định 5 giây, rồi reject không requeue để DLX chuyển sang DLQ.
+- JSON hoặc event contract sai phát `AmqpRejectAndDontRequeueException`, đi thẳng DLQ và không dùng lượt retry.
 - Event type không hỗ trợ được bỏ qua mà không ghi Inbox hoặc Notification.
+
+Notification-service sở hữu durable queue, DLQ, binding và routing key; shared chỉ cung cấp retry policy, listener factory và DLX exchange. Source topology không đồng nghĩa broker đã được kiểm tra sau thay đổi này. Luồng publish trực tiếp qua RabbitMQ local đã được kiểm thử trước đây; Task Outbox Relay, ACK-loss/redelivery và retry/DLQ qua broker vẫn cần nghiệm thu riêng.
 
 Unit test của notification-service đã kiểm tra mapper, nhiều recipient, duplicate, rollback propagation và listener. Kiểm thử local qua RabbitMQ đã xác nhận `card.assigned`, `comment.mentioned`, duplicate và retry/DLQ; event lỗi không để lại Inbox/Notification. Luồng Task Outbox Relay → RabbitMQ và tình huống mất ACK/redelivery vẫn cần bằng chứng riêng trước khi đóng issue.
 

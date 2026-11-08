@@ -40,7 +40,7 @@ Mỗi service lưu Outbox/Inbox trong database do chính service sở hữu; mod
 - `outbox_events`: `event_id` (PK), `event_type`, `aggregate_type`, `aggregate_id`, `aggregate_version`, `payload`, `status`, `attempt_count`, `created_at`, `next_attempt_at`, `sent_at`, `last_error`. Có index cho trạng thái/thời điểm retry.
 - `inbox_events`: composite key `(consumer_name, event_id)`, kèm `event_type` và `received_at`.
 - `OutboxEventWriter` yêu cầu transaction đang tồn tại; `InboxEventRecorder` cũng yêu cầu transaction đang tồn tại.
-- Outbox Relay hiện dùng confirm/return và retry theo cấu hình; relay/listener không mặc định bật. Chính sách consumer đã chốt là retry tối đa 3 lần cách nhau 5 giây rồi chuyển DLQ, nhưng chưa được nối runtime; chi tiết queue và xử lý DLQ còn mở, không áp dụng giới hạn này cho Outbox Relay.
+- Outbox Relay hiện dùng confirm/return và retry theo cấu hình; relay/listener không mặc định bật. Shared consumer retry/DLX policy đã có source: tối đa 3 lần retry cách nhau 5 giây rồi chuyển DLQ; Notification và Task cleanup có queue/DLQ topology riêng. Broker E2E và xử lý sau DLQ còn mở; giới hạn retry không áp dụng cho Outbox Relay.
 - Bảng cột/kiểu/nullability đầy đủ của hai mapping chung nằm tại [shared README](../../../shared/README.md), mục `Physical table mappings`; cùng mapping này được tạo riêng trong `user_db`.
 
 ## Shared modules trong user-service

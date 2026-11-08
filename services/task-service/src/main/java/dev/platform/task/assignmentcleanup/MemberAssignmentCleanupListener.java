@@ -8,15 +8,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.platform.contracts.EventEnvelope;
 import dev.platform.contracts.EventTypes;
 import dev.platform.contracts.event.MemberAssignmentsCleanupRequested;
-import dev.platform.shared.messaging.OutboxRelay;
+import dev.platform.shared.messaging.MessagingSupportConfiguration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
-import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.core.Message;
-import org.springframework.amqp.rabbit.annotation.Exchange;
-import org.springframework.amqp.rabbit.annotation.Queue;
-import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -41,15 +37,9 @@ public class MemberAssignmentCleanupListener {
     private final ObjectMapper objectMapper;
     private final MemberAssignmentCleanupHandler handler;
 
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(
-                    value = "${dev-platform.messaging.consumers.member-assignment-cleanup.queue:task-service.member-assignment-cleanup}",
-                    durable = "true"),
-            exchange = @Exchange(
-                    value = OutboxRelay.EXCHANGE,
-                    type = ExchangeTypes.TOPIC,
-                    durable = "true"),
-            key = EventTypes.MEMBER_ASSIGNMENTS_CLEANUP_REQUESTED),
+    @RabbitListener(
+            queues = "${dev-platform.messaging.consumers.member-assignment-cleanup.queue:task-service.member-assignment-cleanup}",
+            containerFactory = MessagingSupportConfiguration.CONSUMER_LISTENER_CONTAINER_FACTORY,
             ackMode = "AUTO")
     public void receive(Message message) {
         EventEnvelope<MemberAssignmentsCleanupRequested> event;
@@ -65,8 +55,9 @@ public class MemberAssignmentCleanupListener {
                     "Invalid member assignment cleanup message", exception);
         }
 
-        // Do not settle processing failures here. The shared listener retry policy owns bounded
-        // retry/backoff and terminal DLQ routing; this consumer must remain disabled until it exists.
+        // Do not settle processing failures here. The shared listener factory owns bounded
+        // retry/backoff and terminal DLQ routing; keep this consumer disabled until broker behavior
+        // is verified for the target environment.
         // The recorder's transaction commits before this proxied call returns; AUTO mode then ACKs.
         handler.requestMemberAssignmentCleanup(event);
     }

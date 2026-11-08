@@ -8,11 +8,11 @@ import static org.mockito.Mockito.when;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
@@ -96,15 +96,38 @@ class TaskEventListenerTest {
         assertEquals(42L, command.cardId());;
     }
     @Test
-    void listenerPropagatesInvalidJsonForRetry() {
+    void listenerRejectsInvalidJsonWithoutRetry() {
         Message message = MessageBuilder
             .withBody("not-json".getBytes(StandardCharsets.UTF_8))
             .build();
 
         assertThrows(
-            IOException.class,
+            AmqpRejectAndDontRequeueException.class,
             () -> listener.onTaskEvent(message));
 
         verifyNoInteractions(eventProcessor);
+    }
+
+    @Test
+    void listenerRejectsInvalidEventContractWithoutRetry() throws Exception {
+        when(eventProcessor.process(any()))
+                .thenThrow(new IllegalArgumentException("Unsupported schema version"));
+        Message message = MessageBuilder
+                .withBody(objectMapper.writeValueAsBytes(new EventEnvelope<>(
+                        UUID.randomUUID(),
+                        EventTypes.CARD_ASSIGNED,
+                        2,
+                        "TASK_NOTIFICATION_INTENT",
+                        "aggregate",
+                        1L,
+                        OffsetDateTime.parse("2026-11-08T03:00:00Z"),
+                        new CardAssigned(1L, 2L, 42L, UUID.randomUUID()))))
+                .build();
+
+        assertThrows(
+                AmqpRejectAndDontRequeueException.class,
+                () -> listener.onTaskEvent(message));
+
+        verify(eventProcessor).process(any());
     }
 }

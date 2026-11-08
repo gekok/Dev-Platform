@@ -77,7 +77,7 @@ task-service ── Internal REST API đồng bộ ──> board-service
 
 - Môi trường phát triển local dùng Docker Compose cho RabbitMQ và Redis; SQL Server chạy trực tiếp trên máy. Việc container sẵn sàng không đồng nghĩa luồng event hoặc snapshot đã nối hoàn chỉnh.
 - Hệ thống dùng mô hình giao tiếp kết hợp: Internal REST API đồng bộ, RabbitMQ truyền domain event và Redis lưu snapshot dùng chung giữa các instance.
-- Internal REST API dùng khi cần đọc dữ liệu gốc đồng bộ hoặc kiểm tra quyền. API này chưa triển khai cho tới khi thống nhất/thiết lập bảo mật cho giao tiếp service nội bộ.
+- Internal REST API có thể dùng khi cần đọc dữ liệu gốc đồng bộ; từng endpoint phải có service-to-service authentication. Task hiện dùng Board-state lookup `GET /internal/boards/{boardId}` với `X-Service-Token`; đây không phải nguồn kiểm tra Membership. Những internal endpoint khác chỉ được dùng sau khi có bảo vệ tương ứng.
 - RabbitMQ truyền các event gồm `USER_STATUS_CHANGED`, `USER_SYSTEM_ROLES_CHANGED`, `MEMBERSHIP_CHANGED`, `MEMBERSHIP_REMOVED` và yêu cầu cleanup assignment khi Membership bị thu hồi. Account/Project cascade không thuộc Kỳ 1.
 - Redis lưu Authentication/Authorization Snapshot dùng chung. API Gateway xác thực và định tuyến nhưng không sở hữu Authorization Snapshot.
 - `user-service` là nguồn dữ liệu chuẩn cho thông tin tài khoản/xác thực; `board-service` là nguồn dữ liệu chuẩn cho Project và phân quyền membership.
@@ -86,7 +86,7 @@ task-service ── Internal REST API đồng bộ ──> board-service
 - Gỡ Membership có hiệu lực khi Redis apply snapshot mới. Nếu Redis chưa xác nhận apply, API trả `202 Accepted` cùng `operationId` và `statusUrl`; operation thu hồi quyền chỉ hoàn tất sau khi Redis apply được xác nhận. Task unassign là job nền độc lập và không trì hoãn revoke completion.
 - Nếu snapshot cùng version đã có trong Redis thì có thể xác nhận đã đồng bộ. Nếu Redis đã có `authorizationVersion` cao hơn snapshot đang retry, job cũ phải ở trạng thái `SUPERSEDED`, không được hiểu là snapshot gỡ quyền đã apply; operation tương ứng không báo `COMPLETED`, client cần tải lại trạng thái Membership mới nhất.
 - `operationId` của thay đổi Membership được lưu trên snapshot-sync job để nối trạng thái bền vững với status lookup. API status route và quyền đọc operation chưa được triển khai/chốt trong skeleton.
-- Task-service đọc Authentication và Membership snapshot trực tiếp từ Redis, không dùng header client làm bằng chứng quyền. Redis lỗi hoặc snapshot không xác minh được thì fail closed. Internal REST chưa triển khai do chưa có bảo mật giao tiếp service nội bộ.
+- Task-service đọc Authentication và Membership snapshot trực tiếp từ Redis, không dùng header client làm bằng chứng quyền. Redis lỗi hoặc snapshot không xác minh được thì fail closed. Secured Board-state lookup chỉ cung cấp quan hệ Board/Project/Column; nó không cấp quyền membership.
 
 ### Account deletion — Kỳ 2
 
@@ -97,7 +97,7 @@ Kỳ 1 không có endpoint, `DELETING` status, operation, consumer hoặc cascad
 - Consumer dùng Inbox để chống duplicate: lưu `eventId` đã xử lý với unique constraint theo cặp `(consumerName, eventId)`; với xử lý đồng bộ, ghi Inbox và thay đổi nghiệp vụ vào DB Consumer trong cùng transaction. Với tác vụ nền, ghi Inbox cùng durable job/checkpoint trong cùng transaction rồi ACK; worker tiếp tục công việc. Nếu transaction thất bại thì rollback và retry; nếu commit thành công nhưng ACK mất thì RabbitMQ redeliver, Inbox nhận ra duplicate và không tạo side effect lần hai.
 - Inbox/idempotency được scope theo từng Consumer. Outbox retry và RabbitMQ redelivery là hai đường giao lại khác nhau; Outbox không bảo đảm Consumer đã xử lý thành công. Mô hình là at-least-once, không phải exactly-once.
 - Kỳ 1 vận hành một instance cho mỗi service. Outbox Relay hiện chưa có cơ chế claim/lease cho nhiều instance; không tăng số instance của cùng service khi chưa thiết kế và kiểm thử phối hợp relay.
-- Consumer lỗi được xử lý lần đầu và retry tối đa 3 lần, khoảng chờ cố định 5 giây giữa các lần retry; nếu vẫn thất bại thì chuyển DLQ. Notification consumer đã triển khai chính sách này cho queue `notification-service.task-events` và đã kiểm thử local bằng publish trực tiếp; Task Outbox Relay, ACK-loss/redelivery, các consumer khác, phân loại lỗi sâu và xử lý sau DLQ vẫn cần hoàn thiện. Chính sách này không đặt giới hạn 3 lần cho Outbox Relay.
+- Consumer lỗi được xử lý lần đầu và retry tối đa 3 lần, khoảng chờ cố định 5 giây giữa các lần retry; nếu vẫn thất bại thì chuyển DLQ. Shared đã có retry/DLX source policy; Notification và Task cleanup có queue/DLQ topology riêng và dùng chung listener factory. Notification publish trực tiếp qua RabbitMQ local đã kiểm thử trước đây; retry/DLQ với policy chung, Task Outbox Relay, ACK-loss/redelivery, phân loại lỗi sâu và xử lý sau DLQ vẫn cần nghiệm thu. Chính sách consumer không đặt giới hạn 3 lần cho Outbox Relay.
 - Envelope event mục tiêu có `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt` và `payload`. `eventId` nhận diện một event cụ thể để chống trùng; giữ nguyên qua mọi lần retry và không dùng để so thứ tự.
 - Tên event viết hoa ở ghi chú này là tên nghiệp vụ/constant; wire `eventType` dùng chữ thường, phân tách bằng dấu chấm (ví dụ `user.status.changed`, `project.membership.removed`).
 - Event Kỳ 1 dùng Outbox của service sở hữu dữ liệu nguồn:
@@ -179,18 +179,18 @@ Hợp đồng HTTP tham chiếu: `docs/api/kanban-api.md`. Route Board preferenc
 - Account phải ở trạng thái `ACTIVE` để được xác thực/cấp quyền. Kỳ 1 không có trạng thái `DELETING` hay Account deletion flow. Gateway và service không được suy ra Account còn hợp lệ chỉ từ token chưa hết hạn; nếu snapshot không xác minh được thì fail closed.
 - `POST /api/v1/projects` chỉ nhận Account nghiệp vụ đang `ACTIVE`. Gateway cung cấp identity đã xác thực; `board-service` dùng identity đó làm Owner và ghi Project cùng Owner membership trong một transaction. Client không được chọn `ownerId`/`userId` trong payload để giả danh.
 - Account mang `SYSTEM_ADMIN` không được thao tác hoặc tham gia Project. Người cần làm việc trong Project phải dùng Account nghiệp vụ không mang role này; role từ request body/header không được tin cậy.
-- `board-service` là nơi có dữ liệu chuẩn để quyết định quyền theo membership Project. Internal REST từ `task-service` để hỏi/kiểm tra dữ liệu này sẽ triển khai sau khi có bảo mật giao tiếp nội bộ.
+- `board-service` là nơi có dữ liệu chuẩn để quyết định quyền theo membership Project. Task dùng `GET /internal/boards/{boardId}` với `X-Service-Token` để lấy quan hệ Board/Project/Column cho WebSocket; membership authorization vẫn đọc Redis snapshot. Endpoint nội bộ không được expose qua Gateway và direct-service ingress chưa bị chặn.
 - Gateway hiện xác thực JWT RSA256 theo issuer cấu hình, `exp`, `iat` hiện diện và UUID `sub`; đọc Account snapshot Redis; xóa `X-User-Id` do client gửi rồi đặt lại từ `sub`; giữ nguyên Bearer token khi forward. Gateway không dùng token role để cấp quyền Project.
 - Account snapshot-sync worker của user-service mặc định tắt; Redis không có snapshot hợp lệ thì Gateway fail-closed `503`. Direct-service ingress chưa bị chặn theo phạm vi đã thống nhất, CORS chưa cấu hình và public-key rotation/refresh còn mở. Vì vậy không bật Task trusted-identity gate cho tới khi đường gọi thẳng service được bảo vệ.
 
 ### Board WebSocket — issue #24
 
-- **Kiến trúc đã duyệt; runtime chờ tích hợp.** Giữ route, event names và payload như [Kanban API](../api/kanban-api.md); chưa đăng ký WebSocket handler hoặc phát frame trước khi direct-service boundary, trusted Board lookup và Gateway WebSocket proxy sẵn sàng.
-- Gateway xác thực handshake và chỉ chuyển identity đã xác thực; Task không tin `X-User-Id`/`projectId` do client gửi. Gateway chỉ proxy WebSocket, không quyết định Project membership.
+- **Kiến trúc đã duyệt; source đã nối, runtime Task vẫn gated.** Giữ route, event names và payload như [Kanban API](../api/kanban-api.md). Gateway ticket endpoint, WebSocket proxy và Task handler/Board lookup adapter đã có source; bốn Task readiness flags mặc định tắt.
+- Browser lấy ticket ngắn hạn qua Bearer-authenticated Gateway endpoint rồi kết nối WebSocket bằng query ticket. Gateway kiểm tra Origin, tiêu thụ ticket một lần trong Redis, lọc credential client gửi và chuyển identity đã xác minh; Task không tin `X-User-Id`/`projectId` do client gửi. Query ticket cần được che khỏi access log của ingress/reverse proxy.
 - Task lấy Project của Board từ nguồn Board đáng tin cậy rồi kiểm tra Account/Membership bằng authorization snapshot. Kiểm tra quyền ở handshake, định kỳ khi socket mở và ngay trước mỗi event; đóng socket khi membership bị thu hồi, Board đổi Project hoặc không xác minh được quyền.
 - Phân phối trong cùng Task instance. Chỉ phát sau khi thay đổi Card/Comment commit; fanout best-effort, không ghi bền, retry/replay hoặc bảo đảm thứ tự/nhận đủ.
 - Khi mất kết nối/event bị bỏ, client refetch REST; REST/SQL Server vẫn là trạng thái chuẩn. WebSocket #24 không thay thế durable Task events/Outbox #25.
-- Điều kiện triển khai: bảo vệ direct-service ingress, secured Board-to-Project lookup và Gateway WebSocket proxy (#31); identity propagation HTTP đã có source nhưng cần nghiệm thu cùng E2E theo #35. Không dùng mock quan hệ Board.
+- Điều kiện triển khai: secured Board-to-Project lookup và Gateway WebSocket proxy đã có source; nghiệm thu cùng E2E theo #35. Bảo vệ direct-service ingress được hoãn khỏi nhánh hiện tại nhưng vẫn là điều kiện trước khi bật Task trusted-identity gate trong môi trường client có thể gọi service trực tiếp. Không dùng mock quan hệ Board.
 
 ## 7. Các điểm cần bàn tiếp
 
