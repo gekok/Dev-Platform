@@ -20,4 +20,6 @@ public interface UserRepository {
   List<UserAggregate> searchActiveUsers(String query, int limit);
 
   List<UserAggregate> findByIdIn(Set<UUID> ids);
+
+  List<UserAggregate> findAll();
 }

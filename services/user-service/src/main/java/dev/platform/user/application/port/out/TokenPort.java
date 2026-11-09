@@ -6,5 +6,5 @@ import java.util.UUID;
 public interface TokenPort {
   String issue(UserAggregate user);
 
-  UUID parseToken(String token);
+  UUID parseAndValidate(String token);
 }
