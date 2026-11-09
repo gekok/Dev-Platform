@@ -1,0 +1,12 @@
+package dev.platform.user.api.dto;
+
+import dev.platform.user.api.validation.BcryptCompatiblePassword;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record RegisterRequest(
+        @Email @NotBlank String email,
+        @NotBlank @Size(min = 6, max = 100) @BcryptCompatiblePassword String password,
+        @NotBlank String fullName) {
+}
