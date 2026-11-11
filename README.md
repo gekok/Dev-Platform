@@ -34,12 +34,12 @@ Chỉ chạy lệnh copy lần đầu; nếu đã có `.env`, sửa file hiện 
 | `DB_USERNAME`, `DB_PASSWORD` | SQL Server Authentication của máy chạy DB |
 | `USER_DB_URL`, `BOARD_DB_URL`, `TASK_DB_URL`, `NOTIFICATION_DB_URL` | JDBC URL tới bốn database tương ứng |
 | `INTERNAL_SERVICE_TOKEN` | Giá trị không rỗng, dùng chung cho các service gọi API nội bộ |
-| `GATEWAY_HMAC_SECRET` | Secret local cho cấu hình Board và lời gọi nội bộ cần HMAC |
+| `GATEWAY_HMAC_SECRET` | Giá trị Board yêu cầu khi khởi động; ký và kiểm tra HMAC chưa hoạt động trong runtime hiện tại |
 | `REDIS_HOST`, `REDIS_PORT` | Mặc định `localhost:6379` |
 | `RABBITMQ_HOST`, `RABBITMQ_PORT` | Mặc định `localhost:5672` |
 | `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` | Mặc định phát triển `devplatform` / `devplatform` |
 
-**Chú ý URL User DB:** file mẫu hiện trỏ tới container ở `localhost:11433`. Nếu dùng toàn bộ SQL Server trên máy, đổi `USER_DB_URL` cùng ba URL còn lại sang instance của anh. Ví dụ cho User DB:
+**Chú ý URL User DB:** file mẫu trỏ tới SQL Server local instance `PHUC`. Hãy đổi instance trong cả bốn URL cho phù hợp với máy của anh. Ví dụ cho User DB:
 
 ```properties
 USER_DB_URL=jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_user_db;encrypt=true;trustServerCertificate=true
@@ -47,7 +47,7 @@ USER_DB_URL=jdbc:sqlserver://localhost;instanceName=PHUC;databaseName=kanban_use
 
 Ba DB còn lại có tên `kanban_board_db`, `kanban_task_db`, `kanban_notification_db`. Cùng các biến `DB_USERNAME`/`DB_PASSWORD` được dùng bởi bốn service.
 
-Để chạy tích hợp RabbitMQ, snapshot Redis và Task trên máy local, đặt rõ trong `.env`:
+Các cờ tích hợp mặc định tắt trong service. [`.env.example`](.env.example) đã gom cấu hình bật cho bộ local đầy đủ, có chú thích kiểu dữ liệu và ví dụ trên dòng trước mỗi nhóm biến. Điền các giá trị còn trống; nếu đang dùng `.env` cũ, bổ sung các cờ sau để chạy tích hợp RabbitMQ, snapshot Redis và Task trên máy local:
 
 ```properties
 MESSAGING_ENABLED=true
@@ -72,7 +72,7 @@ Bốn service đọc `../../.env` khi chạy từ `services/<service>`; Gateway 
 
 **Cách chính — bốn DB trên SQL Server local:** dùng [sql/local-sqlserver-bootstrap.sql](sql/local-sqlserver-bootstrap.sql). Script tạo DB nếu thiếu, tạo schema và dữ liệu mẫu; Kỳ 1 chưa bắt buộc migration. `DB_DDL_AUTO` mặc định là `none`.
 
-> **Chưa sẵn sàng cho máy mới:** script toàn hệ thống hiện tạo lặp `outbox_events`/`inbox_events` trong Board DB (phần Board và vòng lặp tạo bảng chung). Cần sửa lỗi này trước khi chạy bootstrap; lệnh dưới đây là cách gọi sau khi script được sửa. Máy đã có schema không cần nạp lại.
+> Chỉ chạy script trên bốn database trống. Máy đã có schema không cần nạp lại; script không phải công cụ nâng cấp database.
 
 ```powershell
 sqlcmd -S 'localhost\PHUC' -U sa -C -b -f 65001 -i sql/local-sqlserver-bootstrap.sql
@@ -93,7 +93,7 @@ Mật khẩu mẫu: `DemoPass123!`, chỉ dùng local. Nếu DB cũ thiếu tên
 <details>
 <summary>Lựa chọn riêng: User DB chạy trong Docker</summary>
 
-Compose có thêm `user-sqlserver` ở cổng `11433`, với named volume `user_sqlserver_data`. Đặt `DB_PASSWORD` đáp ứng yêu cầu SQL Server và giữ URL User DB như `.env.example`:
+Compose có thêm `user-sqlserver` ở cổng `11433`, với named volume `user_sqlserver_data`. Đặt `DB_PASSWORD` đáp ứng yêu cầu SQL Server và đổi `USER_DB_URL` trong `.env` sang URL Docker được ghi trong `.env.example`:
 
 ```powershell
 docker compose up -d user-sqlserver

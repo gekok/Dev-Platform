@@ -1,7 +1,7 @@
 /* Local SQL Server bootstrap for the four empty Kanban databases.
    Run only against four empty local databases, using a principal with DDL rights.
    For sqlcmd, use -b -f 65001. In SSMS, stop execution if any error is reported.
-   Operational tables are created empty; sample credentials are local-only.
+   Outbox/Inbox start empty; snapshot-sync jobs are seeded. Credentials are local-only.
    The login needs CREATE DATABASE permission when any database is missing.
 */
 USE master;
@@ -154,28 +154,6 @@ CREATE TABLE dbo.project_authorization_snapshot_sync_jobs (
     CONSTRAINT uq_project_member_snapshot_authorization_version UNIQUE (project_id, user_id, authorization_version)
 );
 CREATE INDEX idx_project_snapshot_sync_due ON dbo.project_authorization_snapshot_sync_jobs(status, next_attempt_at);
-CREATE TABLE dbo.outbox_events (
-    event_id uniqueidentifier NOT NULL PRIMARY KEY,
-    event_type varchar(120) NOT NULL,
-    aggregate_type varchar(80) NOT NULL,
-    aggregate_id varchar(80) NOT NULL,
-    aggregate_version bigint NOT NULL,
-    payload nvarchar(max) NOT NULL,
-    status varchar(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','SENT')),
-    attempt_count int NOT NULL DEFAULT 0,
-    created_at datetimeoffset NOT NULL,
-    next_attempt_at datetimeoffset NOT NULL,
-    sent_at datetimeoffset NULL,
-    last_error nvarchar(max) NULL
-);
-CREATE INDEX idx_outbox_due ON dbo.outbox_events(status, next_attempt_at, created_at);
-CREATE TABLE dbo.inbox_events (
-    consumer_name varchar(255) NOT NULL,
-    event_id uniqueidentifier NOT NULL,
-    status varchar(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','PROCESSED','FAILED')),
-    processed_at datetimeoffset NULL,
-    CONSTRAINT pk_inbox_events PRIMARY KEY (consumer_name, event_id)
-);
 GO
 
 USE kanban_task_db;

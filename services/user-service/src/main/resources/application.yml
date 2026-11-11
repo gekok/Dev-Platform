@@ -58,5 +58,5 @@ dev-platform:
       enabled: ${MESSAGING_CONSUMERS_ENABLED:false}
   snapshot-sync:
     user:
-      enabled: ${USER_AUTH_SNAPSHOT_SYNC_ENABLED:true}
+      enabled: ${USER_AUTH_SNAPSHOT_SYNC_ENABLED:false}
       fixed-delay-ms: ${USER_AUTH_SNAPSHOT_SYNC_FIXED_DELAY_MS:1000}

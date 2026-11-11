@@ -229,6 +229,13 @@ class GatewayApplicationTest {
     }
 
     @Test
+    void forwardsMembershipOperationStatusToBoardAfterAuthentication() throws Exception {
+        String path = "/api/v1/operations/11111111-1111-4111-8111-111111111111";
+        assertEquals(401, getWithoutToken(path).statusCode());
+        assertRoute(path, "board");
+    }
+
+    @Test
     void issuesSingleUseTicketAndProxiesBrowserWebSocketWithVerifiedIdentity() throws Exception {
         HttpResponse<String> ticketResponse = request(
                 "POST",

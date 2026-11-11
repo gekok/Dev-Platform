@@ -6,5 +6,6 @@ target/
 
 # Local plans/specs are working notes, not repository documentation.
 /docs/superpowers/
+/.superpowers/
 .keys/
 *.key

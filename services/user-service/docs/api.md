@@ -33,7 +33,7 @@ Endpoint nội bộ `GET /internal/users/{userId}` cho service khác xác minh A
 
 - Login, provisioning Account qua Admin, quản lý system role và phát token đã có implementation source. Điều này chưa đồng nghĩa Gateway→Redis snapshot đã được tích hợp end-to-end.
 - Account create/status/role mutation gọi snapshot recorder trong cùng DB transaction với thay đổi Account, Outbox và durable snapshot-sync job. SQL bootstrap local có Account System Admin mẫu; Kỳ 1 không dùng Flyway.
-- Redis snapshot-sync worker kích hoạt qua `USER_AUTH_SNAPSHOT_SYNC_ENABLED` (mặc định `true` cho môi trường local để tự động sync snapshot của seed users và account mới sang Redis). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
+- Redis snapshot-sync worker kích hoạt qua `USER_AUTH_SNAPSHOT_SYNC_ENABLED` (mặc định `false` trong service; `.env.example` đặt `true` cho bộ local đầy đủ để sync snapshot của seed users và account mới sang Redis). Khi worker chưa chạy hoặc snapshot chưa tồn tại, Gateway fail-closed `503`; Gateway JWT filter và Directory/profile controller đã có source.
 - Issue #7 đã chốt Account mang `SYSTEM_ADMIN` không được làm Owner/Member trong Project, chỉ System Admin tạo Account và không public self-registration. Nếu cùng một cá nhân cần làm việc trong Project, dùng Account nghiệp vụ khác không mang `SYSTEM_ADMIN`. Directory privacy và Account validation từ board-service vẫn còn mở.
 - Xem [ghi chú Account deletion Kỳ 2](../../../docs/project/account-deletion-skeleton-guide.md); không dùng nó như hướng dẫn triển khai Kỳ 1.
 

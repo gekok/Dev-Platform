@@ -135,6 +135,28 @@ Redis snapshot là phần riêng do service sở hữu, không do shared thực 
 
 `EventEnvelope<T>` dùng các trường `eventId`, `eventType`, `schemaVersion`, `aggregateType`, `aggregateId`, `aggregateVersion`, `occurredAt`, `payload`. Event ID là định danh retry/dedup; aggregate version thuộc từng aggregate. Tên wire và payload tối thiểu ở [event decisions](../docs/project/architecture-decisions.md) là hợp đồng thiết kế hiện tại; các record trong module này mới là skeleton contract, chưa chứng minh serialization, publish, consume hoặc schema evolution đã tích hợp end-to-end.
 
+Mẫu JSON theo wire names hiện tại của `MembershipRemoved`:
+
+```json
+{
+  "eventId": "11111111-1111-4111-8111-111111111111",
+  "eventType": "project.membership.removed",
+  "schemaVersion": 1,
+  "aggregateType": "PROJECT_MEMBERSHIP",
+  "aggregateId": "42:550e8400-e29b-41d4-a716-446655440002",
+  "aggregateVersion": 7,
+  "occurredAt": "2026-11-07T10:15:30Z",
+  "payload": {
+    "projectId": 42,
+    "userId": "550e8400-e29b-41d4-a716-446655440002",
+    "revokedMembershipVersion": 2,
+    "membershipVersion": 3
+  }
+}
+```
+
+Khi Outbox retry, phải publish lại payload đã lưu với cùng `eventId`, `aggregateVersion` và dữ liệu nghiệp vụ; không tạo event mới cho lần gửi lại. Consumer dedupe theo `(consumerName, eventId)`. `aggregateVersion` hỗ trợ nhận biết phiên bản/gap theo ngữ nghĩa từng event, không thay thế Inbox. Ví dụ trên chỉ minh họa serialization contract; listener, queue, ACK và xử lý nghiệp vụ vẫn do từng service nối riêng.
+
 Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Module chỉ định nghĩa kiểu dữ liệu; nó không publish, validate schema, version migration hoặc đảm bảo consumer xử lý.
 
 | Wire event | Payload fields hiện khai báo |
@@ -142,7 +164,7 @@ Tên wire hiện tại là chữ thường, phân tách bằng dấu chấm. Mod
 | `user.status.changed` | `userId`, `status`, `authVersion` |
 | `user.system-roles.changed` | `userId`, `systemRoles`, `authVersion` |
 | `project.membership.changed` | `projectId`, `userId`, `status`, `role`, `membershipVersion` |
-| `project.membership.removed` | `projectId`, `userId`, `membershipVersion` |
+| `project.membership.removed` | `projectId`, `userId`, `revokedMembershipVersion`, `membershipVersion` |
 | `member.assignments.cleanup-requested` | `operationId`, `projectId`, `userId`, `boardIds`, `membershipVersion` |
 | `member.assignments.cleaned` | `operationId`, `projectId`, `userId`, `membershipVersion` |
 | `card.assigned` | `projectId`, `boardId`, `cardId`, `recipientUserId` |
@@ -152,7 +174,7 @@ Các field trong bảng là source shape đang khai báo và cần được gi�
 
 Với `member.assignments.cleanup-requested`, board-service phải commit việc gỡ Membership, Outbox và snapshot-sync job trước. Quyền chỉ bị thu hồi khi snapshot mới được apply vào Redis; nếu còn pending, API trả `202` cùng operation handle. Event này chỉ khởi chạy unassign nền, không phải tín hiệu thu hồi quyền. Cleanup mang `membershipVersion` và chỉ được bỏ assignment đúng generation đã revoke.
 
-`membershipVersion` tăng theo từng lần Membership được tạo lại và giữ nguyên khi lần đó bị thu hồi. `authorizationVersion` tăng mỗi khi quyền đổi, là Membership envelope `aggregateVersion`, đồng thời được dùng cho Redis CAS và unique key của snapshot-sync job. Nhờ hai version tách biệt, retry snapshot ACTIVE cũ không thể ghi đè REMOVED cùng generation. Nếu Redis đã có version mới hơn trước khi job cũ chạy, job đó được đánh dấu `SUPERSEDED`, không được hiểu là snapshot cũ đã apply.
+Trong runtime hiện tại, khi thu hồi, Board tăng `membershipVersion` và gửi riêng `revokedMembershipVersion` của phiên cũ; cleanup dùng phiên cũ, còn snapshot REMOVED mang version mới. `authorizationVersion` tăng mỗi khi quyền đổi, là Membership envelope `aggregateVersion`, đồng thời được dùng cho Redis CAS và unique key của snapshot-sync job. Retry snapshot ACTIVE cũ không thể ghi đè snapshot mới hơn. Nếu Redis đã có version mới hơn trước khi job cũ chạy, job đó được đánh dấu `SUPERSEDED`, không được hiểu là snapshot cũ đã apply.
 
 Task lưu `membershipVersion` trên từng assignment và durable fence theo `(projectId,userId,membershipVersion)`; việc ghi assignment phải được tuần tự hóa với fence. Durable cleanup job cũng lưu `sourceAggregateVersion` từ request envelope, và completion giữ nguyên version nguồn này. Do đó cleanup cũ chỉ xóa đúng generation cũ, không xóa assignment sau khi User tham gia lại.
 
@@ -211,7 +233,7 @@ Kỳ 1 chưa dùng migration; local service config dùng Hibernate `ddl-auto=non
 
 ### Bật/tắt và trạng thái hiện tại
 
-Cấu hình trong mỗi service mặc định tắt:
+Cấu hình trong mỗi service mặc định tắt. [`.env.example`](../.env.example) gom các cờ bật bộ tích hợp local đầy đủ, kèm kiểu dữ liệu và ví dụ. Copy lần đầu sang `.env`, điền credential/secret rồi khởi động lại service; không ghi chú thích sau giá trị vì file được đọc theo Java properties.
 
 ```yaml
 dev-platform:
